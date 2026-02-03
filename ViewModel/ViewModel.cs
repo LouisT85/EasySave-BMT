@@ -14,7 +14,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
         public ViewModel()
         {
             this.model = new Model();
-            this.view = new View();
+            this.view = new View(this);
         }
         public void RunApp()
         {
