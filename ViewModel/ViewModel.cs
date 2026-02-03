@@ -16,5 +16,32 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
             this.model = new Model();
             this.view = new View();
         }
+        public void RunApp()
+        {
+            bool currentlyRunning = true;
+            while (currentlyRunning)
+            {
+                switch (this.view.Menu())
+                {
+                    case 1:
+                        //faire une méthode qui affiche les saves
+                        break;
+                    case 2:
+                        //faire une méthode qui fait un nv travail de sauvegarde
+                        break;
+                    case 3:
+                        //supprimer un travail de sauvegarde
+                        break;
+                    case 4:
+                        //faire une méthode qui fait la backup du travail de sauvegarde
+                        break;
+                    case 5:
+                        //faire une méthode qui permet d'entrer dans un menu de configuration ou de changer la langue
+                        break;
+                    case 6:
+                        //faire une méthode qui quitte la page
+                }
+            }
+        }
     }
 }
