@@ -10,9 +10,6 @@ namespace easySave_BMT.View_
         private ViewModel viewModel;
 
         //ctor
-<<<<<<< HEAD
-        public View(ViewModel _viewModel)
-=======
         public View(ViewModel viewModel)
 >>>>>>> 1859218 (feat(View.cs): partial view ending)
         {

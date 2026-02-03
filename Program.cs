@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
-=======
 using easySave_BMT.ViewModel_;
 
 namespace easySave_BMT
@@ -17,4 +13,3 @@ namespace easySave_BMT
         }
     }
 }
->>>>>>> 1a63296 (feat(Program.cs): created program.cs file + class)
