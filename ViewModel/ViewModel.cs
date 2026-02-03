@@ -39,7 +39,11 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                         //faire une méthode qui permet d'entrer dans un menu de configuration ou de changer la langue
                         break;
                     case 6:
-                        //faire une méthode qui quitte la page
+                        currentlyRunning = false; // quitte la page
+                        break;
+                    default:
+                        //faire une méthode qui retourne un message (view)
+                        break;
                 }
             }
         }
