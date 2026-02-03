@@ -1,30 +1,11 @@
 {
   "version": 3,
   "targets": {
-    "net9.0": {
-      "EasyLog/1.0.0": {
-        "type": "project",
-        "framework": ".NETCoreApp,Version=v9.0",
-        "compile": {
-          "bin/placeholder/EasyLog.dll": {}
-        },
-        "runtime": {
-          "bin/placeholder/EasyLog.dll": {}
-        }
-      }
-    }
+    "net9.0": {}
   },
-  "libraries": {
-    "EasyLog/1.0.0": {
-      "type": "project",
-      "path": "EasyLog/EasyLog.csproj",
-      "msbuildProject": "EasyLog/EasyLog.csproj"
-    }
-  },
+  "libraries": {},
   "projectFileDependencyGroups": {
-    "net9.0": [
-      "EasyLog >= 1.0.0"
-    ]
+    "net9.0": []
   },
   "packageFolders": {
     "C:\\Users\\mjh15\\.nuget\\packages\\": {}
@@ -52,11 +33,7 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
-          "projectReferences": {
-            "C:\\Users\\mjh15\\Desktop\\Genie logiciel\\projet\\EasySave-BMT\\EasyLog\\EasyLog.csproj": {
-              "projectPath": "C:\\Users\\mjh15\\Desktop\\Genie logiciel\\projet\\EasySave-BMT\\EasyLog\\EasyLog.csproj"
-            }
-          }
+          "projectReferences": {}
         }
       },
       "warningProperties": {

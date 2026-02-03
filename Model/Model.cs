@@ -150,7 +150,7 @@ namespace easySave_BMT.Model_
                 // copy of the file
                 _currentFile.CopyTo(dstFile, true);
 
-                // LOG SUCCÈS (EasyLog.dll)
+                // log success (EasyLog.dll)
                 logger.Write(new LogEntry
                 {
                     Timestamp = DateTime.Now,
@@ -165,7 +165,7 @@ namespace easySave_BMT.Model_
             }
             catch
             {
-                // LOG ERREUR (EasyLog.dll)
+                // error log (EasyLog.dll)
                 logger.Write(new LogEntry
                 {
                     Timestamp = DateTime.Now,
