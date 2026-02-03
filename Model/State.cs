@@ -1,6 +1,6 @@
 namespace easySave_BMT.Model_
 {
-    class State
+    public class State
     {
         // --- Attributes ---
         public int totalFile { get; set; }
