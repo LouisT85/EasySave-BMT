@@ -83,7 +83,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                         addSaveBackupType = BackupType.DIFFERENTIAL;
                         break;
                 }
-                this.view.DisplayMessage(model.Addsave(addSaveName, addSaveSrc, addSaveDest, addSaveBackupType));
+                this.view.DisplayMessage(model.AddSave(addSaveName, addSaveSrc, addSaveDest, addSaveBackupType));
             }
             else
             {
@@ -100,7 +100,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                     case 0:
                         return;
                     case 1:
-                        foreach(save save in this.model.saves)
+                        foreach(Save save in this.model.saves)
                         {
                             this.view.DisplayMessage(LaunchBackupType(save));
                             this.view.DisplayMessage(4);

@@ -17,7 +17,7 @@ namespace easySave_BMT.Model_
         private EasyLogger logger;
         private string logPath;
         private string backupsaveSavePath = "./BackupsaveSave.json";
-        public List<save> saves { get; set; }
+        public List<Save> saves { get; set; }
 
         // Prepare options to indent JSON Files
         private JsonSerializerOptions jsonOptions = new JsonSerializerOptions()
@@ -29,7 +29,7 @@ namespace easySave_BMT.Model_
         public Model()
         {
             // Initalize save List
-            this.saves = new List<save>();
+            this.saves = new List<Save>();
 
             logPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
@@ -43,12 +43,12 @@ namespace easySave_BMT.Model_
 
         // --- Methods ---
         // Add save
-        public int AddSave(string _name, string _src, string _dst, BackupType _backupType)
+        public int AddSave(string name, string src, string dst, BackupType backupType)
         {
             try
             {
                 // Add save in the program (at the end of the List)
-                this.saves.Add(new save(_name, _src, _dst, _backupType));
+                this.saves.Add(new Save(name, src, dst, backupType));
                 AddLogInJSONFile();
 
                 // Return Success Code
@@ -62,12 +62,12 @@ namespace easySave_BMT.Model_
         }
 
         // Remove save
-        public int RemoveSave(int _index)
+        public int RemoveSave(int index)
         {
             try
             {
                 // Remove save from the program (at index)
-                this.saves.RemoveAt(_index);
+                this.saves.RemoveAt(index);
                 AddLogInJSONFile();
 
                 // Return Success Code
@@ -88,8 +88,8 @@ namespace easySave_BMT.Model_
             {
                 try
                 {
-                    // Read saves from JSON File (from ./BackupsaveSave.json) (use save() constructor)
-                    this.saves = JsonSerializer.Deserialize<List<save>>(File.ReadAllText(this.backupsaveSavePath));
+                    // Read saves from JSON File (from ./BackupsaveSave.json) (use Save() constructor)
+                    this.saves = JsonSerializer.Deserialize<List<Save>>(File.ReadAllText(this.backupsaveSavePath));
                 }
                 catch
                 {
@@ -109,24 +109,24 @@ namespace easySave_BMT.Model_
         }
 
         public bool CopyFile(
-            save _save,
-            FileInfo _currentFile,
-            long _curSize,
-            string _dst,
-            long _leftSize,
-            int _totalFile,
+            Save save,
+            FileInfo currentFile,
+            long curSize,
+            string dst,
+            long leftSize,
+            int totalFile,
             int fileIndex,
-            int _pourcent)
+            int pourcent)
         {
             DateTime startTimeFile = DateTime.Now;
 
-            string curDirPath = _currentFile.DirectoryName;
-            string dstDirectory = _dst;
+            string curDirPath = currentFile.DirectoryName;
+            string dstDirectory = dst;
 
             // management folder
-            if (Path.GetRelativePath(_save.src, curDirPath).Length > 1)
+            if (Path.GetRelativePath(save.src, curDirPath).Length > 1)
             {
-                dstDirectory += Path.GetRelativePath(_save.src, curDirPath) + "\\";
+                dstDirectory += Path.GetRelativePath(save.src, curDirPath) + "\\";
 
                 if (!Directory.Exists(dstDirectory))
                 {
@@ -134,30 +134,30 @@ namespace easySave_BMT.Model_
                 }
             }
 
-            string dstFile = Path.Combine(dstDirectory, _currentFile.Name);
+            string dstFile = Path.Combine(dstDirectory, currentFile.Name);
 
             try
             {
                 // update state
-                _save.state.UpdateState(
-                    _pourcent,
-                    (_totalFile - fileIndex),
-                    _leftSize,
-                    _currentFile.FullName,
+                save.state.UpdateState(
+                    pourcent,
+                    (totalFile - fileIndex),
+                    leftSize,
+                    currentFile.FullName,
                     dstFile
                 );
 
                 // copy of the file
-                _currentFile.CopyTo(dstFile, true);
+                currentFile.CopyTo(dstFile, true);
 
                 // log success (EasyLog.dll)
                 logger.Write(new LogEntry
                 {
                     Timestamp = DateTime.Now,
-                    BackupName = _save.name,
-                    SourcePath = _currentFile.FullName,
+                    BackupName = save.name,
+                    SourcePath = currentFile.FullName,
                     DestinationPath = dstFile,
-                    FileSize = _curSize,
+                    FileSize = curSize,
                     TransferTimeMs = (long)(DateTime.Now - startTimeFile).TotalMilliseconds
                 });
 
@@ -169,10 +169,10 @@ namespace easySave_BMT.Model_
                 logger.Write(new LogEntry
                 {
                     Timestamp = DateTime.Now,
-                    BackupName = _save.name,
-                    SourcePath = _currentFile.FullName,
+                    BackupName = save.name,
+                    SourcePath = currentFile.FullName,
                     DestinationPath = dstFile,
-                    FileSize = _curSize,
+                    FileSize = curSize,
                     TransferTimeMs = -1
                 });
 

@@ -17,21 +17,21 @@ namespace easySave_BMT.Model_
         public State() { }
 
         // Constructor used by DoBackup()
-        public State(int _totalFile, long _totalSize, string _currentPathSrc, string _currentPathDest)
+        public State(int totalFile, long totalSize, string currentPathSrc, string currentPathDest)
         {
             this.progress = 0;
-            this.totalFile = _totalFile;
-            this.totalSize = _totalSize;
-            this.currentPathSrc = _currentPathSrc;
-            this.currentPathDest = _currentPathDest;
+            this.totalFile = totalFile;
+            this.totalSize = totalSize;
+            this.currentPathSrc = currentPathSrc;
+            this.currentPathDest = currentPathDest;
         }
-        public void UpdateState(int _progress, int _nbFileLeft, long _leftSize, string _currSrcPath, string _currDestPath)
+        public void UpdateState(int progress, int nbFileLeft, long leftSize, string currSrcPath, string currDestPath)
         {
-            this.progress = _progress;
-            this.nbFileLeft = _nbFileLeft;
-            this.leftSize = _leftSize;
-            this.currentPathSrc = _currSrcPath;
-            this.currentPathDest = _currDestPath;
+            this.progress = progress;
+            this.nbFileLeft = nbFileLeft;
+            this.leftSize = leftSize;
+            this.currentPathSrc = currSrcPath;
+            this.currentPathDest = currDestPath;
         }
 
     }
