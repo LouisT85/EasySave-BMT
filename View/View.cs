@@ -11,7 +11,6 @@ namespace easySave_BMT.View_
 
         //ctor
         public View(ViewModel viewModel)
->>>>>>> 1859218 (feat(View.cs): partial view ending)
         {
             this.viewModel = _viewModel;
         }
