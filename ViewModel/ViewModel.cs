@@ -70,7 +70,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 string addSaveDest = view.SaveDst(addSaveSrc);
                 if (addSaveDest == "0") return;
                 BackupType AddSaveBackupType;
-                switch (view.AddSaveBackupType)
+                switch(view.AddSaveBackupType())
                 {
                     case 0:
                         return;
