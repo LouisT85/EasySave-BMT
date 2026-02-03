@@ -28,7 +28,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                         DisplaySaves();
                         break;
                     case 2:
-                        //faire une méthode qui fait un nv travail de sauvegarde
+                        AddSave();
                         break;
                     case 3:
                         //supprimer un travail de sauvegarde
