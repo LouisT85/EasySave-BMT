@@ -2,7 +2,7 @@
 Projet C# génie logiciel
 
 
-# Conventional commit messages 
+# Conventional commit messages for the team
 
 git commit -m"<type>(<optional scope>): <description>"
 
