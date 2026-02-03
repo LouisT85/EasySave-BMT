@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("EasySave-BMT")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4dcff5d8c762a0d60f89d550f6edec9c3f14beb9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+021462746ee4b103b9035fdee0689dedeed3fab1")]
 [assembly: System.Reflection.AssemblyProductAttribute("EasySave-BMT")]
 [assembly: System.Reflection.AssemblyTitleAttribute("EasySave-BMT")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
