@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.IO;
 using easySave_V1.View_Model;
 
-namespace easySave_BMT.Model_;
+namespace easySave_BMT.Model_
 
 {
     class Model 
@@ -66,7 +66,29 @@ namespace easySave_BMT.Model_;
             }
         }
 
- public void AddLogInJSONFile()
+        // Load saves and States at the beginning of the program
+        public int CreateLogs()
+        {
+            // Check if backupsaveSave.json File exists
+            if (File.Exists(backupsaveSavePath))
+            {
+                try
+                {
+                    // Read saves from JSON File (from ./BackupsaveSave.json) (use save() constructor)
+                    this.saves = JsonSerializer.Deserialize<List<save>>(File.ReadAllText(this.backupsaveSavePath));
+                }
+                catch
+                {
+                    // Return Error Code
+                    return 200;
+                }
+            }
+            // Return Success Code
+            return 100;
+        }
+
+        // Add log in JSON file
+        public void AddLogInJSONFile()
         {
             // Write save list into JSON file (at ./BackupsaveSave.json)
             File.WriteAllText(this.backupsaveSavePath, JsonSerializer.Serialize(this.saves, this.jsonOptions));
