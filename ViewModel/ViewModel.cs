@@ -101,7 +101,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                     case 0:
                         return;
                     case 1:
-                        foreach(save save in this.model.saves)
+                        foreach(Save save in this.model.saves)
                         {
                             this.view.DisplayMessage(LaunchBackupType(save));
                             this.view.DisplayMessage(4);

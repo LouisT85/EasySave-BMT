@@ -4,7 +4,7 @@ using System.IO;
 namespace easySave_BMT.Model_
 
 {
-    public class save
+    public class Save
     {
   
         public string name { get; set; }
@@ -16,20 +16,17 @@ namespace easySave_BMT.Model_
 
 
      
-        public save() { }
+        public Save() { }
 
         // Constructor used by Addsave()
-        public save(string _name, string _src, string _dst, BackupType _backupType)
+        public Save(string name, string src, string dst, BackupType backupType)
         {
-            this.name = _name;
-            this.src = _src;
-            this.dst = _dst;
-            this.backupType = _backupType;
+            this.name = name;
+            this.src = src;
+            this.dst = dst;
+            this.backupType = backupType;
             this.state = null;
         }
-
-
-        // --- Methods ----
         
     }
 }
