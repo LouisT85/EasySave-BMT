@@ -7,7 +7,7 @@ using easySave_BMT.ViewModel_;
 namespace easySave_BMT.Model_
 
 {
-    class Model 
+    public class Model 
     {
         // --- Attributes ---
         private string backupsaveSavePath = "./BackupsaveSave.json";
