@@ -116,7 +116,7 @@ namespace easySave_BMT.Model_
             // Get the current dstFile
             string dstFile = dstDirectory + _currentFile.Name;
 
-            /*try
+            try
             {
                 // Update the current save status
                 _save.state.UpdateState(_pourcent, (_totalFile - fileIndex), _leftSize, _currentFile.FullName, dstFile);
@@ -133,7 +133,7 @@ namespace easySave_BMT.Model_
             {
                 _save.SaveLog(startTimeFile, _currentFile.FullName, dstFile, _curSize, true);
                 return false;
-            }*/
+            }
         }
     }
 }
