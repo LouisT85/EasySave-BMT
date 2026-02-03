@@ -2,7 +2,8 @@ using System;                      // Library .NET
 using System.IO;                   // files/directory management
 using System.Collections.Generic;  // List<list>, dictionnary etc.
 using easySave_BMT.Model_;         // Importation of "Model" directory class(es)
-using easySave_BMT.View_;          // Importation of "View" directory class(es)
+using easySave_BMT.View_;
+using System.Xml.Linq;          // Importation of "View" directory class(es)
 
 namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
 {
@@ -58,7 +59,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 this.view.DisplayMessage(204);
             }
         }
-        private void AddSave()
+        private void AddSave() // method used in case 2, used to add a new save job
         {
             if(this.model.saves.Count < 5)
             {
@@ -76,17 +77,38 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                         addSaveBackupType = BackupType.FULL;
                         break;
                     case 2:
-                        addSaveBackupType = BackupType.DIFFRENTIAL;
+                        addSaveBackupType = BackupType.DIFFERENTIAL;
                         break;
                     default:
-                        addSaveBackupType = BackupType.DIFFRENTIAL;
+                        addSaveBackupType = BackupType.DIFFERENTIAL;
                         break;
                 }
-                this.view.ConsoleUpdate(model.Addsave(addSaveName, addSaveSrc, addSaveDest, addSaveBackupType));
+                this.view.DisplayMessage(model.Addsave(addSaveName, addSaveSrc, addSaveDest, addSaveBackupType));
             }
             else
             {
                 this.view.DisplayMessage(205);
+            }
+        }
+        private void LaunchBackupsave()
+        {
+            if(this.model.saves.Count > 0)
+            {
+                int userChoice = view.LaunchBackupChoice();
+                switch (userChoice)
+                {
+                    case 0:
+                        return;
+                    case 1:
+                        foreach(save save in this.model.saves)
+                        {
+                            this.view.DisplayMessage(LaunchBackupType(save));
+                            this.view.DisplayMessage(4);
+                        }
+                        break;
+                    default:
+
+                }
             }
         }
     }
