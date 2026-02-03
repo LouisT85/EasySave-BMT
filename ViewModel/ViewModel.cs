@@ -63,12 +63,12 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
         {
             if(this.model.saves.Count < 5)
             {
-                string addsaveName = view.saveName();
-                if (addsaveName == "0") return;
-                string addsaveSrc = view.saveSrc();
-                if (addsaveSrc == "0") return;
-                string addsaveDest = view.saveDst(addsaveSrc);
-                if (addsaveDest == "0") return;
+                string addSaveName = view.SaveName();
+                if (addSaveName == "0") return;
+                string addSaveSrc = view.SaveSrc();
+                if (addSaveSrc == "0") return;
+                string addSaveDest = view.SaveDst(addsaveSrc);
+                if (addSaveDest == "0") return;
                 BackupType addSaveBackupType;
                 switch (view.addSaveBackupType)
                 {
