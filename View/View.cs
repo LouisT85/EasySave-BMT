@@ -45,10 +45,34 @@ namespace easySave_BMT.View_
         }
 
         //Display all saves
-        
+        private void SavesJobReport(int shift)
+        {
+            var saves = this.viewModel.model.saves;
+
+            for (int i =0; i<saves.count; i++)
+            {
+                Console.WriteLine(
+                    "\n" + (i + shift) + " - " + "Nom: " + saves[i].name
+                    + "\n      Source: " + saves[i].src 
+                    + "\n      Destination: " + saves[i].dst
+                    +"\n       Type: " + saves[i].backupType
+                );
+            }
+        }
+
+        public void DisplayAllSaves()
+        {
+            Console.Clear();
+            Console.WriteLine("liste des sauvegardes : ");
+
+            //Display all saves
+            SavesJobReport(1);
+            DisplayMessage(1);
+        }
+
 
         //Display message on console
-        public DisplayMessage(int id)
+        public void DisplayMessage(int id)
         {
             if (id < 100)
             {
