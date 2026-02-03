@@ -26,15 +26,5 @@ namespace easySave_BMT.Model_
             this.currentPathDest = _currentPathDest;
         }
 
-        // --- Methods ---
-        // Update State during 
-        public void UpdateState(int _progress, int _nbFileLeft, long _leftSize, string _currSrcPath, string _currDestPath)
-        {
-            this.progress = _progress;
-            this.nbFileLeft = _nbFileLeft;
-            this.leftSize = _leftSize;
-            this.currentPathSrc = _currSrcPath;
-            this.currentPathDest = _currDestPath;
-        }
     }
 }
