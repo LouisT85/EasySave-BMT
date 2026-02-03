@@ -67,31 +67,31 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 if (addSaveName == "0") return;
                 string addSaveSrc = view.SaveSrc();
                 if (addSaveSrc == "0") return;
-                string addSaveDest = view.SaveDst(addsaveSrc);
+                string addSaveDest = view.SaveDst(addSaveSrc);
                 if (addSaveDest == "0") return;
-                BackupType addSaveBackupType;
-                switch (view.addSaveBackupType)
+                BackupType AddSaveBackupType;
+                switch (view.AddSaveBackupType)
                 {
                     case 0:
                         return;
                     case 1:
-                        addSaveBackupType = BackupType.FULL;
+                        AddSaveBackupType = BackupType.FULL;
                         break;
                     case 2:
-                        addSaveBackupType = BackupType.DIFFERENTIAL;
+                        AddSaveBackupType = BackupType.DIFFERENTIAL;
                         break;
                     default:
-                        addSaveBackupType = BackupType.DIFFERENTIAL;
+                        AddSaveBackupType = BackupType.DIFFERENTIAL;
                         break;
                 }
-                this.view.DisplayMessage(model.AddSave(addSaveName, addSaveSrc, addSaveDest, addSaveBackupType));
+                this.view.DisplayMessage(model.AddSave(addSaveName, addSaveSrc, addSaveDest, AddSaveBackupType));
             }
             else
             {
                 this.view.DisplayMessage(205);
             }
         }
-        private void LaunchBackupsave()
+        /*private void LaunchBackupsave()
         {
             if(this.model.saves.Count > 0)
             {
@@ -111,6 +111,6 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
 
                 }
             }
-        }
+        }*/
     }
 }
