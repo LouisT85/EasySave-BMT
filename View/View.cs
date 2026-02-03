@@ -12,7 +12,7 @@ namespace easySave_BMT.View_
         //ctor
         public View(ViewModel viewModel)
         {
-            this.viewModel = _viewModel;
+            this.viewModel = viewModel;
         }
             
         //Menu display    
@@ -23,12 +23,13 @@ namespace easySave_BMT.View_
                 "===== Easy Save - BMT =====" +
                 "\n1 - Afficher les sauvegardes" +
                 "\n2 - Ajouter une sauvegarde" +
-                "\n3 - Faites un backup" +
-                "\n4 - Supprimer une sauvegarde" +
+                "\n3 - Supprimer une sauvegarde" +
+                "\n4 - Faites une backup" +
+                "\n5 - Changer de langue" +
                 "\n" +"\n" +"\n" +
-                "\n5 - Quitter !" 
+                "\n6 - Quitter !" 
                 );
-            return CheckChoiceMenu(Console.ReadLine(), 1, 5);
+            return CheckChoiceMenu(Console.ReadLine(), 1, 6);
         }
         
         //Display message on console
@@ -237,7 +238,7 @@ namespace easySave_BMT.View_
         {
             var saves = this.viewModel.model.saves;
 
-            for (int i =0; i<saves.count; i++)
+            for (int i =0; i<saves.Count; i++)
             {
                 Console.WriteLine(
                     "\n" + (i + shift) + " - " + "Nom: " + saves[i].name
@@ -344,7 +345,7 @@ namespace easySave_BMT.View_
 
         //save destination
 
-        public string ChecksaveDst(string src, string dst)
+        public bool ChecksaveDst(string src, string dst)
         {
             if(dst == "0")
             {
@@ -354,7 +355,7 @@ namespace easySave_BMT.View_
             {
                 if(src != dst)
                 {
-                    if(dst.Length > src.length)
+                    if(dst.Length > src.Length)
                     {
                         if(src != dst.Substring(0, src.Length))
                         {
@@ -483,7 +484,7 @@ namespace easySave_BMT.View_
             DisplayMessage(2);
 
             //Display if userinput is a valid integer
-            return CheckChoiceMenu(Console.ReadLine(), 0, this.viewModel.model.saves.count);
+            return CheckChoiceMenu(Console.ReadLine(), 0, this.viewModel.model.saves.Count);
         }
 
         //Choose the work to save
@@ -500,7 +501,7 @@ namespace easySave_BMT.View_
             DisplayMessage(2);
 
             //Display if input is a valid integer
-            return CheckChoiceMenu(Console.ReadLine(), 0, this.viewModel.model.saves.count + 1);
+            return CheckChoiceMenu(Console.ReadLine(), 0, this.viewModel.model.saves.Count + 1);
         }
     }
 }
