@@ -4,7 +4,7 @@ using System.IO;
 namespace easySave_BMT.Model_
 
 {
-    class save
+    public class save
     {
   
         public string name { get; set; }

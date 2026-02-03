@@ -1,6 +1,6 @@
 namespace easySave_BMT.Model_
 {
-    enum BackupType
+    public enum BackupType
     {
         FULL,
         DIFFRENTIAL
