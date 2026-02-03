@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using easySave_BMT.ModelView_;
+using easySave_BMT.ViewModel_;
 
 namespace easySave_BMT.View_
 {
@@ -10,9 +10,9 @@ namespace easySave_BMT.View_
         private ViewModel viewModel;
 
         //ctor
-        public View(ViewModel viewModel)
+        public View(ViewModel _viewModel)
         {
-            this.viewModel = viewModel;
+            this.viewModel = _viewModel;
         }
             
         //Menu display    

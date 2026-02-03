@@ -1,4 +1,4 @@
-namespace easySave_BMT.Model_;
+namespace easySave_BMT.Model_
 {
     class State
     {
@@ -28,7 +28,7 @@ namespace easySave_BMT.Model_;
 
         // --- Methods ---
         // Update State during 
-        public void UpdateState(int _progress, int _nbFileLeft, long _leftSize, string _currSrcPath, string_currDestPath)
+        public void UpdateState(int _progress, int _nbFileLeft, long _leftSize, string _currSrcPath, string _currDestPath)
         {
             this.progress = _progress;
             this.nbFileLeft = _nbFileLeft;

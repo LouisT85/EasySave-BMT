@@ -1,0 +1,5 @@
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\obj\Debug\net9.0\EasySave-BMT.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\obj\Debug\net9.0\EasySave-BMT.AssemblyInfoInputs.cache
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\obj\Debug\net9.0\EasySave-BMT.AssemblyInfo.cs
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\obj\Debug\net9.0\EasySave-BMT.csproj.CoreCompileInputs.cache
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\obj\Debug\net9.0\EasySave-BMT.sourcelink.json
