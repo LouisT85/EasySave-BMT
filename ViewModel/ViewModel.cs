@@ -63,11 +63,12 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
         {
             if(this.model.saves.Count < 5)
             {
-                string addSaveName = view.SaveName();
-                if (addSaveName == "0") return;
-                string addSaveName = view.SaveName();
-                if (addSaveName == "0") return;
-                string addSaveName = view.SaveName();
+                string addsaveName = view.saveName();
+                if (addsaveName == "0") return;
+                string addsaveSrc = view.saveSrc();
+                if (addsaveSrc == "0") return;
+                string addsaveDest = view.saveDst(addsaveSrc);
+                if (addsaveDest == "0") return;
                 BackupType addSaveBackupType;
                 switch (view.addSaveBackupType)
                 {
@@ -83,7 +84,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                         addSaveBackupType = BackupType.DIFFERENTIAL;
                         break;
                 }
-                this.view.DisplayMessage(model.Addsave(addSaveName, addSaveSrc, addSaveDest, addSaveBackupType));
+                this.view.DisplayMessage(model.AddSave(addSaveName, addSaveSrc, addSaveDest, addSaveBackupType));
             }
             else
             {
