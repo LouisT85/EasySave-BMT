@@ -32,6 +32,9 @@ namespace easySave_BMT.View_
 
         //Add SaveName
 
-        private int C
+        private int CheckChoiceMenu(string _inputUser, int _minEntry, int _maxEntry)
+        {
+            
+        }
     }
 }
