@@ -24,7 +24,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 switch (this.view.Menu())
                 {
                     case 1:
-                        //faire une méthode qui affiche les saves
+                        DisplaySaves();
                         break;
                     case 2:
                         //faire une méthode qui fait un nv travail de sauvegarde
@@ -49,7 +49,18 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
         }
         private void DisplaySaves() // Method used in case 1, used to display all saves jobs
         {
-            
+            if (this.model.saves.Count > 0)
+            {
+                this.view.DisplayAllSaves();
+            }
+            else
+            {
+                this.view.DisplayMessage(204);
+            }
+        }
+        private void AddSave()
+        {
+            // à compléter
         }
     }
 }
