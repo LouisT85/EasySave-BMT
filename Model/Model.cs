@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.IO;
 using easySave_BMT.ViewModel_;
+using EasyLog;
+using EasyLog.Models;
+
 
 namespace easySave_BMT.Model_
 
@@ -10,6 +13,15 @@ namespace easySave_BMT.Model_
     public class Model 
     {
         // --- Attributes ---
+        private EasyLogger logger;
+
+        string logPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "EasySave",
+            "Logs"
+        );
+
+        logger = new EasyLogger(logPath);
         private string backupsaveSavePath = "./BackupsaveSave.json";
         public List<save> saves { get; set; }
 
