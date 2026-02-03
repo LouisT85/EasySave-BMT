@@ -43,7 +43,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                         currentlyRunning = false; // quitte la page
                         break;
                     default:
-                        //faire une méthode qui retourne un message (view)
+                        this.view.DisplayMessage(207);
                         break;
                 }
             }
