@@ -13,3 +13,4 @@ C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\obj\Debug\net9.0\refin
 C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\obj\Debug\net9.0\EasySave-BMT.pdb
 C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\obj\Debug\net9.0\EasySave-BMT.genruntimeconfig.cache
 C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\obj\Debug\net9.0\ref\EasySave-BMT.dll
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\obj\Debug\net9.0\EasySave-BMT.csproj.AssemblyReference.cache

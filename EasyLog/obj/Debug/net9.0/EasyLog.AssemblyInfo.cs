@@ -10,12 +10,12 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("EasySave-BMT")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("EasyLog")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
 [assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+708e38ab92e6b4379608866a9ad9ff2cdb43c6c5")]
-[assembly: System.Reflection.AssemblyProductAttribute("EasySave-BMT")]
-[assembly: System.Reflection.AssemblyTitleAttribute("EasySave-BMT")]
+[assembly: System.Reflection.AssemblyProductAttribute("EasyLog")]
+[assembly: System.Reflection.AssemblyTitleAttribute("EasyLog")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 
 // Généré par la classe MSBuild WriteCodeFragment.

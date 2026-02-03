@@ -30,32 +30,6 @@ namespace easySave_BMT.Model_
 
 
         // --- Methods ----
-        // Save Log 
-        public void SaveLog(DateTime _startDate, string _src, string _dst, long _size, bool isError)
-        {
-            // Prepare times log
-            string today = DateTime.Now.ToString("yyyy-MM-dd");
-            string startTime = _startDate.ToString("yyyy-MM-dd_HH-mm-ss");
-            string elapsedTime = (DateTime.Now - _startDate).ToString();
-
-            if (isError)
-            {
-                elapsedTime = "-1";
-            }
-
-            // Create File if it doesn't exists
-            if (!Directory.Exists("./Logs"))
-            {
-                Directory.CreateDirectory("./Logs");
-            }
-
-            // Write log
-            File.AppendAllText($"./Logs/{today}.txt", $"{startTime}: {this.name}" +
-                $"\nSource: {_src}" +
-                $"\nDestination: {_dst}" +
-                $"\nSize (Bytes): {_size}" +
-                $"\nElapsed Time: {elapsedTime}" +
-                "\n\r\n");
-        }
+        
     }
 }

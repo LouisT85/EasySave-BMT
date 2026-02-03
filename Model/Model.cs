@@ -13,15 +13,9 @@ namespace easySave_BMT.Model_
     public class Model 
     {
         // --- Attributes ---
+
         private EasyLogger logger;
-
-        string logPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "EasySave",
-            "Logs"
-        );
-
-        logger = new EasyLogger(logPath);
+        private string logPath;
         private string backupsaveSavePath = "./BackupsaveSave.json";
         public List<save> saves { get; set; }
 
@@ -36,6 +30,14 @@ namespace easySave_BMT.Model_
         {
             // Initalize save List
             this.saves = new List<save>();
+
+            logPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "EasySave",
+                "Logs"
+            );
+
+            logger = new EasyLogger(logPath);
         }
 
 
@@ -106,46 +108,77 @@ namespace easySave_BMT.Model_
             File.WriteAllText(this.backupsaveSavePath, JsonSerializer.Serialize(this.saves, this.jsonOptions));
         }
 
-        public bool CopyFile(save _save, FileInfo _currentFile, long _curSize, string _dst, long _leftSize, int _totalFile, int fileIndex, int _pourcent)
+        public bool CopyFile(
+            save _save,
+            FileInfo _currentFile,
+            long _curSize,
+            string _dst,
+            long _leftSize,
+            int _totalFile,
+            int fileIndex,
+            int _pourcent)
         {
-            // Time at when file copy start (use by SaveLog())
             DateTime startTimeFile = DateTime.Now;
+
             string curDirPath = _currentFile.DirectoryName;
             string dstDirectory = _dst;
 
-            // If there is a directoy, we add the relative path from the directory dst
+            // management folder
             if (Path.GetRelativePath(_save.src, curDirPath).Length > 1)
             {
                 dstDirectory += Path.GetRelativePath(_save.src, curDirPath) + "\\";
 
-                // If the directory dst doesn't exist, we create it
                 if (!Directory.Exists(dstDirectory))
                 {
                     Directory.CreateDirectory(dstDirectory);
                 }
             }
 
-            // Get the current dstFile
-            string dstFile = dstDirectory + _currentFile.Name;
+            string dstFile = Path.Combine(dstDirectory, _currentFile.Name);
 
             try
             {
-                // Update the current save status
-                _save.state.UpdateState(_pourcent, (_totalFile - fileIndex), _leftSize, _currentFile.FullName, dstFile);
-                AddLogInJSONFile();
+                // update state
+                _save.state.UpdateState(
+                    _pourcent,
+                    (_totalFile - fileIndex),
+                    _leftSize,
+                    _currentFile.FullName,
+                    dstFile
+                );
 
-                // Copy the current file
+                // copy of the file
                 _currentFile.CopyTo(dstFile, true);
 
-                // Save Log
-                _save.SaveLog(startTimeFile, _currentFile.FullName, dstFile, _curSize, false);
+                // LOG SUCCÈS (EasyLog.dll)
+                logger.Write(new LogEntry
+                {
+                    Timestamp = DateTime.Now,
+                    BackupName = _save.name,
+                    SourcePath = _currentFile.FullName,
+                    DestinationPath = dstFile,
+                    FileSize = _curSize,
+                    TransferTimeMs = (long)(DateTime.Now - startTimeFile).TotalMilliseconds
+                });
+
                 return true;
             }
             catch
             {
-                _save.SaveLog(startTimeFile, _currentFile.FullName, dstFile, _curSize, true);
+                // LOG ERREUR (EasyLog.dll)
+                logger.Write(new LogEntry
+                {
+                    Timestamp = DateTime.Now,
+                    BackupName = _save.name,
+                    SourcePath = _currentFile.FullName,
+                    DestinationPath = dstFile,
+                    FileSize = _curSize,
+                    TransferTimeMs = -1
+                });
+
                 return false;
             }
         }
+
     }
 }
