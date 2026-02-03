@@ -47,5 +47,9 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 }
             }
         }
+        private void DisplaySaves() // Method used in case 1, used to display all saves jobs
+        {
+            
+        }
     }
 }

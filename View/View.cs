@@ -148,8 +148,51 @@ namespace easySave_BMT.View_
                         Console.WriteLine("\nLe type de sauvegarde sélectionné n'existe pas");
                         break;
 
+                    case 209:
+                        Console.WriteLine("\nÉchec de la copie du fichier.");
+                        DisplayMessage(1);
+                        break;
+
+                    case 210:
+                        Console.WriteLine("\nÉchec de la création du dossier de sauvegarde.");
+                        DisplayMessage(1);
+                        break;
+                    case 211:
+                        Console.WriteLine("\nDirectory 'existe pas. Veuillez entrer une source de directory valide. ");
+                        break;
+
+                    case 212:
+                        Console.WriteLine("\nChoisissez un path différent de la source. ");
+                        break;
+
+                    case 213:
+                        Console.WriteLine("\nDirectory n'existe pas. Veuillez entrer une direction de directory valide. ");
+                        break;
+
+                    case 214:
+                        Console.WriteLine("\nLe nom est déjà pris. Veuillez entrer un autre nom.");
+                        break;
+
+                    case 215:
+                        Console.WriteLine("\nEntrez un nom VALIDE(1 to 20 characters):");
+                        break;
+
+                    case 216:
+                        Console.WriteLine("\nBackup terminé avec erreur.");
+                        break;
+
+                    case 217:
+                        Console.WriteLine("\nLa destination directory ne peut pas être à l'intérieur de la source directory.");
+                        break;
+                        
+                    default:
+                        Console.WriteLine("\nFailed : Erreur inconnue.");
+                        DisplayMessage(1);
+                        break;
+
                 }
             }
+            Console.ResetColor();
         }
     }
 }
