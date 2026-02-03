@@ -1,0 +1,12 @@
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\bin\Debug\net9.0\EasyLog.deps.json
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\bin\Debug\net9.0\EasyLog.dll
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\bin\Debug\net9.0\EasyLog.pdb
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\obj\Debug\net9.0\EasyLog.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\obj\Debug\net9.0\EasyLog.AssemblyInfoInputs.cache
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\obj\Debug\net9.0\EasyLog.AssemblyInfo.cs
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\obj\Debug\net9.0\EasyLog.csproj.CoreCompileInputs.cache
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\obj\Debug\net9.0\EasyLog.sourcelink.json
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\obj\Debug\net9.0\EasyLog.dll
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\obj\Debug\net9.0\refint\EasyLog.dll
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\obj\Debug\net9.0\EasyLog.pdb
+C:\Users\mjh15\Desktop\Genie logiciel\projet\EasySave-BMT\EasyLog\obj\Debug\net9.0\ref\EasyLog.dll
