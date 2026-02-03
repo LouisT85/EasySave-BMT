@@ -30,12 +30,21 @@ namespace easySave_BMT.View_
                 
         }
 
-        //Add SaveName
-
-        private int CheckChoiceMenu(string inputUser, int minEntry, int maxEntry)
+        //Verify if input is integer
+        private static bool CheckInt(string input)
         {
-            
+            try
+            {
+                int.Parse(input);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
+
+        //Display all saves
 
         //Display message on console
         public DisplayMessage(int id)
@@ -184,7 +193,7 @@ namespace easySave_BMT.View_
                     case 217:
                         Console.WriteLine("\nLa destination directory ne peut pas être à l'intérieur de la source directory.");
                         break;
-                        
+
                     default:
                         Console.WriteLine("\nFailed : Erreur inconnue.");
                         DisplayMessage(1);
