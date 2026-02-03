@@ -62,7 +62,6 @@ namespace easySave_BMT.View_
 
         public void DisplayAllSaves()
         {
-            *
             Console.Clear();
             Console.WriteLine("liste des sauvegardes : ");
 
