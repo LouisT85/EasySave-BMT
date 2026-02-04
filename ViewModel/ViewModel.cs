@@ -1,18 +1,17 @@
-using System;                      // Library .NET
-using System.IO;                   // files/directory management
-using System.Collections.Generic;  // List<list>, dictionnary etc.
-using easySave_BMT.Model_;         // Importation of "Model" directory class(es)
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Xml.Linq;
+using easySave_BMT.Model_;
 using easySave_BMT.View_;
-using System.Xml.Linq;             // Importation of "View" directory class(es)
+using System.Threading;
 
-
-namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
+namespace easySave_BMT.ViewModel_
 {
     public class ViewModel
     {
         public Model model;
         public View view;
-
 
         public ViewModel()
         {
@@ -22,7 +21,6 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
 
         public void RunApp()
         {
-            // Load existing saves from JSON file
             int loadResult = model.CreateLogs();
 
             if (loadResult == 100)
@@ -54,27 +52,73 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                         LaunchBackupsave();
                         break;
                     case 5:
-                        // TODO: configuration / langue
+                        ConfigurationMenu();
                         break;
                     case 6:
-                        currentlyRunning = false; // quitte la page
+                        currentlyRunning = false;
                         Console.WriteLine("Merci d'avoir utilisé EasySave - BMT !");
                         Console.WriteLine("Appuyez sur une touche pour quitter...");
                         Console.ReadKey();
                         break;
                     default:
-                        this.view.DisplayMessage(206); // Invalid choice
+                        this.view.DisplayMessage(206);
                         break;
                 }
             }
         }
 
-        private void DisplaySaves() // Method used in case 1, used to display all saves jobs
+        private void ConfigurationMenu()
         {
-            // CRITICAL FIX: Always reload from JSON before displaying
+            int choice = view.ConfigurationMenu();
+            
+            switch (choice)
+            {
+                case 1:
+                    // Afficher la configuration actuelle
+                    var config = model.GetConfig();
+                    view.DisplayCurrentConfiguration(config);
+                    break;
+                    
+                case 2:
+                    // Modifier le répertoire des logs
+                    string newLogDir = view.AskForLogDirectory();
+                    if (!string.IsNullOrWhiteSpace(newLogDir))
+                    {
+                        model.UpdateConfig(newLogDir, null, null);
+                        view.DisplayMessage(218); // Configuration mise à jour
+                    }
+                    break;
+                    
+                case 3:
+                    // Modifier le fichier d'état
+                    string newStatePath = view.AskForStateFilePath();
+                    if (!string.IsNullOrWhiteSpace(newStatePath))
+                    {
+                        model.UpdateConfig(null, newStatePath, null);
+                        view.DisplayMessage(218);
+                    }
+                    break;
+                    
+                case 4:
+                    // Changer la langue
+                    string newLang = view.AskForLanguage();
+                    if (!string.IsNullOrWhiteSpace(newLang))
+                    {
+                        model.UpdateConfig(null, null, newLang);
+                        view.DisplayMessage(218);
+                    }
+                    break;
+                    
+                case 0:
+                    return;
+            }
+        }
+
+        private void DisplaySaves()
+        {
             int reloadResult = this.model.ReloadSavesFromFile();
 
-            if (reloadResult == 100) // Success
+            if (reloadResult == 100)
             {
                 if (this.model.saves.Count > 0)
                 {
@@ -82,16 +126,16 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 }
                 else
                 {
-                    this.view.DisplayMessage(204); // Empty list
+                    this.view.DisplayMessage(204);
                 }
             }
             else
             {
-                this.view.DisplayMessage(reloadResult); // Display error code
+                this.view.DisplayMessage(reloadResult);
             }
         }
 
-        private void AddSave() // method used in case 2, used to add a new save job
+        private void AddSave()
         {
             if (this.model.saves.Count < 5)
             {
@@ -127,15 +171,13 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
             }
         }
 
-        //Remove a save
         private void RemoveSave()
         {
             if (this.model.saves.Count > 0)
             {
                 int choice = view.RemovesaveChoice();
-                if (choice == 0) return; // User chose to go back
+                if (choice == 0) return;
 
-                // Adjust for 1-based indexing in display
                 int index = choice - 1;
 
                 if (index >= 0 && index < this.model.saves.Count)
@@ -144,18 +186,18 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 }
                 else
                 {
-                    this.view.DisplayMessage(206); // Invalid choice
+                    this.view.DisplayMessage(206);
                 }
             }
             else
             {
-                this.view.DisplayMessage(204); // Empty list
+                this.view.DisplayMessage(204);
             }
         }
 
         private void LaunchBackupsave()
         {
-            if(this.model.saves.Count > 0)
+            if (this.model.saves.Count > 0)
             {
                 int userChoice = view.LaunchBackupChoice();
 
@@ -165,16 +207,30 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                         return;
 
                     case 1:
-                        foreach(Save save in this.model.saves)
+                        foreach (Save save in this.model.saves)
                         {
-                            this.view.DisplayMessage(LaunchBackupType(save));
+                            int result = LaunchBackupType(save);
+                            this.view.DisplayMessage(result);
+                            
+                            if (result == 104 || result == 105 || result == 216)
+                            {
+                                model.FinishBackup(save);
+                            }
+                            
                             this.view.DisplayMessage(4);
                         }
                         break;
 
                     default:
                         int indexsave = userChoice - 2;
-                        this.view.DisplayMessage(LaunchBackupType(this.model.saves[indexsave]));
+                        Save selectedSave = this.model.saves[indexsave];
+                        int backupResult = LaunchBackupType(selectedSave);
+                        this.view.DisplayMessage(backupResult);
+                        
+                        if (backupResult == 104 || backupResult == 105 || backupResult == 216)
+                        {
+                            model.FinishBackup(selectedSave);
+                        }
                         break;
                 }
                 this.view.DisplayMessage(1);
@@ -185,10 +241,6 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
             }
         }
 
-
-
-
-
         public int LaunchBackupType(Save _save)
         {
             DirectoryInfo dir = new DirectoryInfo(_save.src);
@@ -197,6 +249,11 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
             {
                 return 207;
             }
+
+            // Mettre à jour l'état avant de commencer
+            var initialState = new State(0, 0, _save.src, _save.dst);
+            _save.state = initialState;
+            model.UpdateSaveState(_save);
 
             switch (_save.backupType)
             {
@@ -259,7 +316,6 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 if (!File.Exists(currFullBackPath) || !IsSameFile(currFullBackPath, file.FullName))
                 {
                     totalSize += file.Length;
-
                     filesToCopy.Add(file);
                 }
             }
@@ -277,21 +333,28 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
 
         private bool IsSameFile(string path1, string path2)
         {
-            byte[] file1 = File.ReadAllBytes(path1);
-            byte[] file2 = File.ReadAllBytes(path2);
-
-            if (file1.Length == file2.Length)
+            try
             {
-                for (int i = 0; i < file1.Length; i++)
+                byte[] file1 = File.ReadAllBytes(path1);
+                byte[] file2 = File.ReadAllBytes(path2);
+
+                if (file1.Length == file2.Length)
                 {
-                    if (file1[i] != file2[i])
+                    for (int i = 0; i < file1.Length; i++)
                     {
-                        return false;
+                        if (file1[i] != file2[i])
+                        {
+                            return false;
+                        }
                     }
+                    return true;
                 }
-                return true;
+                return false;
             }
-            return false;
+            catch
+            {
+                return false;
+            }
         }
 
         private int DoBackup(Save _save, FileInfo[] _files, long _totalSize)
@@ -310,62 +373,52 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 return 210;
             }
 
-                        Console.Clear(); // Affichage propre pour la progression en temps réel
             List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst);
             DateTime endTime = DateTime.Now;
             TimeSpan saveTime = endTime - startTime;
             double transferTime = saveTime.TotalMilliseconds;
-            _save.state = null;
+            
             this.model.AddLogInJSONFile();
             this.view.DisplayMessage(3);
- 
+
             foreach (string failedFile in failedFiles)
             {
                 this.view.DisplayFiledError(failedFile);
             }
             this.view.DisplayBackupRecap(_save.name, transferTime);
- 
+
             if (failedFiles.Count == 0)
             {
-                // Return Success Code
                 return 104;
             }
             else
             {
-                // Return Error Code
                 return 216;
             }
         }
- 
+
         private List<string> CopyFiles(Save _save, FileInfo[] _files, long _totalSize, string _dst)
         {
             long leftSize = _totalSize;
             int totalFile = _files.Length;
             List<string> failedFiles = new List<string>();
- 
-            // Affichage initial à 0% pour démarrage visible
-            this.view.DisplayCurrentState(_save.name, totalFile, _totalSize, 0, 0);
-            Console.Out.Flush();
- 
+
             for (int i = 0; i < _files.Length; i++)
             {
+                int pourcent = ((i + 1) * 100) / totalFile;
                 long curSize = _files[i].Length;
-                int pourcent = (i * 100) / totalFile; // % AVANT la copie du fichier courant
- 
-                // Afficher AVANT la copie pour mise à jour temps réel visible
-                this.view.DisplayCurrentState(_save.name, totalFile - i, leftSize, curSize, pourcent);
-                Console.Out.Flush();
- 
-                int pourcentAfter = ((i + 1) * 100) / totalFile;
-                if (this.model.CopyFile(_save, _files[i], curSize, _dst, leftSize - curSize, totalFile, i, pourcentAfter))
+                leftSize -= curSize;
+
+                if (this.model.CopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent))
                 {
-                    Thread.Sleep((int)(curSize / 1000000) + 100);
+                    // Simulation réaliste
+                    Thread.Sleep((int)(curSize / 1000000));
+                    this.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
                 }
                 else
                 {
                     failedFiles.Add(_files[i].Name);
                 }
-                leftSize -= curSize;
             }
             return failedFiles;
         }

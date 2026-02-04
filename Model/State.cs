@@ -2,7 +2,6 @@ namespace easySave_BMT.Model_
 {
     public class State
     {
-        // --- Attributes ---
         public int totalFile { get; set; }
         public long totalSize { get; set; }
         public int progress { get; set; }
@@ -11,12 +10,8 @@ namespace easySave_BMT.Model_
         public string currentPathSrc { get; set; }
         public string currentPathDest { get; set; }
 
-
-        // --- Contructors ---
-        // Constructor used by Loadsaves()
         public State() { }
 
-        // Constructor used by DoBackup()
         public State(int totalFile, long totalSize, string currentPathSrc, string currentPathDest)
         {
             this.progress = 0;
@@ -25,6 +20,7 @@ namespace easySave_BMT.Model_
             this.currentPathSrc = currentPathSrc;
             this.currentPathDest = currentPathDest;
         }
+        
         public void UpdateState(int progress, int nbFileLeft, long leftSize, string currSrcPath, string currDestPath)
         {
             this.progress = progress;
@@ -33,6 +29,35 @@ namespace easySave_BMT.Model_
             this.currentPathSrc = currSrcPath;
             this.currentPathDest = currDestPath;
         }
-
+        
+        public RealTimeState ToRealTimeState(string saveName)
+        {
+            return new RealTimeState
+            {
+                Name = saveName,
+                State = "ACTIVE",
+                SourceFilePath = this.currentPathSrc,
+                TargetFilePath = this.currentPathDest,
+                TotalFilesToCopy = this.totalFile,
+                TotalFilesSize = this.totalSize,
+                NbFilesLeftToDo = this.nbFileLeft,
+                Progression = this.progress
+            };
+        }
+        
+        public static RealTimeState CreateEndState(string saveName)
+        {
+            return new RealTimeState
+            {
+                Name = saveName,
+                State = "END",
+                SourceFilePath = "",
+                TargetFilePath = "",
+                TotalFilesToCopy = 0,
+                TotalFilesSize = 0,
+                NbFilesLeftToDo = 0,
+                Progression = 0
+            };
+        }
     }
 }

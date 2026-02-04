@@ -1,21 +1,20 @@
 using System;
 using System.IO;
 using easySave_BMT.ViewModel_;
+using easySave_BMT.Model_;
 
 namespace easySave_BMT.View_
 {
     public class View
     {
-        
         private ViewModel viewModel;
 
-        //ctor
         public View(ViewModel viewModel)
         {
             this.viewModel = viewModel;
         }
-            
-        //Menu display    
+        
+        // Menu principal
         public int Menu()
         {
             string[] menuItems = {
@@ -23,7 +22,7 @@ namespace easySave_BMT.View_
                 "2 - Ajouter une sauvegarde", 
                 "3 - Supprimer une sauvegarde",
                 "4 - Faire une backup",
-                "5 - Changer de langue"
+                "5 - Configuration"
             };
 
             int selectedIndex = 0;
@@ -87,20 +86,145 @@ namespace easySave_BMT.View_
                 }
             }
         }
-
-
         
-        //Display message on console
+        // Menu de configuration
+        public int ConfigurationMenu()
+        {
+            Console.Clear();
+            Console.WriteLine("=== Configuration ===");
+            Console.WriteLine("");
+            Console.WriteLine("1 - Afficher la configuration actuelle");
+            Console.WriteLine("2 - Modifier le répertoire des logs");
+            Console.WriteLine("3 - Modifier le fichier d'état");
+            Console.WriteLine("4 - Changer la langue (fr/en)");
+            Console.WriteLine("");
+            Console.WriteLine("0 - Retour au menu principal");
+            Console.WriteLine("");
+            Console.Write("Votre choix: ");
+            
+            string input = Console.ReadLine();
+            if (int.TryParse(input, out int choice) && choice >= 0 && choice <= 4)
+            {
+                return choice;
+            }
+            return 0;
+        }
+        
+        public void DisplayCurrentConfiguration(Config config)
+        {
+            Console.Clear();
+            Console.WriteLine("=== Configuration actuelle ===");
+            Console.WriteLine("");
+            Console.WriteLine($"Répertoire des logs: {config.LogDirectory}");
+            Console.WriteLine($"Fichier d'état: {config.StateFilePath}");
+            Console.WriteLine($"Langue: {config.Language}");
+            Console.WriteLine("");
+            Console.WriteLine("Appuyez sur Entrée pour continuer...");
+            Console.ReadLine();
+        }
+        
+        public string AskForLogDirectory()
+        {
+            Console.Clear();
+            Console.WriteLine("=== Modification du répertoire des logs ===");
+            Console.WriteLine("");
+            Console.WriteLine("Laissez vide pour garder la valeur actuelle.");
+            Console.Write("Nouveau répertoire des logs: ");
+            
+            string input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input))
+            {
+                // Créer le répertoire s'il n'existe pas
+                try
+                {
+                    Directory.CreateDirectory(input);
+                    return input;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Erreur: {ex.Message}");
+                    Console.WriteLine("Appuyez sur Entrée pour continuer...");
+                    Console.ReadLine();
+                }
+            }
+            return null;
+        }
+        
+        public string AskForStateFilePath()
+        {
+            Console.Clear();
+            Console.WriteLine("=== Modification du fichier d'état ===");
+            Console.WriteLine("");
+            Console.WriteLine("Laissez vide pour garder la valeur actuelle.");
+            Console.Write("Nouveau chemin du fichier d'état: ");
+            
+            string input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input))
+            {
+                // Vérifier que le chemin est valide
+                try
+                {
+                    string directory = Path.GetDirectoryName(input);
+                    if (!string.IsNullOrEmpty(directory))
+                    {
+                        Directory.CreateDirectory(directory);
+                    }
+                    return input;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Erreur: {ex.Message}");
+                    Console.WriteLine("Appuyez sur Entrée pour continuer...");
+                    Console.ReadLine();
+                }
+            }
+            return null;
+        }
+        
+        public string AskForLanguage()
+        {
+            Console.Clear();
+            Console.WriteLine("=== Changement de langue ===");
+            Console.WriteLine("");
+            Console.WriteLine("1 - Français (fr)");
+            Console.WriteLine("2 - Anglais (en)");
+            Console.WriteLine("");
+            Console.WriteLine("0 - Annuler");
+            Console.WriteLine("");
+            Console.Write("Votre choix: ");
+            
+            string input = Console.ReadLine();
+            switch (input)
+            {
+                case "1":
+                    return "fr";
+                case "2":
+                    return "en";
+                default:
+                    return null;
+            }
+        }
+
         public void DisplayMessage(int id)
         {
+            // Ajout du nouveau message pour configuration mise à jour
+            if (id == 218)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("\nConfiguration mise à jour avec succès !");
+                Console.WriteLine("Appuyez sur Entrée pour continuer...");
+                Console.ReadLine();
+                Console.ResetColor();
+                return;
+            }
+            
             if (id < 100)
             {
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 switch (id)
                 {
-                    //Information message
                     case 1:
-                        Console.WriteLine("\nAppuyez sur Entrer pour afficher le menu . . . ." );
+                        Console.WriteLine("\nAppuyez sur Entrer pour afficher le menu . . . .");
                         Console.ReadLine();
                         break;
 
@@ -119,12 +243,11 @@ namespace easySave_BMT.View_
                         break; 
                 }
             }
-            else if(id< 200)
+            else if (id < 200)
             {
                 Console.ForegroundColor = ConsoleColor.Blue;
                 switch (id)
                 {
-                    //Success message from 100 to 199
                     case 100:
                         Console.WriteLine("\n########################### EASYSAVE BMT ########################");
                         DisplayMessage(1);
@@ -158,7 +281,6 @@ namespace easySave_BMT.View_
                 Console.ForegroundColor = ConsoleColor.Red;
                 switch (id)
                 {
-                    // Error message from 200 to 299
                     case 200:
                         Console.WriteLine("\nRestaurer votre fichier de sauvegarde JSON. ");
                         DisplayMessage(1);
@@ -248,7 +370,9 @@ namespace easySave_BMT.View_
             Console.ResetColor();
         }
 
-        //Verify if input is integer
+        // Les autres méthodes restent inchangées...
+        // (Toutes les méthodes existantes de la vue restent les mêmes)
+        
         private static bool CheckInt(string input)
         {
             try
@@ -262,7 +386,6 @@ namespace easySave_BMT.View_
             }
         }
 
-        //Add BackupType
         public int AddSaveBackupType()
         {
             Console.WriteLine(
@@ -272,8 +395,6 @@ namespace easySave_BMT.View_
             );
             return CheckChoiceMenu(Console.ReadLine(),0,2);
         }
-
-        //Verify if the name is valid
 
         private bool CheckName(string name)
         {
@@ -291,7 +412,6 @@ namespace easySave_BMT.View_
             return false;
         }
 
-        //Display all saves
         private void SavesJobReport(int shift)
         {
             var saves = this.viewModel.model.saves;
@@ -312,12 +432,10 @@ namespace easySave_BMT.View_
             Console.Clear();
             Console.WriteLine("liste des sauvegardes : ");
 
-            //Display all saves
             SavesJobReport(1);
             DisplayMessage(1);
         }
 
-        //Add a save name
         public string SaveName()
         {
             Console.Clear();
@@ -327,7 +445,6 @@ namespace easySave_BMT.View_
             Console.WriteLine("\nEntrer un nom (1 à 20 caractères):");
             string name = Console.ReadLine();
 
-            //Verify name
             while (!CheckName(name))
             {
                 name = Console.ReadLine();
@@ -345,63 +462,18 @@ namespace easySave_BMT.View_
             return path.ToLower();
         }
 
-        //source
         public string SaveSrc()
         {
             Console.WriteLine("\nEntrez la source du repertoire ");
             string src = RectifyPath(Console.ReadLine());
 
-            //Verify the src is valid
-            while(
-                !Directory.Exists(src) && src != "000" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "" +
-                "")
+            while(!Directory.Exists(src) && src != "0")
             {
                 DisplayMessage(211);
                 src = RectifyPath(Console.ReadLine());
             }
             return src;
         }
-
-        
-
-        //save destination
 
         public bool ChecksaveDst(string src, string dst)
         {
@@ -433,12 +505,11 @@ namespace easySave_BMT.View_
             DisplayMessage(213);
             return false;
         }
+        
         public string SaveDst(string src)
         {
             Console.WriteLine("\nEntrer la destination du répertoire.");
             string dst = RectifyPath(Console.ReadLine());
-
-            //Verfify if the destination is valid
 
             while (!ChecksaveDst(src, dst))
             {
@@ -447,7 +518,6 @@ namespace easySave_BMT.View_
             return dst;
         }
 
-        //Display size
         private string DisplaySize(long octet)
         {
             if(octet > 1000000000000)
@@ -491,8 +561,6 @@ namespace easySave_BMT.View_
             }
             Console.Write("]\n\n");
         }
-        
-
 
         public void DisplayCurrentState(string name, int fileLeft, long leftSize, long curSize, int percent)
         {
@@ -504,11 +572,10 @@ namespace easySave_BMT.View_
             DisplayProgressBar(percent);
         }
 
-
         public void DisplayBackupRecap(string name, double transfertTime)
         {
             Console.WriteLine("\n\n" + 
-                "Backup : " + name + "terminé\n"
+                "Backup : " + name + " terminé\n"
                 +"\nDurée : " + transfertTime + "ms\n"
             );
             DisplayProgressBar(100);
@@ -519,7 +586,6 @@ namespace easySave_BMT.View_
             Console.WriteLine("Échec pour le fichier " + name);
         }
         
-        //Verify if input is in the good range
         private int CheckChoiceMenu(string inputUser, int minEntry, int maxEntry)
         {
             while(!(CheckInt(inputUser) && (Int32.Parse(inputUser) >= minEntry && Int32.Parse(inputUser)<= maxEntry)))
@@ -530,21 +596,17 @@ namespace easySave_BMT.View_
             return Int32.Parse(inputUser);
         }
 
-        //choose save to delete
         public int RemovesaveChoice()
         {
             Console.Clear();
             Console.WriteLine("Supprime une sauvegarde: ");
 
-            //Display all saves
             SavesJobReport(1);
             DisplayMessage(2);
 
-            //Display if userinput is a valid integer
             return CheckChoiceMenu(Console.ReadLine(), 0, this.viewModel.model.saves.Count);
         }
 
-        //Choose the work to save
         public int LaunchBackupChoice()
         {
             Console.Clear();
@@ -553,11 +615,9 @@ namespace easySave_BMT.View_
                 "\n\n1 - tout"
             );
 
-            //Choose the work to save
             SavesJobReport(2);
             DisplayMessage(2);
 
-            //Display if input is a valid integer
             return CheckChoiceMenu(Console.ReadLine(), 0, this.viewModel.model.saves.Count + 1);
         }
     }
