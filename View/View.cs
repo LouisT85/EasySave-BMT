@@ -55,7 +55,7 @@ namespace easySave_BMT.View_
                 Console.WriteLine("");
                 if (selectedIndex == 5)
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("> 6 - Quitter");
                     Console.ResetColor();
                 }
