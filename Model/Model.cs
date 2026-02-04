@@ -17,7 +17,7 @@ namespace easySave_BMT.Model_
         private EasyLogger logger;
         private string logPath;
         private string backupsaveSavePath = "./BackupsaveSave.json";
-        public List<Save> saves { get; set; }
+        public List<Save> saves { get; private set; }
 
         // Prepare options to indent JSON Files
         private JsonSerializerOptions jsonOptions = new JsonSerializerOptions()
@@ -42,6 +42,7 @@ namespace easySave_BMT.Model_
 
 
         // --- Methods ---
+        
         // Add save
         public int AddSave(string name, string src, string dst, BackupType backupType)
         {
@@ -83,29 +84,65 @@ namespace easySave_BMT.Model_
         // Load saves and States at the beginning of the program
         public int CreateLogs()
         {
+            return ReloadSavesFromFile();
+        }
+
+        // NEW METHOD: Reload saves from JSON file
+        public int ReloadSavesFromFile()
+        {
             // Check if backupsaveSave.json File exists
             if (File.Exists(backupsaveSavePath))
             {
                 try
                 {
-                    // Read saves from JSON File (from ./BackupsaveSave.json) (use Save() constructor)
-                    this.saves = JsonSerializer.Deserialize<List<Save>>(File.ReadAllText(this.backupsaveSavePath));
+                    // Read saves from JSON File (from ./BackupsaveSave.json)
+                    string jsonContent = File.ReadAllText(this.backupsaveSavePath);
+                    if (!string.IsNullOrEmpty(jsonContent))
+                    {
+                        this.saves = JsonSerializer.Deserialize<List<Save>>(jsonContent);
+                    }
+                    else
+                    {
+                        this.saves = new List<Save>();
+                    }
+                    
+                    // Return Success Code
+                    return 100;
                 }
-                catch
+                catch (JsonException jsonEx)
                 {
-                    // Return Error Code
+                    // JSON parsing error
+                    Console.WriteLine($"JSON Error: {jsonEx.Message}");
+                    return 200;
+                }
+                catch (Exception ex)
+                {
+                    // General error
+                    Console.WriteLine($"Error loading saves: {ex.Message}");
                     return 200;
                 }
             }
-            // Return Success Code
-            return 100;
+            else
+            {
+                // File doesn't exist, initialize empty list
+                this.saves = new List<Save>();
+                return 100;
+            }
         }
 
         // Add log in JSON file
         public void AddLogInJSONFile()
         {
-            // Write save list into JSON file (at ./BackupsaveSave.json)
-            File.WriteAllText(this.backupsaveSavePath, JsonSerializer.Serialize(this.saves, this.jsonOptions));
+            try
+            {
+                // Write save list into JSON file (at ./BackupsaveSave.json)
+                string json = JsonSerializer.Serialize(this.saves, this.jsonOptions);
+                File.WriteAllText(this.backupsaveSavePath, json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving to JSON: {ex.Message}");
+            }
         }
 
         public bool CopyFile(
@@ -179,6 +216,5 @@ namespace easySave_BMT.Model_
                 return false;
             }
         }
-
     }
 }
