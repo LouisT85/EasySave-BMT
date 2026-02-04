@@ -82,7 +82,7 @@ namespace easySave_BMT.View_
                         break;
 
                     case 103:
-                        Console.WriteLine("\nLe fichier à été ajouté avec succès !!!");
+                        Console.WriteLine("\nLe fichier à été supprimé avec succès !!!");
                         DisplayMessage(1);
                         break;
 
