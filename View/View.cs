@@ -30,14 +30,14 @@ namespace easySave_BMT.View_
         
             Console.WriteLine("");
             Console.WriteLine("6 - Quitter");
+            Console.Write("Ou tapez un chiffre (1-6): ");
         
             int selectedIndex = 0;
             bool selecting = true;
         
             while (selecting)
             {
-                Console.Clear();
-                Console.WriteLine("=== Easy Save - BMT ===");
+                Console.SetCursorPosition(0, 8); 
                 for (int i = 0; i < menuItems.Length; i++)
                 {
                     if (i == selectedIndex)
@@ -65,6 +65,15 @@ namespace easySave_BMT.View_
                 }
         
                 ConsoleKeyInfo key = Console.ReadKey(true);
+                if (char.IsDigit(key.KeyChar))
+                {
+                    int choice = key.KeyChar - '0';
+                    if (choice >= 1 && choice <= 6)
+                    {
+                        return choice; 
+                    }
+                }
+        
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
@@ -74,14 +83,12 @@ namespace easySave_BMT.View_
                         selectedIndex = (selectedIndex == 5) ? 0 : selectedIndex + 1;
                         break;
                     case ConsoleKey.Enter:
-                        selecting = false;
-                        break;
+                        return (selectedIndex == 5) ? 6 : selectedIndex + 1;
                     case ConsoleKey.Escape:
                         return 6;
                 }
             }
-        
-            return (selectedIndex == 5) ? 6 : selectedIndex + 1;
+            return 1;
         }
         
         //Display message on console
