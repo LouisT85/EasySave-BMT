@@ -155,7 +155,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
 
         private void LaunchBackupsave()
         {
-            if (this.model.saves.Count > 0)
+            if(this.model.saves.Count > 0)
             {
                 int userChoice = view.LaunchBackupChoice();
 
@@ -165,7 +165,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                         return;
 
                     case 1:
-                        foreach (Save save in this.model.saves)
+                        foreach(Save save in this.model.saves)
                         {
                             this.view.DisplayMessage(LaunchBackupType(save));
                             this.view.DisplayMessage(4);
@@ -184,6 +184,10 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 this.view.DisplayMessage(204);
             }
         }
+
+
+
+
 
         public int LaunchBackupType(Save _save)
         {
@@ -337,17 +341,17 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
             long leftSize = _totalSize;
             int totalFile = _files.Length;
             List<string> failedFiles = new List<string>();
-
+            
             for (int i = 0; i < _files.Length; i++)
             {
-                int pourcent = ((i + 1) * 100) / totalFile;  // +1 pour réalisme
+                int pourcent = ((i + 1) * 100) / totalFile;  // +1 pour démarrer à ~10%
                 long curSize = _files[i].Length;
                 leftSize -= curSize;
 
                 if (this.model.CopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent))
                 {
-                    // SIMULE réalisme : délai proportionnel à taille
-                    Thread.Sleep((int)(curSize / 1000000));  // 1ms par Mo
+                    // Ralentit pour réalisme (1ms par Mo + 100ms/fichier)
+                    Thread.Sleep((int)(curSize / 1000000) + 100);
                     this.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
                 }
                 else
@@ -357,6 +361,5 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
             }
             return failedFiles;
         }
-
     }
 }
