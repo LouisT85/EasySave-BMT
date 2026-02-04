@@ -373,6 +373,7 @@ namespace easySave_BMT.ViewModel_
                 return 210;
             }
 
+            Console.Clear();
             List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst);
             DateTime endTime = DateTime.Now;
             TimeSpan saveTime = endTime - startTime;
