@@ -131,7 +131,7 @@ namespace easySave_BMT.View_
             Console.WriteLine("Laissez vide pour garder la valeur actuelle.");
             Console.Write("Nouveau répertoire des logs: ");
             
-            string input = Console.ReadLine();
+            string input = RectifyPath(Console.ReadLine());
             if (!string.IsNullOrWhiteSpace(input))
             {
                 // Créer le répertoire s'il n'existe pas
@@ -153,31 +153,54 @@ namespace easySave_BMT.View_
         public string AskForStateFilePath()
         {
             Console.Clear();
-            Console.WriteLine("=== Modification du fichier d'état ===");
+            Console.WriteLine("=== State File Path Configuration ===");
             Console.WriteLine("");
-            Console.WriteLine("Laissez vide pour garder la valeur actuelle.");
-            Console.Write("Nouveau chemin du fichier d'état: ");
+            Console.WriteLine("Current state file: " + viewModel.model.GetConfig().StateFilePath);
+            Console.WriteLine("");
+            Console.WriteLine("IMPORTANT: Provide a FULL PATH including filename (e.g., C:\\EasySave\\state.json)");
+            Console.WriteLine("Leave empty to keep current path.");
+            Console.WriteLine("");
+            Console.Write("New state file path: ");
             
             string input = Console.ReadLine();
+            
             if (!string.IsNullOrWhiteSpace(input))
             {
-                // Vérifier que le chemin est valide
+                // Validate it's a file path, not just a directory
+                if (!input.Contains("."))
+                {
+                    Console.WriteLine("Warning: This appears to be a directory path, not a file path.");
+                    Console.WriteLine("Please provide a full path including filename (e.g., C:\\EasySave\\state.json)");
+                    Console.WriteLine("Press Enter to continue...");
+                    Console.ReadLine();
+                    return null;
+                }
+                
                 try
                 {
+                    // Test if we can create the directory
                     string directory = Path.GetDirectoryName(input);
                     if (!string.IsNullOrEmpty(directory))
                     {
                         Directory.CreateDirectory(directory);
+                        
+                        // Test write access
+                        string testFile = Path.Combine(directory, $"test_{Guid.NewGuid()}.tmp");
+                        File.WriteAllText(testFile, "test");
+                        File.Delete(testFile);
                     }
+                    
                     return input;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Erreur: {ex.Message}");
-                    Console.WriteLine("Appuyez sur Entrée pour continuer...");
+                    Console.WriteLine($"Error: {ex.Message}");
+                    Console.WriteLine("This location may not have write permissions.");
+                    Console.WriteLine("Press Enter to continue...");
                     Console.ReadLine();
                 }
             }
+            
             return null;
         }
         
@@ -369,9 +392,6 @@ namespace easySave_BMT.View_
             }
             Console.ResetColor();
         }
-
-        // Les autres méthodes restent inchangées...
-        // (Toutes les méthodes existantes de la vue restent les mêmes)
         
         private static bool CheckInt(string input)
         {
