@@ -19,6 +19,19 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
         }
         public void RunApp()
         {
+            // Load existing saves from JSON file
+            int loadResult = model.CreateLogs();
+            
+            if (loadResult == 100)
+            {
+                Console.WriteLine("Application EasySave - BMT chargée avec succès !");
+                view.DisplayMessage(100);
+            }
+            else
+            {
+                Console.WriteLine("Erreur lors du chargement des sauvegardes.");
+                view.DisplayMessage(loadResult);
+            }
             bool currentlyRunning = true;
             while (currentlyRunning)
             {
@@ -31,7 +44,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                         AddSave();
                         break;
                     case 3:
-                        //supprimer un travail de sauvegarde
+                        RemoveSave();
                         break;
                     case 4:
                         //faire une méthode qui fait la backup du travail de sauvegarde
@@ -41,24 +54,38 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                         break;
                     case 6:
                         currentlyRunning = false; // quitte la page
+                        Console.WriteLine("Merci d'avoir utilisé EasySave - BMT !");
+                        Console.WriteLine("Appuyez sur une touche pour quitter...");
+                        Console.ReadKey();
                         break;
                     default:
-                        this.view.DisplayMessage(207);
+                        this.view.DisplayMessage(206); // Invalid choice
                         break;
                 }
             }
         }
         private void DisplaySaves() // Method used in case 1, used to display all saves jobs
         {
-            if (this.model.saves.Count > 0)
+            // CRITICAL FIX: Always reload from JSON before displaying
+            int reloadResult = this.model.ReloadSavesFromFile();
+            
+            if (reloadResult == 100) // Success
             {
-                this.view.DisplayAllSaves();
+                if (this.model.saves.Count > 0)
+                {
+                    this.view.DisplayAllSaves();
+                }
+                else
+                {
+                    this.view.DisplayMessage(204); // Empty list
+                }
             }
             else
             {
-                this.view.DisplayMessage(204);
+                this.view.DisplayMessage(reloadResult); // Display error code
             }
         }
+        
         private void AddSave() // method used in case 2, used to add a new save job
         {
             if(this.model.saves.Count < 5)
@@ -91,6 +118,33 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 this.view.DisplayMessage(205);
             }
         }
+        
+        //Remove a save
+        private void RemoveSave()
+        {
+            if (this.model.saves.Count > 0)
+            {
+                int choice = view.RemovesaveChoice();
+                if (choice == 0) return; // User chose to go back
+                
+                // Adjust for 1-based indexing in display
+                int index = choice - 1;
+                
+                if (index >= 0 && index < this.model.saves.Count)
+                {
+                    this.view.DisplayMessage(model.RemoveSave(index));
+                }
+                else
+                {
+                    this.view.DisplayMessage(206); // Invalid choice
+                }
+            }
+            else
+            {
+                this.view.DisplayMessage(204); // Empty list
+            }
+        }
+        
         /*private void LaunchBackupsave()
         {
             if(this.model.saves.Count > 0)
