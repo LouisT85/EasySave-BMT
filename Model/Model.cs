@@ -16,7 +16,7 @@ namespace easySave_BMT.Model_
 
         private EasyLogger logger;
         private string logPath;
-        private string backupsaveSavePath = "./BackupsaveSave.json";
+        private string backupsaveSavePath = "./BackupSave.json";
         public List<Save> saves { get; private set; }
 
         // Prepare options to indent JSON Files
