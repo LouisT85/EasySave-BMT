@@ -310,6 +310,7 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 return 210;
             }
 
+                        Console.Clear(); // Affichage propre pour la progression en temps réel
             List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst);
             DateTime endTime = DateTime.Now;
             TimeSpan saveTime = endTime - startTime;
@@ -317,13 +318,13 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
             _save.state = null;
             this.model.AddLogInJSONFile();
             this.view.DisplayMessage(3);
-
+ 
             foreach (string failedFile in failedFiles)
             {
                 this.view.DisplayFiledError(failedFile);
             }
             this.view.DisplayBackupRecap(_save.name, transferTime);
-
+ 
             if (failedFiles.Count == 0)
             {
                 // Return Success Code
@@ -335,29 +336,36 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
                 return 216;
             }
         }
-
+ 
         private List<string> CopyFiles(Save _save, FileInfo[] _files, long _totalSize, string _dst)
         {
             long leftSize = _totalSize;
             int totalFile = _files.Length;
             List<string> failedFiles = new List<string>();
-            
+ 
+            // Affichage initial à 0% pour démarrage visible
+            this.view.DisplayCurrentState(_save.name, totalFile, _totalSize, 0, 0);
+            Console.Out.Flush();
+ 
             for (int i = 0; i < _files.Length; i++)
             {
-                int pourcent = ((i + 1) * 100) / totalFile;  // +1 pour démarrer à ~10%
                 long curSize = _files[i].Length;
-                leftSize -= curSize;
-
-                if (this.model.CopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent))
+                int pourcent = (i * 100) / totalFile; // % AVANT la copie du fichier courant
+ 
+                // Afficher AVANT la copie pour mise à jour temps réel visible
+                this.view.DisplayCurrentState(_save.name, totalFile - i, leftSize, curSize, pourcent);
+                Console.Out.Flush();
+ 
+                int pourcentAfter = ((i + 1) * 100) / totalFile;
+                if (this.model.CopyFile(_save, _files[i], curSize, _dst, leftSize - curSize, totalFile, i, pourcentAfter))
                 {
-                    // Ralentit pour réalisme (1ms par Mo + 100ms/fichier)
                     Thread.Sleep((int)(curSize / 1000000) + 100);
-                    this.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
                 }
                 else
                 {
                     failedFiles.Add(_files[i].Name);
                 }
+                leftSize -= curSize;
             }
             return failedFiles;
         }

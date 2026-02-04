@@ -496,7 +496,7 @@ namespace easySave_BMT.View_
 
         public void DisplayCurrentState(string name, int fileLeft, long leftSize, long curSize, int percent)
         {
-            Console.SetCursorPosition(0, 0);  // Remonte sans effacer
+            Console.SetCursorPosition(0, 0);
             Console.WriteLine($"Backup: {name}");
             Console.WriteLine($"Fichier actuel: {DisplaySize(curSize)}");
             Console.WriteLine($"Fichiers restants: {fileLeft}");
