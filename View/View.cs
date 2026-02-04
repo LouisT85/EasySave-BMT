@@ -19,17 +19,69 @@ namespace easySave_BMT.View_
         public int Menu()
         {
             Console.Clear();
-            Console.WriteLine(
-                "===== Easy Save - BMT =====" +
-                "\n1 - Afficher les sauvegardes" +
-                "\n2 - Ajouter une sauvegarde" +
-                "\n3 - Supprimer une sauvegarde" +
-                "\n4 - Faites une backup" +
-                "\n5 - Changer de langue" +
-                "\n" +"\n" +"\n" +
-                "\n6 - Quitter !" 
-                );
-            return CheckChoiceMenu(Console.ReadLine(), 1, 6);
+            Console.WriteLine("=== Easy Save - BMT ===");
+            string[] menuItems = {
+                "1 - Afficher les sauvegardes",
+                "2 - Ajouter une sauvegarde", 
+                "3 - Supprimer une sauvegarde",
+                "4 - Faire une backup",
+                "5 - Changer de langue"
+            };
+        
+            Console.WriteLine("");
+            Console.WriteLine("6 - Quitter");
+        
+            int selectedIndex = 0;
+            bool selecting = true;
+        
+            while (selecting)
+            {
+                Console.Clear();
+                Console.WriteLine("=== Easy Save - BMT ===");
+                for (int i = 0; i < menuItems.Length; i++)
+                {
+                    if (i == selectedIndex)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine("> " + menuItems[i]);
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        Console.WriteLine("  " + menuItems[i]);
+                    }
+                }
+        
+                Console.WriteLine("");
+                if (selectedIndex == 5)
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("> 6 - Quitter");
+                    Console.ResetColor();
+                }
+                else
+                {
+                    Console.WriteLine("  6 - Quitter");
+                }
+        
+                ConsoleKeyInfo key = Console.ReadKey(true);
+                switch (key.Key)
+                {
+                    case ConsoleKey.UpArrow:
+                        selectedIndex = (selectedIndex == 0) ? 5 : selectedIndex - 1;
+                        break;
+                    case ConsoleKey.DownArrow:
+                        selectedIndex = (selectedIndex == 5) ? 0 : selectedIndex + 1;
+                        break;
+                    case ConsoleKey.Enter:
+                        selecting = false;
+                        break;
+                    case ConsoleKey.Escape:
+                        return 6;
+                }
+            }
+        
+            return (selectedIndex == 5) ? 6 : selectedIndex + 1;
         }
         
         //Display message on console
