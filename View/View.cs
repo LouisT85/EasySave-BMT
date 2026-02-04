@@ -62,7 +62,7 @@ namespace easySave_BMT.View_
                 }
                 
                 Console.WriteLine("");
-                Console.Write("↑↓ pour naviguer, 1-6 ou ↵: ");
+                Console.Write("↑↓ pour naviguer | 1-6 ou ↵ pour confirmer votre choix: ");
 
                 ConsoleKeyInfo key = Console.ReadKey(true);
                 
