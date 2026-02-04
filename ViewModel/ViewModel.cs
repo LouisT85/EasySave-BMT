@@ -337,15 +337,18 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
             long leftSize = _totalSize;
             int totalFile = _files.Length;
             List<string> failedFiles = new List<string>();
+
             for (int i = 0; i < _files.Length; i++)
             {
-                int pourcent = (i * 100 / totalFile);
+                int pourcent = ((i + 1) * 100) / totalFile;  // +1 pour réalisme
                 long curSize = _files[i].Length;
                 leftSize -= curSize;
 
                 if (this.model.CopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent))
                 {
-                    this.view.DisplayCurrentState(_save.name, (totalFile - i), leftSize, curSize, pourcent);
+                    // SIMULE réalisme : délai proportionnel à taille
+                    Thread.Sleep((int)(curSize / 1000000));  // 1ms par Mo
+                    this.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
                 }
                 else
                 {
@@ -354,5 +357,6 @@ namespace easySave_BMT.ViewModel_  // Creation of ViewModel namespace
             }
             return failedFiles;
         }
+
     }
 }
