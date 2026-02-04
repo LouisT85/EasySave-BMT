@@ -18,8 +18,6 @@ namespace easySave_BMT.View_
         //Menu display    
         public int Menu()
         {
-            Console.Clear();
-            Console.WriteLine("=== Easy Save - BMT ===");
             string[] menuItems = {
                 "1 - Afficher les sauvegardes",
                 "2 - Ajouter une sauvegarde", 
@@ -27,17 +25,15 @@ namespace easySave_BMT.View_
                 "4 - Faire une backup",
                 "5 - Changer de langue"
             };
-        
-            Console.WriteLine("");
-            Console.WriteLine("6 - Quitter");
-            Console.Write("Ou tapez un chiffre (1-6): ");
-        
+
             int selectedIndex = 0;
-            bool selecting = true;
-        
-            while (selecting)
+
+            while (true)
             {
-                Console.SetCursorPosition(0, 8); 
+                Console.Clear();
+                Console.WriteLine("=== Easy Save - BMT ===");
+                Console.WriteLine("");
+                
                 for (int i = 0; i < menuItems.Length; i++)
                 {
                     if (i == selectedIndex)
@@ -51,8 +47,9 @@ namespace easySave_BMT.View_
                         Console.WriteLine("  " + menuItems[i]);
                     }
                 }
-        
+                
                 Console.WriteLine("");
+                
                 if (selectedIndex == 5)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -63,17 +60,18 @@ namespace easySave_BMT.View_
                 {
                     Console.WriteLine("  6 - Quitter");
                 }
-        
+                
+                Console.WriteLine("");
+                Console.Write("↑↓ pour naviguer, 1-6 ou ↵: ");
+
                 ConsoleKeyInfo key = Console.ReadKey(true);
+                
                 if (char.IsDigit(key.KeyChar))
                 {
                     int choice = key.KeyChar - '0';
-                    if (choice >= 1 && choice <= 6)
-                    {
-                        return choice; 
-                    }
+                    if (choice >= 1 && choice <= 6) return choice;
                 }
-        
+
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
@@ -88,8 +86,9 @@ namespace easySave_BMT.View_
                         return 6;
                 }
             }
-            return 1;
         }
+
+
         
         //Display message on console
         public void DisplayMessage(int id)
