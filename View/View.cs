@@ -13,8 +13,65 @@ namespace easySave_BMT.View_
         {
             this.viewModel = viewModel;
         }
-        
-        // Menu principal
+
+        private int InteractiveMenu(string title, string[] items, bool includeReturn = true)
+        {
+            int selectedIndex = 0;
+
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine("=== " + title + " ===\n");
+
+                for (int i = 0; i < items.Length; i++)
+                {
+                    if (i == selectedIndex)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"> {items[i]}");
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        Console.WriteLine($"  {items[i]}");
+                    }
+                }
+
+                if (includeReturn)
+                {
+                    Console.WriteLine("");
+                    if (selectedIndex == items.Length)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("> 0 - Retour");
+                        Console.ResetColor();
+                    }
+                    else
+                        Console.WriteLine("  0 - Retour");
+                }
+
+                Console.WriteLine("\n↑↓ pour naviguer | Entrée pour valider | Échap pour annuler");
+                var key = Console.ReadKey(true);
+
+                switch (key.Key)
+                {
+                    case ConsoleKey.UpArrow:
+                        selectedIndex = (selectedIndex == 0) ? items.Length : selectedIndex - 1;
+                        break;
+
+                    case ConsoleKey.DownArrow:
+                        selectedIndex = (selectedIndex == items.Length) ? 0 : selectedIndex + 1;
+                        break;
+
+                    case ConsoleKey.Enter:
+                        return (includeReturn && selectedIndex == items.Length) ? 0 : selectedIndex + 1;
+
+                    case ConsoleKey.Escape:
+                        return 0;
+                }
+            }
+        }
+
         public int Menu()
         {
             string[] menuItems = {
@@ -86,30 +143,19 @@ namespace easySave_BMT.View_
                 }
             }
         }
-        
-        // Menu de configuration
+
         public int ConfigurationMenu()
         {
-            Console.Clear();
-            Console.WriteLine("=== Configuration ===");
-            Console.WriteLine("");
-            Console.WriteLine("1 - Afficher la configuration actuelle");
-            Console.WriteLine("2 - Modifier le répertoire des logs");
-            Console.WriteLine("3 - Modifier le fichier d'état");
-            Console.WriteLine("4 - Changer la langue (fr/en)");
-            Console.WriteLine("");
-            Console.WriteLine("0 - Retour au menu principal");
-            Console.WriteLine("");
-            Console.Write("Votre choix: ");
-            
-            string input = Console.ReadLine();
-            if (int.TryParse(input, out int choice) && choice >= 0 && choice <= 4)
-            {
-                return choice;
-            }
-            return 0;
+            string[] configItems = {
+                "1 - Afficher la configuration actuelle",
+                "2 - Modifier le répertoire des logs",
+                "3 - Modifier le fichier d'état",
+                "4 - Changer la langue (fr/en)"
+            };
+
+            return InteractiveMenu("Configuration", configItems);
         }
-        
+
         public void DisplayCurrentConfiguration(Config config)
         {
             Console.Clear();
@@ -122,7 +168,7 @@ namespace easySave_BMT.View_
             Console.WriteLine("Appuyez sur Entrée pour continuer...");
             Console.ReadLine();
         }
-        
+
         public string AskForLogDirectory()
         {
             Console.Clear();
@@ -134,7 +180,6 @@ namespace easySave_BMT.View_
             string input = RectifyPath(Console.ReadLine());
             if (!string.IsNullOrWhiteSpace(input))
             {
-                // Créer le répertoire s'il n'existe pas
                 try
                 {
                     Directory.CreateDirectory(input);
@@ -149,88 +194,74 @@ namespace easySave_BMT.View_
             }
             return null;
         }
-        
+
         public string AskForStateFilePath()
         {
             Console.Clear();
-            Console.WriteLine("=== State File Path Configuration ===");
+            Console.WriteLine("=== Configuration du chemin du fichier d'état ===");
             Console.WriteLine("");
-            Console.WriteLine("Current state file: " + viewModel.model.GetConfig().StateFilePath);
+            Console.WriteLine("Fichier d'état actuel : " + viewModel.model.GetConfig().StateFilePath);
             Console.WriteLine("");
-            Console.WriteLine("IMPORTANT: Provide a FULL PATH including filename (e.g., C:\\EasySave\\state.json)");
-            Console.WriteLine("Leave empty to keep current path.");
+            Console.WriteLine("IMPORTANT : Fournissez un chemin d’accès complet incluant le nom du fichier (par ex. C:\\EasySave\\state.json)");
+            Console.WriteLine("Laissez vide pour garder le chemin actuel.");
             Console.WriteLine("");
-            Console.Write("New state file path: ");
+            Console.Write("Nouveau chemin du fichier d'état : ");
             
             string input = Console.ReadLine();
             
             if (!string.IsNullOrWhiteSpace(input))
             {
-                // Validate it's a file path, not just a directory
                 if (!input.Contains("."))
                 {
-                    Console.WriteLine("Warning: This appears to be a directory path, not a file path.");
-                    Console.WriteLine("Please provide a full path including filename (e.g., C:\\EasySave\\state.json)");
-                    Console.WriteLine("Press Enter to continue...");
+                    Console.WriteLine("Avertissement : Ceci correspond à un chemin vers un dossier, pas vers un fichier.");
+                    Console.WriteLine("S'il vous plaît veuillez fournir un chemin incluant le nom du fichier (e.g., C:\\EasySave\\state.json)");
+                    Console.WriteLine("Appuyez sur ↵ pour continuer...");
                     Console.ReadLine();
                     return null;
                 }
                 
                 try
                 {
-                    // Test if we can create the directory
                     string directory = Path.GetDirectoryName(input);
                     if (!string.IsNullOrEmpty(directory))
                     {
                         Directory.CreateDirectory(directory);
-                        
-                        // Test write access
                         string testFile = Path.Combine(directory, $"test_{Guid.NewGuid()}.tmp");
                         File.WriteAllText(testFile, "test");
                         File.Delete(testFile);
                     }
-                    
                     return input;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error: {ex.Message}");
-                    Console.WriteLine("This location may not have write permissions.");
-                    Console.WriteLine("Press Enter to continue...");
+                    Console.WriteLine($"Erreur: {ex.Message}");
+                    Console.WriteLine("Cet emplacement n'a probablement pas les permissions d'écriture.");
+                    Console.WriteLine("Appuyez sur ↵ pour Continuer...");
                     Console.ReadLine();
                 }
             }
-            
             return null;
         }
-        
+
         public string AskForLanguage()
         {
-            Console.Clear();
-            Console.WriteLine("=== Changement de langue ===");
-            Console.WriteLine("");
-            Console.WriteLine("1 - Français (fr)");
-            Console.WriteLine("2 - Anglais (en)");
-            Console.WriteLine("");
-            Console.WriteLine("0 - Annuler");
-            Console.WriteLine("");
-            Console.Write("Votre choix: ");
-            
-            string input = Console.ReadLine();
-            switch (input)
+            string[] langItems = {
+                "1 - Français (fr)",
+                "2 - Anglais (en)"
+            };
+
+            int choice = InteractiveMenu("Changement de langue", langItems);
+
+            return choice switch
             {
-                case "1":
-                    return "fr";
-                case "2":
-                    return "en";
-                default:
-                    return null;
-            }
+                1 => "fr",
+                2 => "en",
+                _ => null
+            };
         }
 
         public void DisplayMessage(int id)
         {
-            // Ajout du nouveau message pour configuration mise à jour
             if (id == 218)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
@@ -387,12 +418,11 @@ namespace easySave_BMT.View_
                         Console.WriteLine("\nFailed : Erreur inconnue.");
                         DisplayMessage(1);
                         break;
-
                 }
             }
             Console.ResetColor();
         }
-        
+
         private static bool CheckInt(string input)
         {
             try
@@ -408,12 +438,12 @@ namespace easySave_BMT.View_
 
         public int AddSaveBackupType()
         {
-            Console.WriteLine(
-                "\nChoisir le type de backup: "+
-                "\n1.Complète "+
-                "\n2.Differentielle"
-            );
-            return CheckChoiceMenu(Console.ReadLine(),0,2);
+            string[] backupTypes = {
+                "1 - Sauvegarde complète",
+                "2 - Sauvegarde différentielle"
+            };
+
+            return InteractiveMenu("Type de sauvegarde", backupTypes);
         }
 
         private bool CheckName(string name)
@@ -451,7 +481,6 @@ namespace easySave_BMT.View_
         {
             Console.Clear();
             Console.WriteLine("liste des sauvegardes : ");
-
             SavesJobReport(1);
             DisplayMessage(1);
         }
@@ -525,7 +554,7 @@ namespace easySave_BMT.View_
             DisplayMessage(213);
             return false;
         }
-        
+
         public string SaveDst(string src)
         {
             Console.WriteLine("\nEntrer la destination du répertoire.");
@@ -618,27 +647,29 @@ namespace easySave_BMT.View_
 
         public int RemovesaveChoice()
         {
-            Console.Clear();
-            Console.WriteLine("Supprime une sauvegarde: ");
+            var saves = viewModel.model.saves;
+            if (saves.Count == 0)
+            {
+                DisplayMessage(204);
+                return 0;
+            }
 
-            SavesJobReport(1);
-            DisplayMessage(2);
+            string[] items = new string[saves.Count];
+            for (int i = 0; i < saves.Count; i++)
+                items[i] = $"{i + 1} - {saves[i].name}";
 
-            return CheckChoiceMenu(Console.ReadLine(), 0, this.viewModel.model.saves.Count);
+            return InteractiveMenu("Supprimer une sauvegarde", items);
         }
 
         public int LaunchBackupChoice()
         {
-            Console.Clear();
-            Console.WriteLine(
-                "Choisissez le travail à sauvegarder : " +
-                "\n\n1 - tout"
-            );
+            var saves = viewModel.model.saves;
+            string[] items = new string[saves.Count + 1];
+            items[0] = "1 - Tout sauvegarder";
+            for (int i = 0; i < saves.Count; i++)
+                items[i + 1] = $"{i + 2} - {saves[i].name}";
 
-            SavesJobReport(2);
-            DisplayMessage(2);
-
-            return CheckChoiceMenu(Console.ReadLine(), 0, this.viewModel.model.saves.Count + 1);
+            return InteractiveMenu("Lancer une sauvegarde", items);
         }
     }
 }

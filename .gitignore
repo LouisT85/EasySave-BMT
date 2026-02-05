@@ -923,3 +923,4 @@ coverage*[.json, .xml, .info]
 *.cache
 *.editorconfig
 BackupSave.json
+config.json
