@@ -6,15 +6,12 @@ using easySave_BMT.ViewModel_;
 using EasyLog;
 using EasyLog.Models;
 using System.Threading;
+using easySave_BMT.Resources_;
 
 namespace easySave_BMT.Model_
 {
-
-    /// Main model class handling business logic and data management
-
     public class Model 
     {
-        // --- Attributes ---
         private EasyLogger logger;
         private Config config;
         private string backupsaveSavePath = "./BackupSave.json";
@@ -25,41 +22,28 @@ namespace easySave_BMT.Model_
             WriteIndented = true
         }; 
 
-        // --- Constructor ---
-
-        /// Initializes a new instance of the Model class
-
         public Model()
         {
-            // Initialize save list
             this.saves = new List<Save>();
             
-            // Load configuration
             config = Config.Load();
             
-            // Configure paths
+            ResourceManager.SetLanguage(config.Language);
+            
             RealTimeState.SetFilePath(config.StateFilePath);
             
-            // Create log directory if needed
             Directory.CreateDirectory(config.LogDirectory);
             
-            // Initialize logger
             logger = new EasyLogger(config.LogDirectory);
             
             Console.WriteLine($"Logs directory: {config.LogDirectory}");
             Console.WriteLine($"State file: {config.StateFilePath}");
         }
 
-        // --- Methods ---
-        
-
-        /// Adds a new save job to the list
-
         public int AddSave(string name, string src, string dst, BackupType backupType)
         {
             try
             {
-                // Add save in the program (at the end of the List)
                 this.saves.Add(new Save(name, src, dst, backupType));
                 AddLogInJSONFile();
                 SaveStates();
@@ -72,17 +56,21 @@ namespace easySave_BMT.Model_
             }
         }
 
-
-        /// Removes a save job from the list
-
         public int RemoveSave(int index)
         {
             try
             {
-                // Remove save from the program (at index)
+                string removedName = this.saves[index].name;
                 this.saves.RemoveAt(index);
                 AddLogInJSONFile();
-                SaveStates();
+                
+                var existingStates = RealTimeState.LoadStates();
+                var stateToRemove = existingStates.Find(s => s.Name == removedName);
+                if (stateToRemove != null)
+                {
+                    existingStates.Remove(stateToRemove);
+                }
+                RealTimeState.SaveStates(existingStates);
                 
                 return 103;
             }
@@ -92,24 +80,17 @@ namespace easySave_BMT.Model_
             }
         }
 
-        /// Loads saves and states at the beginning of the program
-
         public int CreateLogs()
         {
             return ReloadSavesFromFile();
         }
 
-
-        /// Reloads saves from the JSON file
-
         public int ReloadSavesFromFile()
         {
-            // Check if backupsaveSave.json File exists
             if (File.Exists(backupsaveSavePath))
             {
                 try
                 {
-                    // Read saves from JSON File (from ./BackupsaveSave.json)
                     string jsonContent = File.ReadAllText(this.backupsaveSavePath);
                     if (!string.IsNullOrEmpty(jsonContent))
                     {
@@ -120,38 +101,30 @@ namespace easySave_BMT.Model_
                         this.saves = new List<Save>();
                     }
                     
-                    // Return Success Code
                     return 100;
                 }
                 catch (JsonException jsonEx)
                 {
-                    // JSON parsing error
                     Console.WriteLine($"JSON Error: {jsonEx.Message}");
                     return 200;
                 }
                 catch (Exception ex)
                 {
-                    // General error
                     Console.WriteLine($"Error loading saves: {ex.Message}");
                     return 200;
                 }
             }
             else
             {
-                // File doesn't exist, initialize empty list
                 this.saves = new List<Save>();
                 return 100;
             }
         }
 
-
-        /// Saves the current save list to JSON file
-
         public void AddLogInJSONFile()
         {
             try
             {
-                // Write save list into JSON file (at ./BackupsaveSave.json)
                 string json = JsonSerializer.Serialize(this.saves, this.jsonOptions);
                 File.WriteAllText(this.backupsaveSavePath, json);
             }
@@ -161,15 +134,12 @@ namespace easySave_BMT.Model_
             }
         }
 
-        /// Saves all states to the real-time state file
-
         public void SaveStates()
         {
             try
             {
-                List<RealTimeState> states = new List<RealTimeState>();
+                List<RealTimeState> statesToSave = new List<RealTimeState>();
                 
-                // Only save states for existing saves
                 foreach (var save in this.saves)
                 {
                     RealTimeState state;
@@ -181,19 +151,16 @@ namespace easySave_BMT.Model_
                     {
                         state = State.CreateEndState(save.name);
                     }
-                    states.Add(state);
+                    statesToSave.Add(state);
                 }
                 
-                RealTimeState.SaveStates(states);
+                RealTimeState.SaveStates(statesToSave);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error saving states: {ex.Message}");
             }
         }
-
-
-        /// Updates the real-time state for a specific save
 
         public void UpdateSaveState(Save save)
         {
@@ -210,6 +177,7 @@ namespace easySave_BMT.Model_
                 
                 if (save.state != null)
                 {
+                    existingState.Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     existingState.State = "ACTIVE";
                     existingState.SourceFilePath = save.state.currentPathSrc;
                     existingState.TargetFilePath = save.state.currentPathDest;
@@ -220,9 +188,12 @@ namespace easySave_BMT.Model_
                 }
                 else
                 {
+                    existingState.Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     existingState.State = "END";
                     existingState.SourceFilePath = "";
                     existingState.TargetFilePath = "";
+                    existingState.TotalFilesToCopy = 0;
+                    existingState.TotalFilesSize = 0;
                     existingState.NbFilesLeftToDo = 0;
                     existingState.Progression = 0;
                 }
@@ -235,8 +206,6 @@ namespace easySave_BMT.Model_
             }
         }
 
-
-        /// Copies a file and logs the operation
         public bool CopyFile(
             Save save,
             FileInfo currentFile,
@@ -252,7 +221,6 @@ namespace easySave_BMT.Model_
             string curDirPath = currentFile.DirectoryName;
             string dstDirectory = dst;
 
-            // Management of subdirectories
             if (Path.GetRelativePath(save.src, curDirPath).Length > 1)
             {
                 dstDirectory += Path.GetRelativePath(save.src, curDirPath) + "\\";
@@ -267,7 +235,6 @@ namespace easySave_BMT.Model_
 
             try
             {
-                // Update state
                 save.state.UpdateState(
                     pourcent,
                     (totalFile - fileIndex),
@@ -276,16 +243,12 @@ namespace easySave_BMT.Model_
                     dstFile
                 );
                 
-                // Update real-time state
                 UpdateSaveState(save);
 
-                // Copy the file
                 currentFile.CopyTo(dstFile, true);
                 
-                // Calculate transfer time
                 long transferTime = (long)(DateTime.Now - startTimeFile).TotalMilliseconds;
 
-                // Log success
                 logger.Write(new LogEntry
                 {
                     Timestamp = DateTime.Now,
@@ -302,7 +265,6 @@ namespace easySave_BMT.Model_
             {
                 Console.WriteLine($"Error copying file: {ex.Message}");
                 
-                // Log error
                 logger.Write(new LogEntry
                 {
                     Timestamp = DateTime.Now,
@@ -316,9 +278,6 @@ namespace easySave_BMT.Model_
                 return false;
             }
         }
-        
-
-        /// Marks a backup as finished in the state file
 
         public void FinishBackup(Save save)
         {
@@ -328,30 +287,26 @@ namespace easySave_BMT.Model_
                 UpdateSaveState(save);
             }
             
-            // Mark as ended
             save.state = null;
             UpdateSaveState(save);
         }
-        
-
-        /// Gets the current configuration
 
         public Config GetConfig()
         {
             return config;
         }
-        
-
-        /// Updates the application configuration
 
         public void UpdateConfig(string logDir, string statePath, string language)
         {
             config.UpdateFromUserInput(logDir, statePath, language);
             
-            // Reconfigure paths
+            if (!string.IsNullOrWhiteSpace(language))
+            {
+                ResourceManager.SetLanguage(language);
+            }
+            
             RealTimeState.SetFilePath(config.StateFilePath);
             
-            // Recreate logger with new path
             Directory.CreateDirectory(config.LogDirectory);
             logger = new EasyLogger(config.LogDirectory);
         }

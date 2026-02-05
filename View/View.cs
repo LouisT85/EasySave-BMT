@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using easySave_BMT.ViewModel_;
 using easySave_BMT.Model_;
+using easySave_BMT.Resources_;
 
 namespace easySave_BMT.View_
 {
@@ -43,15 +44,22 @@ namespace easySave_BMT.View_
                     if (selectedIndex == items.Length)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("> 0 - Retour");
+                        Console.WriteLine("> 0 - " + ResourceManager.GetString("Return"));
                         Console.ResetColor();
                     }
                     else
-                        Console.WriteLine("  0 - Retour");
+                        Console.WriteLine("  0 - " + ResourceManager.GetString("Return"));
                 }
 
-                Console.WriteLine("\n↑↓ pour naviguer | Entrée pour valider | Échap pour annuler");
+                Console.WriteLine("\n" + ResourceManager.GetString("MenuNavigation"));
                 var key = Console.ReadKey(true);
+
+                if (char.IsDigit(key.KeyChar))
+                {
+                    int choice = key.KeyChar - '0';
+                    if (choice == 0 && includeReturn) return 0;
+                    if (choice >= 1 && choice <= items.Length) return choice;
+                }
 
                 switch (key.Key)
                 {
@@ -75,11 +83,11 @@ namespace easySave_BMT.View_
         public int Menu()
         {
             string[] menuItems = {
-                "1 - Afficher les sauvegardes",
-                "2 - Ajouter une sauvegarde", 
-                "3 - Supprimer une sauvegarde",
-                "4 - Faire une backup",
-                "5 - Configuration"
+                "1 - " + ResourceManager.GetString("DisplayBackups"),
+                "2 - " + ResourceManager.GetString("AddBackup"),
+                "3 - " + ResourceManager.GetString("DeleteBackup"),
+                "4 - " + ResourceManager.GetString("RunBackup"),
+                "5 - " + ResourceManager.GetString("Configuration")
             };
 
             int selectedIndex = 0;
@@ -109,16 +117,16 @@ namespace easySave_BMT.View_
                 if (selectedIndex == 5)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("> 6 - Quitter");
+                    Console.WriteLine("> 6 - " + ResourceManager.GetString("Quit"));
                     Console.ResetColor();
                 }
                 else
                 {
-                    Console.WriteLine("  6 - Quitter");
+                    Console.WriteLine("  6 - " + ResourceManager.GetString("Quit"));
                 }
                 
                 Console.WriteLine("");
-                Console.Write("↑↓ pour naviguer | 1-6 ou ↵ pour confirmer votre choix: ");
+                Console.WriteLine(ResourceManager.GetString("MenuNavigation"));
 
                 ConsoleKeyInfo key = Console.ReadKey(true);
                 
@@ -147,110 +155,204 @@ namespace easySave_BMT.View_
         public int ConfigurationMenu()
         {
             string[] configItems = {
-                "1 - Afficher la configuration actuelle",
-                "2 - Modifier le répertoire des logs",
-                "3 - Modifier le fichier d'état",
-                "4 - Changer la langue (fr/en)"
+                "1 - " + ResourceManager.GetString("DisplayConfig"),
+                "2 - " + ResourceManager.GetString("ModifyLogDir"),
+                "3 - " + ResourceManager.GetString("ModifyStateFile"),
+                "4 - " + ResourceManager.GetString("ChangeLanguage")
             };
 
-            return InteractiveMenu("Configuration", configItems);
+            return InteractiveMenu(ResourceManager.GetString("Configuration"), configItems);
         }
 
         public void DisplayCurrentConfiguration(Config config)
         {
             Console.Clear();
-            Console.WriteLine("=== Configuration actuelle ===");
+            Console.WriteLine("=== " + ResourceManager.GetString("CurrentConfiguration") + " ===");
             Console.WriteLine("");
-            Console.WriteLine($"Répertoire des logs: {config.LogDirectory}");
-            Console.WriteLine($"Fichier d'état: {config.StateFilePath}");
-            Console.WriteLine($"Langue: {config.Language}");
+            Console.WriteLine(ResourceManager.GetString("LogDirectory") + ": " + config.LogDirectory);
+            Console.WriteLine(ResourceManager.GetString("StateFile") + ": " + config.StateFilePath);
+            Console.WriteLine(ResourceManager.GetString("Language") + ": " + config.Language);
             Console.WriteLine("");
-            Console.WriteLine("Appuyez sur Entrée pour continuer...");
+            Console.WriteLine(ResourceManager.GetString("PressEnter"));
             Console.ReadLine();
+        }
+
+        private bool IsValidPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return false;
+            
+            try
+            {
+                Path.GetFullPath(path);
+                
+                char[] invalidChars = Path.GetInvalidPathChars();
+                foreach (char c in invalidChars)
+                {
+                    if (path.Contains(c)) return false;
+                }
+                
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool CheckLogDirectory(string path)
+        {
+            if (path == "0") return true;
+            
+            if (!IsValidPath(path))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ResourceManager.GetString("InvalidPath"));
+                Console.ResetColor();
+                return false;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(path);
+                
+                string testFile = Path.Combine(path, $"test_{Guid.NewGuid()}.tmp");
+                File.WriteAllText(testFile, "test");
+                File.Delete(testFile);
+                
+                return true;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ResourceManager.GetString("NoWritePermission"));
+                Console.ResetColor();
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ResourceManager.GetString("Error") + ": " + ex.Message);
+                Console.ResetColor();
+                return false;
+            }
         }
 
         public string AskForLogDirectory()
         {
             Console.Clear();
-            Console.WriteLine("=== Modification du répertoire des logs ===");
+            Console.WriteLine("=== " + ResourceManager.GetString("ModifyLogDir") + " ===");
             Console.WriteLine("");
-            Console.WriteLine("Laissez vide pour garder la valeur actuelle.");
-            Console.Write("Nouveau répertoire des logs: ");
+            Console.WriteLine(ResourceManager.GetString("LeaveEmptyToKeep"));
+            Console.WriteLine("");
             
-            string input = RectifyPath(Console.ReadLine());
-            if (!string.IsNullOrWhiteSpace(input))
+            while (true)
             {
-                try
+                Console.Write(ResourceManager.GetString("NewLogDirectory") + ": ");
+                string input = RectifyPath(Console.ReadLine());
+                
+                if (input == "0")
                 {
-                    Directory.CreateDirectory(input);
+                    return null;
+                }
+                
+                if (CheckLogDirectory(input))
+                {
                     return input;
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Erreur: {ex.Message}");
-                    Console.WriteLine("Appuyez sur Entrée pour continuer...");
-                    Console.ReadLine();
-                }
             }
-            return null;
+        }
+
+        private bool CheckStateFilePath(string path)
+        {
+            if (path == "0") return true;
+            
+            if (!path.Contains(".") || !path.EndsWith(".json"))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ResourceManager.GetString("StateFilePathWarning"));
+                Console.ResetColor();
+                return false;
+            }
+
+            if (!IsValidPath(path))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ResourceManager.GetString("InvalidPath"));
+                Console.ResetColor();
+                return false;
+            }
+
+            string directory = Path.GetDirectoryName(path);
+            if (string.IsNullOrEmpty(directory))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ResourceManager.GetString("InvalidPath"));
+                Console.ResetColor();
+                return false;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(directory);
+                
+                string testFile = Path.Combine(directory, $"test_{Guid.NewGuid()}.tmp");
+                File.WriteAllText(testFile, "test");
+                File.Delete(testFile);
+                
+                return true;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ResourceManager.GetString("NoWritePermission"));
+                Console.ResetColor();
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ResourceManager.GetString("Error") + ": " + ex.Message);
+                Console.ResetColor();
+                return false;
+            }
         }
 
         public string AskForStateFilePath()
         {
             Console.Clear();
-            Console.WriteLine("=== Configuration du chemin du fichier d'état ===");
+            Console.WriteLine("=== " + ResourceManager.GetString("ConfigStateFilePath") + " ===");
             Console.WriteLine("");
-            Console.WriteLine("Fichier d'état actuel : " + viewModel.model.GetConfig().StateFilePath);
+            Console.WriteLine(ResourceManager.GetString("CurrentStateFile") + ": " + viewModel.model.GetConfig().StateFilePath);
             Console.WriteLine("");
-            Console.WriteLine("IMPORTANT : Fournissez un chemin d’accès complet incluant le nom du fichier (par ex. C:\\EasySave\\state.json)");
-            Console.WriteLine("Laissez vide pour garder le chemin actuel.");
+            Console.WriteLine(ResourceManager.GetString("StateFilePathInstruction"));
+            Console.WriteLine(ResourceManager.GetString("LeaveEmptyToKeep"));
             Console.WriteLine("");
-            Console.Write("Nouveau chemin du fichier d'état : ");
             
-            string input = Console.ReadLine();
-            
-            if (!string.IsNullOrWhiteSpace(input))
+            while (true)
             {
-                if (!input.Contains("."))
+                Console.Write(ResourceManager.GetString("NewStateFilePath") + ": ");
+                string input = Console.ReadLine();
+                
+                if (input == "0" || string.IsNullOrWhiteSpace(input))
                 {
-                    Console.WriteLine("Avertissement : Ceci correspond à un chemin vers un dossier, pas vers un fichier.");
-                    Console.WriteLine("S'il vous plaît veuillez fournir un chemin incluant le nom du fichier (e.g., C:\\EasySave\\state.json)");
-                    Console.WriteLine("Appuyez sur ↵ pour continuer...");
-                    Console.ReadLine();
                     return null;
                 }
                 
-                try
+                if (CheckStateFilePath(input))
                 {
-                    string directory = Path.GetDirectoryName(input);
-                    if (!string.IsNullOrEmpty(directory))
-                    {
-                        Directory.CreateDirectory(directory);
-                        string testFile = Path.Combine(directory, $"test_{Guid.NewGuid()}.tmp");
-                        File.WriteAllText(testFile, "test");
-                        File.Delete(testFile);
-                    }
                     return input;
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Erreur: {ex.Message}");
-                    Console.WriteLine("Cet emplacement n'a probablement pas les permissions d'écriture.");
-                    Console.WriteLine("Appuyez sur ↵ pour Continuer...");
-                    Console.ReadLine();
-                }
             }
-            return null;
         }
 
         public string AskForLanguage()
         {
             string[] langItems = {
                 "1 - Français (fr)",
-                "2 - Anglais (en)"
+                "2 - English (en)"
             };
 
-            int choice = InteractiveMenu("Changement de langue", langItems);
+            int choice = InteractiveMenu(ResourceManager.GetString("ChangeLanguage"), langItems);
 
             return choice switch
             {
@@ -265,8 +367,8 @@ namespace easySave_BMT.View_
             if (id == 218)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("\nConfiguration mise à jour avec succès !");
-                Console.WriteLine("Appuyez sur Entrée pour continuer...");
+                Console.WriteLine("\n" + ResourceManager.GetString("ConfigUpdated"));
+                Console.WriteLine(ResourceManager.GetString("PressEnter"));
                 Console.ReadLine();
                 Console.ResetColor();
                 return;
@@ -278,7 +380,7 @@ namespace easySave_BMT.View_
                 switch (id)
                 {
                     case 1:
-                        Console.WriteLine("\nAppuyez sur Entrer pour afficher le menu . . . .");
+                        Console.WriteLine("\n" + ResourceManager.GetString("PressEnterToMenu"));
                         Console.ReadLine();
                         break;
 
@@ -292,9 +394,9 @@ namespace easySave_BMT.View_
                         break;
 
                     case 4:
-                        Console.WriteLine("\nAppuyer sur la touche Entrer pour en voir plus . . .");
+                        Console.WriteLine("\n" + ResourceManager.GetString("PressEnterMore"));
                         Console.ReadLine();
-                        break; 
+                        break;
                 }
             }
             else if (id < 200)
@@ -308,25 +410,25 @@ namespace easySave_BMT.View_
                         break;
 
                     case 101:
-                        Console.WriteLine("\nLe fichier à été ajouté avec succès !!!");
+                        Console.WriteLine("\n" + ResourceManager.GetString("FileAddedSuccess"));
                         DisplayMessage(1);
                         break;
                     
                     case 102:
-                        Console.WriteLine("\nLe fichier à été sauvegardé avec succès !");
+                        Console.WriteLine("\n" + ResourceManager.GetString("FileSavedSuccess"));
                         break;
 
                     case 103:
-                        Console.WriteLine("\nLe fichier à été supprimé avec succès !!!");
+                        Console.WriteLine("\n" + ResourceManager.GetString("FileDeletedSuccess"));
                         DisplayMessage(1);
                         break;
 
                     case 104:
-                        Console.WriteLine("\nBackup reussi !");
+                        Console.WriteLine("\n" + ResourceManager.GetString("BackupSuccess"));
                         break;
 
                     case 105:
-                        Console.WriteLine("\nAucune modification depuis la dernière sauvegarde complète !\n");
+                        Console.WriteLine("\n" + ResourceManager.GetString("NoChanges"));
                         break;
                 }
             }
@@ -336,86 +438,87 @@ namespace easySave_BMT.View_
                 switch (id)
                 {
                     case 200:
-                        Console.WriteLine("\nRestaurer votre fichier de sauvegarde JSON. ");
+                        Console.WriteLine("\n" + ResourceManager.GetString("RestoreJSON"));
                         DisplayMessage(1);
                         break;
 
                     case 201:
-                        Console.WriteLine("\nÉchec de l'ajout .");
+                        Console.WriteLine("\n" + ResourceManager.GetString("AddFailed"));
                         DisplayMessage(1);
                         break;
 
                     case 202:
-                        Console.WriteLine("\nÉchec de sauvegarde .");
+                        Console.WriteLine("\n" + ResourceManager.GetString("SaveFailed"));
                         DisplayMessage(1);
                         break;
 
                     case 203:
-                        Console.WriteLine("\nÉchec de la suppression .");
+                        Console.WriteLine("\n" + ResourceManager.GetString("DeleteFailed"));
                         DisplayMessage(1);
                         break;
 
                     case 204:
-                        Console.WriteLine("\nLa list est vide");
+                        Console.WriteLine("\n" + ResourceManager.GetString("ListEmpty"));
                         DisplayMessage(1);
                         break;
 
                     case 205:
-                        Console.WriteLine("\nLa list est pleine");
+                        Console.WriteLine("\n" + ResourceManager.GetString("ListFull"));
                         DisplayMessage(1);
                         break;
 
                     case 206:
-                        Console.WriteLine("\nEntrer une option valide");
+                        Console.WriteLine("\n" + ResourceManager.GetString("InvalidOption"));
                         break;
 
                     case 207:
-                        Console.WriteLine("\nÉchec du transfert d'un fichier, le fichier source ou de destination n'existe pas.");
+                        Console.WriteLine("\n" + ResourceManager.GetString("TransferFailed"));
                         break;
 
                     case 208:
-                        Console.WriteLine("\nLe type de sauvegarde sélectionné n'existe pas");
+                        Console.WriteLine("\n" + ResourceManager.GetString("BackupTypeNotExist"));
                         break;
 
                     case 209:
-                        Console.WriteLine("\nÉchec de la copie du fichier.");
+                        Console.WriteLine("\n" + ResourceManager.GetString("CopyFailed"));
                         DisplayMessage(1);
                         break;
 
                     case 210:
-                        Console.WriteLine("\nÉchec de la création du dossier de sauvegarde.");
+                        Console.WriteLine("\n" + ResourceManager.GetString("CreateFolderFailed"));
                         DisplayMessage(1);
                         break;
+
                     case 211:
-                        Console.WriteLine("\nDirectory 'existe pas. Veuillez entrer une source de directory valide. ");
+                        Console.WriteLine("\n" + ResourceManager.GetString("DirectoryNotExist"));
                         break;
 
                     case 212:
-                        Console.WriteLine("\nChoisissez un path différent de la source. ");
+                        Console.WriteLine("\n" + ResourceManager.GetString("ChooseDifferentPath"));
                         break;
 
                     case 213:
-                        Console.WriteLine("\nDirectory n'existe pas. Veuillez entrer une direction de directory valide. ");
+                        Console.WriteLine("\n" + ResourceManager.GetString("DestinationNotExist"));
                         break;
 
                     case 214:
-                        Console.WriteLine("\nLe nom est déjà pris. Veuillez entrer un autre nom.");
+                        Console.WriteLine("\n" + ResourceManager.GetString("NameTaken"));
                         break;
 
                     case 215:
-                        Console.WriteLine("\nEntrez un nom VALIDE(1 to 20 characters):");
+                        Console.WriteLine("\n" + ResourceManager.GetString("EnterValidName"));
                         break;
 
                     case 216:
-                        Console.WriteLine("\nBackup terminé avec erreur.");
+                        Console.WriteLine("\n" + ResourceManager.GetString("BackupCompletedWithErrors"));
                         break;
 
                     case 217:
-                        Console.WriteLine("\nLa destination directory ne peut pas être à l'intérieur de la source directory.");
+                        Console.WriteLine("\n" + ResourceManager.GetString("DestinationInsideSource"));
                         break;
 
                     default:
-                        Console.WriteLine("\nFailed : Erreur inconnue.");
+                        Console.WriteLine("\n" + ResourceManager.GetString("UnknownError"));
                         DisplayMessage(1);
                         break;
                 }
@@ -439,11 +542,11 @@ namespace easySave_BMT.View_
         public int AddSaveBackupType()
         {
             string[] backupTypes = {
-                "1 - Sauvegarde complète",
-                "2 - Sauvegarde différentielle"
+                "1 - " + ResourceManager.GetString("FullBackup"),
+                "2 - " + ResourceManager.GetString("DifferentialBackup")
             };
 
-            return InteractiveMenu("Type de sauvegarde", backupTypes);
+            return InteractiveMenu(ResourceManager.GetString("BackupType"), backupTypes);
         }
 
         private bool CheckName(string name)
@@ -469,10 +572,10 @@ namespace easySave_BMT.View_
             for (int i =0; i<saves.Count; i++)
             {
                 Console.WriteLine(
-                    "\n" + (i + shift) + " - " + "Nom: " + saves[i].name
-                    + "\n      Source: " + saves[i].src 
-                    + "\n      Destination: " + saves[i].dst
-                    +"\n       Type: " + saves[i].backupType
+                    "\n" + (i + shift) + " - " + ResourceManager.GetString("Name") + ": " + saves[i].name
+                    + "\n      " + ResourceManager.GetString("Source") + ": " + saves[i].src 
+                    + "\n      " + ResourceManager.GetString("Destination") + ": " + saves[i].dst
+                    + "\n      " + ResourceManager.GetString("Type") + ": " + saves[i].backupType
                 );
             }
         }
@@ -480,7 +583,7 @@ namespace easySave_BMT.View_
         public void DisplayAllSaves()
         {
             Console.Clear();
-            Console.WriteLine("liste des sauvegardes : ");
+            Console.WriteLine(ResourceManager.GetString("BackupList") + " : ");
             SavesJobReport(1);
             DisplayMessage(1);
         }
@@ -488,10 +591,10 @@ namespace easySave_BMT.View_
         public string SaveName()
         {
             Console.Clear();
-            Console.WriteLine("Paramètre de sauvegarde");
+            Console.WriteLine(ResourceManager.GetString("BackupSettings"));
             DisplayMessage(2);
 
-            Console.WriteLine("\nEntrer un nom (1 à 20 caractères):");
+            Console.WriteLine("\n" + ResourceManager.GetString("EnterName"));
             string name = Console.ReadLine();
 
             while (!CheckName(name))
@@ -513,7 +616,7 @@ namespace easySave_BMT.View_
 
         public string SaveSrc()
         {
-            Console.WriteLine("\nEntrez la source du repertoire ");
+            Console.WriteLine("\n" + ResourceManager.GetString("EnterSourceDirectory"));
             string src = RectifyPath(Console.ReadLine());
 
             while(!Directory.Exists(src) && src != "0")
@@ -557,7 +660,7 @@ namespace easySave_BMT.View_
 
         public string SaveDst(string src)
         {
-            Console.WriteLine("\nEntrer la destination du répertoire.");
+            Console.WriteLine("\n" + ResourceManager.GetString("EnterDestinationDirectory"));
             string dst = RectifyPath(Console.ReadLine());
 
             while (!ChecksaveDst(src, dst))
@@ -593,7 +696,7 @@ namespace easySave_BMT.View_
         {
             Console.BackgroundColor = ConsoleColor.Green;
             Console.ForegroundColor = ConsoleColor.Black;
-            Console.Write("Progression: [ " + percent + " %]");
+            Console.Write(ResourceManager.GetString("Progress") + ": [ " + percent + " %]");
             Console.ResetColor();
 
             Console.Write(" [");
@@ -615,34 +718,24 @@ namespace easySave_BMT.View_
         {
             Console.SetCursorPosition(0, 0);
             Console.WriteLine($"Backup: {name}");
-            Console.WriteLine($"Fichier actuel: {DisplaySize(curSize)}");
-            Console.WriteLine($"Fichiers restants: {fileLeft}");
-            Console.WriteLine($"Taille restante: {DisplaySize(leftSize)}");
+            Console.WriteLine(ResourceManager.GetString("CurrentFile") + ": {DisplaySize(curSize)}");
+            Console.WriteLine(ResourceManager.GetString("FilesRemaining") + ": {fileLeft}");
+            Console.WriteLine(ResourceManager.GetString("SizeRemaining") + ": {DisplaySize(leftSize)}");
             DisplayProgressBar(percent);
         }
 
         public void DisplayBackupRecap(string name, double transfertTime)
         {
             Console.WriteLine("\n\n" + 
-                "Backup : " + name + " terminé\n"
-                +"\nDurée : " + transfertTime + "ms\n"
+                "Backup : " + name + " " + ResourceManager.GetString("Completed") + "\n"
+                +"\n" + ResourceManager.GetString("Duration") + " : " + transfertTime + "ms\n"
             );
             DisplayProgressBar(100);
         }
 
         public void DisplayFiledError(string name)
         {
-            Console.WriteLine("Échec pour le fichier " + name);
-        }
-        
-        private int CheckChoiceMenu(string inputUser, int minEntry, int maxEntry)
-        {
-            while(!(CheckInt(inputUser) && (Int32.Parse(inputUser) >= minEntry && Int32.Parse(inputUser)<= maxEntry)))
-            {
-                DisplayMessage(206);
-                inputUser = Console.ReadLine();
-            }
-            return Int32.Parse(inputUser);
+            Console.WriteLine(ResourceManager.GetString("FailedForFile") + " " + name);
         }
 
         public int RemovesaveChoice()
@@ -658,18 +751,18 @@ namespace easySave_BMT.View_
             for (int i = 0; i < saves.Count; i++)
                 items[i] = $"{i + 1} - {saves[i].name}";
 
-            return InteractiveMenu("Supprimer une sauvegarde", items);
+            return InteractiveMenu(ResourceManager.GetString("DeleteBackup"), items);
         }
 
         public int LaunchBackupChoice()
         {
             var saves = viewModel.model.saves;
             string[] items = new string[saves.Count + 1];
-            items[0] = "1 - Tout sauvegarder";
+            items[0] = "1 - " + ResourceManager.GetString("BackupAll");
             for (int i = 0; i < saves.Count; i++)
                 items[i + 1] = $"{i + 2} - {saves[i].name}";
 
-            return InteractiveMenu("Lancer une sauvegarde", items);
+            return InteractiveMenu(ResourceManager.GetString("LaunchBackup"), items);
         }
     }
 }
