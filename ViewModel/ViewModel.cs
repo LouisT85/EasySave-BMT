@@ -74,23 +74,20 @@ namespace easySave_BMT.ViewModel_
             switch (choice)
             {
                 case 1:
-                    // Afficher la configuration actuelle
                     var config = model.GetConfig();
                     view.DisplayCurrentConfiguration(config);
                     break;
                     
                 case 2:
-                    // Modifier le répertoire des logs
                     string newLogDir = view.AskForLogDirectory();
                     if (!string.IsNullOrWhiteSpace(newLogDir))
                     {
                         model.UpdateConfig(newLogDir, null, null);
-                        view.DisplayMessage(218); // Configuration mise à jour
+                        view.DisplayMessage(218);
                     }
                     break;
                     
                 case 3:
-                    // Modifier le fichier d'état
                     string newStatePath = view.AskForStateFilePath();
                     if (!string.IsNullOrWhiteSpace(newStatePath))
                     {
@@ -100,7 +97,6 @@ namespace easySave_BMT.ViewModel_
                     break;
                     
                 case 4:
-                    // Changer la langue
                     string newLang = view.AskForLanguage();
                     if (!string.IsNullOrWhiteSpace(newLang))
                     {
@@ -250,7 +246,6 @@ namespace easySave_BMT.ViewModel_
                 return 207;
             }
 
-            // Mettre à jour l'état avant de commencer
             var initialState = new State(0, 0, _save.src, _save.dst);
             _save.state = initialState;
             model.UpdateSaveState(_save);
@@ -412,7 +407,6 @@ namespace easySave_BMT.ViewModel_
 
                 if (this.model.CopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent))
                 {
-                    // Simulation réaliste
                     Thread.Sleep((int)(curSize / 1000000));
                     this.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
                 }
