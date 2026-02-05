@@ -5,7 +5,7 @@ namespace easySave_BMT
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main(string[] args) // Method who runs the app
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             
