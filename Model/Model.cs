@@ -10,11 +10,17 @@ using easySave_BMT.Resources_;
 
 namespace easySave_BMT.Model_
 {
+    /// <summary>
+    /// Core logic class of the application. It manages the list of backup jobs, 
+    /// file operations, logging orchestration, and configuration persistence.
+    /// </summary>
     public class Model
     {
         private EasyLogger logger;
         private Config config;
         private string backupsaveSavePath = "./BackupSave.json";
+
+        /// <summary>List of all configured backup jobs.</summary>
         public List<Save> saves { get; private set; }
 
         private JsonSerializerOptions jsonOptions = new JsonSerializerOptions()
@@ -22,24 +28,29 @@ namespace easySave_BMT.Model_
             WriteIndented = true
         };
 
+        /// <summary>
+        /// Initializes the Model, loads user configuration, sets up the logger, 
+        /// and initializes the state file paths.
+        /// </summary>
         public Model()
         {
             this.saves = new List<Save>();
-
             config = Config.Load();
 
+            // Initialize global resources based on config
             ResourceManager.SetLanguage(config.Language);
-
             RealTimeState.SetFilePath(config.StateFilePath);
-
             Directory.CreateDirectory(config.LogDirectory);
-
             logger = new EasyLogger(config.LogDirectory);
 
             Console.WriteLine($"Logs directory: {config.LogDirectory}");
             Console.WriteLine($"State file: {config.StateFilePath}");
         }
 
+        /// <summary>
+        /// Adds a new backup job to the list and persists the changes.
+        /// </summary>
+        /// <returns>Status code: 101 for success, 201 for failure.</returns>
         public int AddSave(string name, string src, string dst, BackupType backupType)
         {
             try
@@ -47,6 +58,7 @@ namespace easySave_BMT.Model_
                 this.saves.Add(new Save(name, src, dst, backupType));
                 AddLogInJSONFile();
 
+                // Create initial inactive state in the state file
                 var inactiveState = State.CreateInactiveState(name);
                 RealTimeState.SaveStates(new List<RealTimeState> { inactiveState });
 
@@ -58,6 +70,10 @@ namespace easySave_BMT.Model_
             }
         }
 
+        /// <summary>
+        /// Removes a backup job from the list at the specified index.
+        /// </summary>
+        /// <returns>Status code: 103 for success, 203 for failure.</returns>
         public int RemoveSave(int index)
         {
             try
@@ -66,6 +82,7 @@ namespace easySave_BMT.Model_
                 this.saves.RemoveAt(index);
                 AddLogInJSONFile();
 
+                // Clean up the real-time state file
                 RealTimeState.RemoveState(removedName);
 
                 return 103;
@@ -76,11 +93,18 @@ namespace easySave_BMT.Model_
             }
         }
 
+        /// <summary>
+        /// Wrapper method to trigger save data loading.
+        /// </summary>
         public int CreateLogs()
         {
             return ReloadSavesFromFile();
         }
 
+        /// <summary>
+        /// Loads the list of backup jobs from the BackupSave.json file.
+        /// </summary>
+        /// <returns>Status code: 100 for success, 200 for error.</returns>
         public int ReloadSavesFromFile()
         {
             if (File.Exists(backupsaveSavePath))
@@ -117,6 +141,9 @@ namespace easySave_BMT.Model_
             }
         }
 
+        /// <summary>
+        /// Serializes the current list of backup jobs to the JSON save file.
+        /// </summary>
         public void AddLogInJSONFile()
         {
             try
@@ -130,6 +157,9 @@ namespace easySave_BMT.Model_
             }
         }
 
+        /// <summary>
+        /// Synchronizes the current execution states of all jobs with the real-time state file.
+        /// </summary>
         public void SaveStates()
         {
             try
@@ -158,6 +188,10 @@ namespace easySave_BMT.Model_
             }
         }
 
+        /// <summary>
+        /// Updates the real-time file for a single backup job.
+        /// </summary>
+        /// <param name="save">The backup job to update.</param>
         public void UpdateSaveState(Save save)
         {
             try
@@ -180,6 +214,10 @@ namespace easySave_BMT.Model_
             }
         }
 
+        /// <summary>
+        /// Performs the physical copy of a file, updates progress state, and logs the operation.
+        /// </summary>
+        /// <returns>True if the file was copied successfully, otherwise false.</returns>
         public bool CopyFile(
             Save save,
             FileInfo currentFile,
@@ -195,6 +233,7 @@ namespace easySave_BMT.Model_
             string curDirPath = currentFile.DirectoryName;
             string dstDirectory = dst;
 
+            // Handle sub-directory structure at the destination
             if (Path.GetRelativePath(save.src, curDirPath).Length > 1)
             {
                 dstDirectory += Path.GetRelativePath(save.src, curDirPath) + "\\";
@@ -209,6 +248,7 @@ namespace easySave_BMT.Model_
 
             try
             {
+                // Update dynamic state before starting the copy
                 save.state.UpdateState(
                     pourcent,
                     (totalFile - fileIndex),
@@ -219,10 +259,12 @@ namespace easySave_BMT.Model_
 
                 UpdateSaveState(save);
 
+                // Perform file copy
                 currentFile.CopyTo(dstFile, true);
 
                 long transferTime = (long)(DateTime.Now - startTimeFile).TotalMilliseconds;
 
+                // Log success
                 logger.Write(new LogEntry
                 {
                     Timestamp = DateTime.Now,
@@ -239,6 +281,7 @@ namespace easySave_BMT.Model_
             {
                 Console.WriteLine($"Error copying file: {ex.Message}");
 
+                // Log error (TransferTime set to -1)
                 logger.Write(new LogEntry
                 {
                     Timestamp = DateTime.Now,
@@ -253,6 +296,9 @@ namespace easySave_BMT.Model_
             }
         }
 
+        /// <summary>
+        /// Marks a backup job as finished, resets its progress state, and updates the persistence file.
+        /// </summary>
         public void FinishBackup(Save save)
         {
             if (save.state != null)
@@ -265,11 +311,17 @@ namespace easySave_BMT.Model_
             UpdateSaveState(save);
         }
 
+        /// <summary>
+        /// Gets the current global configuration.
+        /// </summary>
         public Config GetConfig()
         {
             return config;
         }
 
+        /// <summary>
+        /// Updates application settings, including language, log directory, and state file path.
+        /// </summary>
         public void UpdateConfig(string logDir, string statePath, string language)
         {
             config.UpdateFromUserInput(logDir, statePath, language);
@@ -281,6 +333,7 @@ namespace easySave_BMT.Model_
 
             RealTimeState.SetFilePath(config.StateFilePath);
 
+            // Refresh logger with new directory
             Directory.CreateDirectory(config.LogDirectory);
             logger = new EasyLogger(config.LogDirectory);
         }
