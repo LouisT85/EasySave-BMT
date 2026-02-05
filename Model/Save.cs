@@ -11,7 +11,7 @@ namespace easySave_BMT.Model_
         public State state { get; set; }
         public string lastBackupDate { get; set; }
 
-        public Save() 
+        public Save()
         {
             this.state = null;
             this.lastBackupDate = "";

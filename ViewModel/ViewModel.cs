@@ -4,37 +4,33 @@ using System.Collections.Generic;
 using easySave_BMT.Model_;
 using easySave_BMT.View_;
 using System.Threading;
+using easySave_BMT.Resources_;
 
 namespace easySave_BMT.ViewModel_
 {
-    /// ViewModel class acting as intermediary between View and Model
     public class ViewModel
     {
         public Model model;
         public View view;
 
-
-        /// Initializes a new instance of the ViewModel class
         public ViewModel()
         {
             this.model = new Model();
             this.view = new View(this);
         }
 
-        /// Runs the main application loop
         public void RunApp()
         {
-            // Load existing saves from JSON file
             int loadResult = model.CreateLogs();
 
             if (loadResult == 100)
             {
-                Console.WriteLine("Application EasySave - BMT loaded successfully!");
+                Console.WriteLine(ResourceManager.GetString("FileAddedSuccess"));
                 view.DisplayMessage(100);
             }
             else
             {
-                Console.WriteLine("Error loading saves.");
+                Console.WriteLine(ResourceManager.GetString("Error"));
                 view.DisplayMessage(loadResult);
             }
 
@@ -60,8 +56,8 @@ namespace easySave_BMT.ViewModel_
                         break;
                     case 6:
                         currentlyRunning = false;
-                        Console.WriteLine("Thank you for using EasySave - BMT!");
-                        Console.WriteLine("Press any key to exit...");
+                        Console.WriteLine(ResourceManager.GetString("Quit") + "!");
+                        Console.WriteLine(ResourceManager.GetString("PressEnter"));
                         Console.ReadKey();
                         break;
                     default:
@@ -71,23 +67,21 @@ namespace easySave_BMT.ViewModel_
             }
         }
 
-
-        /// Displays the configuration menu
         private void ConfigurationMenu()
         {
             bool inConfigMenu = true;
-        
+
             while (inConfigMenu)
             {
                 int choice = view.ConfigurationMenu();
-        
+
                 switch (choice)
                 {
                     case 1:
                         var config = model.GetConfig();
                         view.DisplayCurrentConfiguration(config);
                         break;
-        
+
                     case 2:
                         string newLogDir = view.AskForLogDirectory();
                         if (!string.IsNullOrWhiteSpace(newLogDir))
@@ -96,7 +90,7 @@ namespace easySave_BMT.ViewModel_
                             view.DisplayMessage(218);
                         }
                         break;
-        
+
                     case 3:
                         string newStatePath = view.AskForStateFilePath();
                         if (!string.IsNullOrWhiteSpace(newStatePath))
@@ -105,7 +99,7 @@ namespace easySave_BMT.ViewModel_
                             view.DisplayMessage(218);
                         }
                         break;
-        
+
                     case 4:
                         string newLang = view.AskForLanguage();
                         if (!string.IsNullOrWhiteSpace(newLang))
@@ -113,13 +107,12 @@ namespace easySave_BMT.ViewModel_
                             model.UpdateConfig(null, null, newLang);
                             view.DisplayMessage(218);
                         }
-                        // On ne quitte pas le menu de config, retour automatique au menu précédent
                         break;
-        
+
                     case 0:
                         inConfigMenu = false;
                         break;
-        
+
                     default:
                         view.DisplayMessage(206);
                         break;
@@ -127,8 +120,6 @@ namespace easySave_BMT.ViewModel_
             }
         }
 
-
-        /// Displays all save jobs
         private void DisplaySaves()
         {
             int reloadResult = this.model.ReloadSavesFromFile();
@@ -150,8 +141,6 @@ namespace easySave_BMT.ViewModel_
             }
         }
 
-
-        /// Adds a new save job
         private void AddSave()
         {
             if (this.model.saves.Count < 5)
@@ -188,8 +177,6 @@ namespace easySave_BMT.ViewModel_
             }
         }
 
-
-        /// Removes a save job
         private void RemoveSave()
         {
             if (this.model.saves.Count > 0)
@@ -214,8 +201,6 @@ namespace easySave_BMT.ViewModel_
             }
         }
 
-
-        /// Launches backup operations
         private void LaunchBackupsave()
         {
             if (this.model.saves.Count > 0)
@@ -232,12 +217,12 @@ namespace easySave_BMT.ViewModel_
                         {
                             int result = LaunchBackupType(save);
                             this.view.DisplayMessage(result);
-                            
+
                             if (result == 104 || result == 105 || result == 216)
                             {
                                 model.FinishBackup(save);
                             }
-                            
+
                             this.view.DisplayMessage(4);
                         }
                         break;
@@ -247,7 +232,7 @@ namespace easySave_BMT.ViewModel_
                         Save selectedSave = this.model.saves[indexsave];
                         int backupResult = LaunchBackupType(selectedSave);
                         this.view.DisplayMessage(backupResult);
-                        
+
                         if (backupResult == 104 || backupResult == 105 || backupResult == 216)
                         {
                             model.FinishBackup(selectedSave);
@@ -262,8 +247,6 @@ namespace easySave_BMT.ViewModel_
             }
         }
 
-
-        /// Launches a backup of specific type
         public int LaunchBackupType(Save _save)
         {
             DirectoryInfo dir = new DirectoryInfo(_save.src);
@@ -273,9 +256,8 @@ namespace easySave_BMT.ViewModel_
                 return 207;
             }
 
-            // Update state before starting
-            var initialState = new State(0, 0, _save.src, _save.dst);
-            _save.state = initialState;
+            var activeState = new State(0, 0, _save.src, _save.dst);
+            _save.state = activeState;
             model.UpdateSaveState(_save);
 
             switch (_save.backupType)
@@ -297,8 +279,6 @@ namespace easySave_BMT.ViewModel_
             }
         }
 
-
-        /// Finds the directory of the last full backup for differential backup
         private string GetFullBackupDir(Save _save)
         {
             DirectoryInfo[] dirs = new DirectoryInfo(_save.dst).GetDirectories();
@@ -314,7 +294,6 @@ namespace easySave_BMT.ViewModel_
             return null;
         }
 
-        /// Sets up a full backup
         private int FullBackupSetup(Save _save, DirectoryInfo _dir)
         {
             long totalSize = 0;
@@ -328,7 +307,6 @@ namespace easySave_BMT.ViewModel_
             return DoBackup(_save, files, totalSize);
         }
 
-        /// Sets up a differential backup
         private int DifferentialBackupSetup(Save _save, DirectoryInfo _dir, string _fullBackupDir)
         {
             long totalSize = 0;
@@ -358,7 +336,6 @@ namespace easySave_BMT.ViewModel_
             return DoBackup(_save, filesToCopy.ToArray(), totalSize);
         }
 
-        /// Compares if two files are identical
         private bool IsSameFile(string path1, string path2)
         {
             try
@@ -385,7 +362,6 @@ namespace easySave_BMT.ViewModel_
             }
         }
 
-        /// Executes the backup operation
         private int DoBackup(Save _save, FileInfo[] _files, long _totalSize)
         {
             DateTime startTime = DateTime.Now;
@@ -407,7 +383,7 @@ namespace easySave_BMT.ViewModel_
             DateTime endTime = DateTime.Now;
             TimeSpan saveTime = endTime - startTime;
             double transferTime = saveTime.TotalMilliseconds;
-            
+
             this.model.AddLogInJSONFile();
             this.view.DisplayMessage(3);
 
@@ -427,7 +403,6 @@ namespace easySave_BMT.ViewModel_
             }
         }
 
-        /// Copies files for a backup operation
         private List<string> CopyFiles(Save _save, FileInfo[] _files, long _totalSize, string _dst)
         {
             long leftSize = _totalSize;
@@ -442,7 +417,6 @@ namespace easySave_BMT.ViewModel_
 
                 if (this.model.CopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent))
                 {
-                    // Realistic simulation
                     Thread.Sleep((int)(curSize / 1000000));
                     this.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
                 }

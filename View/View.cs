@@ -97,7 +97,7 @@ namespace easySave_BMT.View_
                 Console.Clear();
                 Console.WriteLine("=== Easy Save - BMT ===");
                 Console.WriteLine("");
-                
+
                 for (int i = 0; i < menuItems.Length; i++)
                 {
                     if (i == selectedIndex)
@@ -111,9 +111,9 @@ namespace easySave_BMT.View_
                         Console.WriteLine("  " + menuItems[i]);
                     }
                 }
-                
+
                 Console.WriteLine("");
-                
+
                 if (selectedIndex == 5)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -124,12 +124,12 @@ namespace easySave_BMT.View_
                 {
                     Console.WriteLine("  6 - " + ResourceManager.GetString("Quit"));
                 }
-                
+
                 Console.WriteLine("");
                 Console.WriteLine(ResourceManager.GetString("MenuNavigation"));
 
                 ConsoleKeyInfo key = Console.ReadKey(true);
-                
+
                 if (char.IsDigit(key.KeyChar))
                 {
                     int choice = key.KeyChar - '0';
@@ -180,17 +180,17 @@ namespace easySave_BMT.View_
         private bool IsValidPath(string path)
         {
             if (string.IsNullOrWhiteSpace(path)) return false;
-            
+
             try
             {
                 Path.GetFullPath(path);
-                
+
                 char[] invalidChars = Path.GetInvalidPathChars();
                 foreach (char c in invalidChars)
                 {
                     if (path.Contains(c)) return false;
                 }
-                
+
                 return true;
             }
             catch
@@ -202,7 +202,7 @@ namespace easySave_BMT.View_
         private bool CheckLogDirectory(string path)
         {
             if (path == "0") return true;
-            
+
             if (!IsValidPath(path))
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -214,11 +214,11 @@ namespace easySave_BMT.View_
             try
             {
                 Directory.CreateDirectory(path);
-                
+
                 string testFile = Path.Combine(path, $"test_{Guid.NewGuid()}.tmp");
                 File.WriteAllText(testFile, "test");
                 File.Delete(testFile);
-                
+
                 return true;
             }
             catch (UnauthorizedAccessException)
@@ -244,17 +244,22 @@ namespace easySave_BMT.View_
             Console.WriteLine("");
             Console.WriteLine(ResourceManager.GetString("LeaveEmptyToKeep"));
             Console.WriteLine("");
-            
+
             while (true)
             {
                 Console.Write(ResourceManager.GetString("NewLogDirectory") + ": ");
                 string input = RectifyPath(Console.ReadLine());
-                
+
                 if (input == "0")
                 {
                     return null;
                 }
-                
+
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    return null;
+                }
+
                 if (CheckLogDirectory(input))
                 {
                     return input;
@@ -265,7 +270,7 @@ namespace easySave_BMT.View_
         private bool CheckStateFilePath(string path)
         {
             if (path == "0") return true;
-            
+
             if (!path.Contains(".") || !path.EndsWith(".json"))
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -294,11 +299,11 @@ namespace easySave_BMT.View_
             try
             {
                 Directory.CreateDirectory(directory);
-                
+
                 string testFile = Path.Combine(directory, $"test_{Guid.NewGuid()}.tmp");
                 File.WriteAllText(testFile, "test");
                 File.Delete(testFile);
-                
+
                 return true;
             }
             catch (UnauthorizedAccessException)
@@ -327,17 +332,17 @@ namespace easySave_BMT.View_
             Console.WriteLine(ResourceManager.GetString("StateFilePathInstruction"));
             Console.WriteLine(ResourceManager.GetString("LeaveEmptyToKeep"));
             Console.WriteLine("");
-            
+
             while (true)
             {
                 Console.Write(ResourceManager.GetString("NewStateFilePath") + ": ");
                 string input = Console.ReadLine();
-                
+
                 if (input == "0" || string.IsNullOrWhiteSpace(input))
                 {
                     return null;
                 }
-                
+
                 if (CheckStateFilePath(input))
                 {
                     return input;
@@ -373,7 +378,7 @@ namespace easySave_BMT.View_
                 Console.ResetColor();
                 return;
             }
-            
+
             if (id < 100)
             {
                 Console.ForegroundColor = ConsoleColor.Cyan;
@@ -413,7 +418,7 @@ namespace easySave_BMT.View_
                         Console.WriteLine("\n" + ResourceManager.GetString("FileAddedSuccess"));
                         DisplayMessage(1);
                         break;
-                    
+
                     case 102:
                         Console.WriteLine("\n" + ResourceManager.GetString("FileSavedSuccess"));
                         break;
@@ -573,7 +578,7 @@ namespace easySave_BMT.View_
             {
                 Console.WriteLine(
                     "\n" + (i + shift) + " - " + ResourceManager.GetString("Name") + ": " + saves[i].name
-                    + "\n      " + ResourceManager.GetString("Source") + ": " + saves[i].src 
+                    + "\n      " + ResourceManager.GetString("Source") + ": " + saves[i].src
                     + "\n      " + ResourceManager.GetString("Destination") + ": " + saves[i].dst
                     + "\n      " + ResourceManager.GetString("Type") + ": " + saves[i].backupType
                 );
@@ -718,15 +723,15 @@ namespace easySave_BMT.View_
         {
             Console.SetCursorPosition(0, 0);
             Console.WriteLine($"Backup: {name}");
-            Console.WriteLine(ResourceManager.GetString("CurrentFile") + ": {DisplaySize(curSize)}");
-            Console.WriteLine(ResourceManager.GetString("FilesRemaining") + ": {fileLeft}");
-            Console.WriteLine(ResourceManager.GetString("SizeRemaining") + ": {DisplaySize(leftSize)}");
+            Console.WriteLine($"{ResourceManager.GetString("CurrentFile")}: {DisplaySize(curSize)}");
+            Console.WriteLine($"{ResourceManager.GetString("FilesRemaining")}: {fileLeft}");
+            Console.WriteLine($"{ResourceManager.GetString("SizeRemaining")}: {DisplaySize(leftSize)}");
             DisplayProgressBar(percent);
         }
 
         public void DisplayBackupRecap(string name, double transfertTime)
         {
-            Console.WriteLine("\n\n" + 
+            Console.WriteLine("\n\n" +
                 "Backup : " + name + " " + ResourceManager.GetString("Completed") + "\n"
                 +"\n" + ResourceManager.GetString("Duration") + " : " + transfertTime + "ms\n"
             );

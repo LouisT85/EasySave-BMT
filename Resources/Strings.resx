@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" msdata:Ordinal="5" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="DisplayBackups" xml:space="preserve">
+    <value>Display backups</value>
+  </data>
+  <data name="AddBackup" xml:space="preserve">
+    <value>Add backup</value>
+  </data>
+  <data name="DeleteBackup" xml:space="preserve">
+    <value>Delete backup</value>
+  </data>
+  <data name="RunBackup" xml:space="preserve">
+    <value>Run backup</value>
+  </data>
+  <data name="Configuration" xml:space="preserve">
+    <value>Configuration</value>
+  </data>
+  <data name="Quit" xml:space="preserve">
+    <value>Quit</value>
+  </data>
+  <data name="Return" xml:space="preserve">
+    <value>Return</value>
+  </data>
+  <data name="MenuNavigation" xml:space="preserve">
+    <value>↑↓ to navigate | 1-6 or ↵ to confirm | Esc to cancel</value>
+  </data>
+  <data name="DisplayConfig" xml:space="preserve">
+    <value>Display current configuration</value>
+  </data>
+  <data name="ModifyLogDir" xml:space="preserve">
+    <value>Modify log directory</value>
+  </data>
+  <data name="ModifyStateFile" xml:space="preserve">
+    <value>Modify state file</value>
+  </data>
+  <data name="ChangeLanguage" xml:space="preserve">
+    <value>Change language (fr/en)</value>
+  </data>
+  <data name="CurrentConfiguration" xml:space="preserve">
+    <value>Current configuration</value>
+  </data>
+  <data name="LogDirectory" xml:space="preserve">
+    <value>Log directory</value>
+  </data>
+  <data name="StateFile" xml:space="preserve">
+    <value>State file</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="PressEnter" xml:space="preserve">
+    <value>Press Enter to continue...</value>
+  </data>
+  <data name="LeaveEmptyToKeep" xml:space="preserve">
+    <value>Leave empty to keep current value.</value>
+  </data>
+  <data name="NewLogDirectory" xml:space="preserve">
+    <value>New log directory</value>
+  </data>
+  <data name="InvalidPath" xml:space="preserve">
+    <value>Error: Invalid path.</value>
+  </data>
+  <data name="NoWritePermission" xml:space="preserve">
+    <value>Error: No write permission at this location.</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="ConfigStateFilePath" xml:space="preserve">
+    <value>State file path configuration</value>
+  </data>
+  <data name="CurrentStateFile" xml:space="preserve">
+    <value>Current state file</value>
+  </data>
+  <data name="StateFilePathInstruction" xml:space="preserve">
+    <value>IMPORTANT: Provide a complete path including the file name (e.g., C:\EasySave\state.json)</value>
+  </data>
+  <data name="NewStateFilePath" xml:space="preserve">
+    <value>New state file path</value>
+  </data>
+  <data name="StateFilePathWarning" xml:space="preserve">
+    <value>Warning: The file must have a .json extension and include the full file name.</value>
+  </data>
+  <data name="ConfigUpdated" xml:space="preserve">
+    <value>Configuration updated successfully!</value>
+  </data>
+  <data name="PressEnterToMenu" xml:space="preserve">
+    <value>Press Enter to display the menu . . . .</value>
+  </data>
+  <data name="PressEnterMore" xml:space="preserve">
+    <value>Press Enter to see more . . .</value>
+  </data>
+  <data name="FileAddedSuccess" xml:space="preserve">
+    <value>File added successfully!!!</value>
+  </data>
+  <data name="FileSavedSuccess" xml:space="preserve">
+    <value>File saved successfully!</value>
+  </data>
+  <data name="FileDeletedSuccess" xml:space="preserve">
+    <value>File deleted successfully!!!</value>
+  </data>
+  <data name="BackupSuccess" xml:space="preserve">
+    <value>Backup successful!</value>
+  </data>
+  <data name="NoChanges" xml:space="preserve">
+    <value>No changes since the last full backup!</value>
+  </data>
+  <data name="RestoreJSON" xml:space="preserve">
+    <value>Restore your JSON backup file.</value>
+  </data>
+  <data name="AddFailed" xml:space="preserve">
+    <value>Add failed.</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>Save failed.</value>
+  </data>
+  <data name="DeleteFailed" xml:space="preserve">
+    <value>Delete failed.</value>
+  </data>
+  <data name="ListEmpty" xml:space="preserve">
+    <value>The list is empty</value>
+  </data>
+  <data name="ListFull" xml:space="preserve">
+    <value>The list is full</value>
+  </data>
+  <data name="InvalidOption" xml:space="preserve">
+    <value>Enter a valid option</value>
+  </data>
+  <data name="TransferFailed" xml:space="preserve">
+    <value>File transfer failed, source or destination file does not exist.</value>
+  </data>
+  <data name="BackupTypeNotExist" xml:space="preserve">
+    <value>The selected backup type does not exist</value>
+  </data>
+  <data name="CopyFailed" xml:space="preserve">
+    <value>File copy failed.</value>
+  </data>
+  <data name="CreateFolderFailed" xml:space="preserve">
+    <value>Backup folder creation failed.</value>
+  </data>
+  <data name="DirectoryNotExist" xml:space="preserve">
+    <value>Directory does not exist. Please enter a valid source directory.</value>
+  </data>
+  <data name="ChooseDifferentPath" xml:space="preserve">
+    <value>Choose a different path from the source.</value>
+  </data>
+  <data name="DestinationNotExist" xml:space="preserve">
+    <value>Directory does not exist. Please enter a valid destination directory.</value>
+  </data>
+  <data name="NameTaken" xml:space="preserve">
+    <value>Name is already taken. Please enter another name.</value>
+  </data>
+  <data name="EnterValidName" xml:space="preserve">
+    <value>Enter a VALID name (1 to 20 characters):</value>
+  </data>
+  <data name="BackupCompletedWithErrors" xml:space="preserve">
+    <value>Backup completed with errors.</value>
+  </data>
+  <data name="DestinationInsideSource" xml:space="preserve">
+    <value>Destination cannot be inside source.</value>
+  </data>
+  <data name="UnknownError" xml:space="preserve">
+    <value>Failed: Unknown error.</value>
+  </data>
+  <data name="FullBackup" xml:space="preserve">
+    <value>Full backup</value>
+  </data>
+  <data name="DifferentialBackup" xml:space="preserve">
+    <value>Differential backup</value>
+  </data>
+  <data name="BackupType" xml:space="preserve">
+    <value>Backup type</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Source" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="Destination" xml:space="preserve">
+    <value>Destination</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="BackupList" xml:space="preserve">
+    <value>Backup list</value>
+  </data>
+  <data name="BackupSettings" xml:space="preserve">
+    <value>Backup settings</value>
+  </data>
+  <data name="EnterName" xml:space="preserve">
+    <value>Enter a name (1 to 20 characters):</value>
+  </data>
+  <data name="EnterSourceDirectory" xml:space="preserve">
+    <value>Enter source directory</value>
+  </data>
+  <data name="EnterDestinationDirectory" xml:space="preserve">
+    <value>Enter destination directory</value>
+  </data>
+  <data name="Progress" xml:space="preserve">
+    <value>Progress</value>
+  </data>
+  <data name="CurrentFile" xml:space="preserve">
+    <value>Current file</value>
+  </data>
+  <data name="FilesRemaining" xml:space="preserve">
+    <value>Files remaining</value>
+  </data>
+  <data name="SizeRemaining" xml:space="preserve">
+    <value>Size remaining</value>
+  </data>
+  <data name="Completed" xml:space="preserve">
+    <value>completed</value>
+  </data>
+  <data name="Duration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="FailedForFile" xml:space="preserve">
+    <value>Failed for file</value>
+  </data>
+  <data name="BackupAll" xml:space="preserve">
+    <value>Backup all</value>
+  </data>
+  <data name="LaunchBackup" xml:space="preserve">
+    <value>Launch backup</value>
+  </data>
+</root>

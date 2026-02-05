@@ -8,14 +8,14 @@ namespace easySave_BMT.Model_
         public string LogDirectory { get; set; }
         public string StateFilePath { get; set; }
         public string Language { get; set; } = "fr";
-        
+
         private static readonly string ConfigPath = "./config.json";
 
         public Config()
         {
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
             string easySavePath = Path.Combine(appDataPath, "EasySave");
-            
+
             LogDirectory = Path.Combine(easySavePath, "Logs");
             StateFilePath = Path.Combine(easySavePath, "state.json");
         }
@@ -55,13 +55,13 @@ namespace easySave_BMT.Model_
         {
             if (!string.IsNullOrWhiteSpace(logDir))
                 LogDirectory = logDir;
-            
+
             if (!string.IsNullOrWhiteSpace(statePath))
                 StateFilePath = statePath;
-            
+
             if (!string.IsNullOrWhiteSpace(lang))
                 Language = lang;
-            
+
             Save();
         }
     }

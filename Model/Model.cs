@@ -10,7 +10,7 @@ using easySave_BMT.Resources_;
 
 namespace easySave_BMT.Model_
 {
-    public class Model 
+    public class Model
     {
         private EasyLogger logger;
         private Config config;
@@ -20,22 +20,22 @@ namespace easySave_BMT.Model_
         private JsonSerializerOptions jsonOptions = new JsonSerializerOptions()
         {
             WriteIndented = true
-        }; 
+        };
 
         public Model()
         {
             this.saves = new List<Save>();
-            
+
             config = Config.Load();
-            
+
             ResourceManager.SetLanguage(config.Language);
-            
+
             RealTimeState.SetFilePath(config.StateFilePath);
-            
+
             Directory.CreateDirectory(config.LogDirectory);
-            
+
             logger = new EasyLogger(config.LogDirectory);
-            
+
             Console.WriteLine($"Logs directory: {config.LogDirectory}");
             Console.WriteLine($"State file: {config.StateFilePath}");
         }
@@ -46,8 +46,10 @@ namespace easySave_BMT.Model_
             {
                 this.saves.Add(new Save(name, src, dst, backupType));
                 AddLogInJSONFile();
-                SaveStates();
-                
+
+                var inactiveState = State.CreateInactiveState(name);
+                RealTimeState.SaveStates(new List<RealTimeState> { inactiveState });
+
                 return 101;
             }
             catch
@@ -63,15 +65,9 @@ namespace easySave_BMT.Model_
                 string removedName = this.saves[index].name;
                 this.saves.RemoveAt(index);
                 AddLogInJSONFile();
-                
-                var existingStates = RealTimeState.LoadStates();
-                var stateToRemove = existingStates.Find(s => s.Name == removedName);
-                if (stateToRemove != null)
-                {
-                    existingStates.Remove(stateToRemove);
-                }
-                RealTimeState.SaveStates(existingStates);
-                
+
+                RealTimeState.RemoveState(removedName);
+
                 return 103;
             }
             catch
@@ -100,7 +96,7 @@ namespace easySave_BMT.Model_
                     {
                         this.saves = new List<Save>();
                     }
-                    
+
                     return 100;
                 }
                 catch (JsonException jsonEx)
@@ -139,7 +135,7 @@ namespace easySave_BMT.Model_
             try
             {
                 List<RealTimeState> statesToSave = new List<RealTimeState>();
-                
+
                 foreach (var save in this.saves)
                 {
                     RealTimeState state;
@@ -149,11 +145,11 @@ namespace easySave_BMT.Model_
                     }
                     else
                     {
-                        state = State.CreateEndState(save.name);
+                        state = State.CreateInactiveState(save.name);
                     }
                     statesToSave.Add(state);
                 }
-                
+
                 RealTimeState.SaveStates(statesToSave);
             }
             catch (Exception ex)
@@ -166,39 +162,17 @@ namespace easySave_BMT.Model_
         {
             try
             {
-                var existingStates = RealTimeState.LoadStates();
-                var existingState = existingStates.Find(s => s.Name == save.name);
-                
-                if (existingState == null)
-                {
-                    existingState = new RealTimeState { Name = save.name };
-                    existingStates.Add(existingState);
-                }
-                
+                RealTimeState state;
                 if (save.state != null)
                 {
-                    existingState.Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                    existingState.State = "ACTIVE";
-                    existingState.SourceFilePath = save.state.currentPathSrc;
-                    existingState.TargetFilePath = save.state.currentPathDest;
-                    existingState.TotalFilesToCopy = save.state.totalFile;
-                    existingState.TotalFilesSize = save.state.totalSize;
-                    existingState.NbFilesLeftToDo = save.state.nbFileLeft;
-                    existingState.Progression = save.state.progress;
+                    state = save.state.ToRealTimeState(save.name);
                 }
                 else
                 {
-                    existingState.Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                    existingState.State = "END";
-                    existingState.SourceFilePath = "";
-                    existingState.TargetFilePath = "";
-                    existingState.TotalFilesToCopy = 0;
-                    existingState.TotalFilesSize = 0;
-                    existingState.NbFilesLeftToDo = 0;
-                    existingState.Progression = 0;
+                    state = State.CreateEndState(save.name);
                 }
-                
-                RealTimeState.SaveStates(existingStates);
+
+                RealTimeState.SaveStates(new List<RealTimeState> { state });
             }
             catch (Exception ex)
             {
@@ -242,11 +216,11 @@ namespace easySave_BMT.Model_
                     currentFile.FullName,
                     dstFile
                 );
-                
+
                 UpdateSaveState(save);
 
                 currentFile.CopyTo(dstFile, true);
-                
+
                 long transferTime = (long)(DateTime.Now - startTimeFile).TotalMilliseconds;
 
                 logger.Write(new LogEntry
@@ -264,7 +238,7 @@ namespace easySave_BMT.Model_
             catch (Exception ex)
             {
                 Console.WriteLine($"Error copying file: {ex.Message}");
-                
+
                 logger.Write(new LogEntry
                 {
                     Timestamp = DateTime.Now,
@@ -286,7 +260,7 @@ namespace easySave_BMT.Model_
                 save.state.UpdateState(100, 0, 0, "", "");
                 UpdateSaveState(save);
             }
-            
+
             save.state = null;
             UpdateSaveState(save);
         }
@@ -299,14 +273,14 @@ namespace easySave_BMT.Model_
         public void UpdateConfig(string logDir, string statePath, string language)
         {
             config.UpdateFromUserInput(logDir, statePath, language);
-            
+
             if (!string.IsNullOrWhiteSpace(language))
             {
                 ResourceManager.SetLanguage(language);
             }
-            
+
             RealTimeState.SetFilePath(config.StateFilePath);
-            
+
             Directory.CreateDirectory(config.LogDirectory);
             logger = new EasyLogger(config.LogDirectory);
         }

@@ -46,6 +46,22 @@ namespace easySave_BMT.Model_
             };
         }
 
+        public static RealTimeState CreateInactiveState(string saveName)
+        {
+            return new RealTimeState
+            {
+                Name = saveName ?? "",
+                Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                State = "INACTIVE",
+                SourceFilePath = "",
+                TargetFilePath = "",
+                TotalFilesToCopy = 0,
+                TotalFilesSize = 0,
+                NbFilesLeftToDo = 0,
+                Progression = 0
+            };
+        }
+
         public static RealTimeState CreateEndState(string saveName)
         {
             return new RealTimeState
