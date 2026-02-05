@@ -5,6 +5,7 @@ using easySave_BMT.Model_;
 using easySave_BMT.View_;
 using System.Threading;
 using easySave_BMT.Resources_;
+using System.Linq;
 
 namespace easySave_BMT.ViewModel_
 {
@@ -18,7 +19,7 @@ namespace easySave_BMT.ViewModel_
         /// Model instance to access backup saves and configuration data
         /// </summary>
         public Model model;
-        
+
         /// <summary>
         /// View instance to display menus, messages and progress to user
         /// </summary>
@@ -30,13 +31,16 @@ namespace easySave_BMT.ViewModel_
         /// </summary>
         public ViewModel()
         {
-            this.model = new Model(); 
+            this.model = new Model();
             this.view = new View(this);
         }
 
         /// <summary>
         /// Main application entry point called from Program.cs
         /// Initializes logs, shows main menu loop until user quits
+        /// Supports command line arguments for automatic backup execution:
+        /// - EasySave.exe 1;3;5 : Execute backups 1, 3 and 5
+        /// - EasySave.exe 1-3;5 : Execute backups 1, 2, 3 and 5
         /// </summary>
         public void RunApp()
         {
@@ -47,13 +51,52 @@ namespace easySave_BMT.ViewModel_
             {
                 /// <see cref="ResourceManager.GetString"/> for localized strings
                 Console.WriteLine(ResourceManager.GetString("FileAddedSuccess"));
-                view.DisplayMessage(100);  // Welcome banner
             }
             else
             {
                 Console.WriteLine(ResourceManager.GetString("Error"));
                 view.DisplayMessage(loadResult);
             }
+
+            string[] args = Environment.GetCommandLineArgs();
+
+            if (args.Length > 1)
+            {
+                // Utilise le deuxième argument directement (premier argument est le chemin de l'exécutable)
+                string backupArg = args[1];
+                
+                // Vérifie s'il y a des arguments supplémentaires (avertissement)
+                if (args.Length > 2)
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("\nWarning: Only the first argument after the executable name is used.");
+                    Console.WriteLine("Use semicolons (;) to separate multiple backup indices.");
+                    Console.ResetColor();
+                }
+                
+                List<int> backupIndices = ParseCommandLineArguments(backupArg);
+
+                if (backupIndices != null && backupIndices.Count > 0)
+                {
+                    ExecuteCommandLineBackups(backupIndices);
+                    return;
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("\nInvalid command line argument format.");
+                    Console.WriteLine("Usage examples:");
+                    Console.WriteLine("  EasySave.exe 1;3;5       (execute backups 1, 3 and 5)");
+                    Console.WriteLine("  EasySave.exe 1-3;5       (execute backups 1, 2, 3 and 5)");
+                    Console.WriteLine("  EasySave.exe 1;2-4;7     (execute backups 1, 2, 3, 4 and 7)");
+                    Console.WriteLine("  EasySave.exe 1-5         (execute backups 1 to 5)");
+                    Console.ResetColor();
+                    Console.WriteLine("\nPress Enter to continue to interactive menu...");
+                    Console.ReadLine();
+                }
+            }
+
+            view.DisplayMessage(100);
 
             /// <summary>Main application loop</summary>
             bool currentlyRunning = true;
@@ -63,19 +106,19 @@ namespace easySave_BMT.ViewModel_
                 switch (this.view.Menu())
                 {
                     case 1:
-                        DisplaySaves();     // List all backup saves
+                        DisplaySaves();
                         break;
                     case 2:
-                        AddSave();          // Create new backup job
+                        AddSave();
                         break;
                     case 3:
-                        RemoveSave();       // Delete backup job
+                        RemoveSave();
                         break;
                     case 4:
-                        LaunchBackupsave(); // Execute backup(s)
+                        LaunchBackupsave();
                         break;
                     case 5:
-                        ConfigurationMenu(); // Settings menu
+                        ConfigurationMenu();
                         break;
                     case 6:
                         currentlyRunning = false;
@@ -84,10 +127,180 @@ namespace easySave_BMT.ViewModel_
                         Console.ReadKey();
                         break;
                     default:
-                        this.view.DisplayMessage(206);  // Invalid option
+                        this.view.DisplayMessage(206);
                         break;
                 }
             }
+        }
+
+        /// <summary>
+        /// Parses command line arguments to extract backup indices
+        /// Supports formats: "1-3" (range), "1;3" (list), "1;2-4;7" (mixed)
+        /// </summary>
+        /// <param name="argument">Command line argument string</param>
+        /// <returns>List of backup indices (1-based) or null if invalid</returns>
+        private List<int> ParseCommandLineArguments(string argument)
+        {
+            if (string.IsNullOrWhiteSpace(argument))
+                return null;
+
+            List<int> indices = new List<int>();
+
+            try
+            {
+                string[] parts = argument.Split(';');
+
+                foreach (string part in parts)
+                {
+                    if (string.IsNullOrWhiteSpace(part))
+                        continue;
+
+                    if (part.Contains("-"))
+                    {
+                        string[] range = part.Split('-');
+                        if (range.Length == 2)
+                        {
+                            int start = int.Parse(range[0].Trim());
+                            int end = int.Parse(range[1].Trim());
+
+                            if (start > 0 && end > 0 && start <= end)
+                            {
+                                for (int i = start; i <= end; i++)
+                                {
+                                    if (!indices.Contains(i))
+                                        indices.Add(i);
+                                }
+                            }
+                            else
+                            {
+                                return null;
+                            }
+                        }
+                        else
+                        {
+                            return null;
+                        }
+                    }
+                    else
+                    {
+                        int index = int.Parse(part.Trim());
+                        if (index > 0 && !indices.Contains(index))
+                            indices.Add(index);
+                        else if (index <= 0)
+                            return null;
+                    }
+                }
+
+                indices.Sort();
+                return indices;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Executes backups specified by command line arguments
+        /// </summary>
+        /// <param name="backupIndices">List of backup indices (1-based)</param>
+        private void ExecuteCommandLineBackups(List<int> backupIndices)
+        {
+            Console.WriteLine("\n=== Automatic Backup Execution ===\n");
+
+            if (this.model.saves.Count == 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("No backup configurations found.");
+                Console.ResetColor();
+                return;
+            }
+
+            int successCount = 0;
+            int errorCount = 0;
+            List<string> executedBackups = new List<string>();
+            List<string> failedBackups = new List<string>();
+
+            foreach (int index in backupIndices)
+            {
+                int arrayIndex = index - 1;
+
+                if (arrayIndex >= 0 && arrayIndex < this.model.saves.Count)
+                {
+                    Save save = this.model.saves[arrayIndex];
+                    Console.WriteLine($"Executing backup {index}: {save.name}");
+
+                    int result = LaunchBackupType(save);
+
+                    if (result == 104 || result == 105)
+                    {
+                        model.FinishBackup(save);
+                        successCount++;
+                        executedBackups.Add($"{index} - {save.name}");
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"✓ Backup {index} completed successfully\n");
+                        Console.ResetColor();
+                    }
+                    else if (result == 216)
+                    {
+                        model.FinishBackup(save);
+                        errorCount++;
+                        failedBackups.Add($"{index} - {save.name} (partial)");
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"⚠ Backup {index} completed with errors\n");
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        errorCount++;
+                        failedBackups.Add($"{index} - {save.name}");
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"✗ Backup {index} failed (Error {result})\n");
+                        Console.ResetColor();
+                    }
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"✗ Backup index {index} does not exist (Available: 1-{this.model.saves.Count})\n");
+                    Console.ResetColor();
+                    errorCount++;
+                    failedBackups.Add($"{index} - Not found");
+                }
+            }
+
+            Console.WriteLine("\n=== Execution Summary ===");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Successful: {successCount}");
+            Console.ResetColor();
+
+            if (errorCount > 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Failed/Errors: {errorCount}");
+                Console.ResetColor();
+            }
+
+            if (executedBackups.Count > 0)
+            {
+                Console.WriteLine("\nCompleted backups:");
+                foreach (string backup in executedBackups)
+                {
+                    Console.WriteLine($"  ✓ {backup}");
+                }
+            }
+
+            if (failedBackups.Count > 0)
+            {
+                Console.WriteLine("\nFailed backups:");
+                foreach (string backup in failedBackups)
+                {
+                    Console.WriteLine($"  ✗ {backup}");
+                }
+            }
+
+            Console.WriteLine("\nPress Enter to exit...");
+            Console.ReadLine();
         }
 
         /// <summary>
@@ -118,7 +331,7 @@ namespace easySave_BMT.ViewModel_
                         {
                             /// <see cref="Model.UpdateConfig"/> first param = log directory
                             model.UpdateConfig(newLogDir, null, null);
-                            view.DisplayMessage(218);  // Success message
+                            view.DisplayMessage(218);
                         }
                         break;
 
@@ -145,11 +358,11 @@ namespace easySave_BMT.ViewModel_
                         break;
 
                     case 0:
-                        inConfigMenu = false;  // Back to main menu
+                        inConfigMenu = false;
                         break;
 
                     default:
-                        view.DisplayMessage(206);  // Invalid config option
+                        view.DisplayMessage(206);
                         break;
                 }
             }
@@ -173,12 +386,12 @@ namespace easySave_BMT.ViewModel_
                 }
                 else
                 {
-                    this.view.DisplayMessage(204);  // "List is empty"
+                    this.view.DisplayMessage(204);
                 }
             }
             else
             {
-                this.view.DisplayMessage(reloadResult);  // Load error
+                this.view.DisplayMessage(reloadResult);
             }
         }
 
@@ -188,7 +401,7 @@ namespace easySave_BMT.ViewModel_
         /// </summary>
         private void AddSave()
         {
-            if (this.model.saves.Count < 5)  // Maximum 5 backup jobs
+            if (this.model.saves.Count < 5)
             {
                 /// <see cref="View.SaveName"/> validates length 1-20 + unique name
                 string addSaveName = view.SaveName();
@@ -206,7 +419,7 @@ namespace easySave_BMT.ViewModel_
                 switch (view.AddSaveBackupType())
                 {
                     case 0:
-                        return;  // User cancelled
+                        return;
                     case 1:
                         AddSaveBackupType = BackupType.FULL;
                         break;
@@ -217,13 +430,13 @@ namespace easySave_BMT.ViewModel_
                         AddSaveBackupType = BackupType.DIFFERENTIAL;
                         break;
                 }
-                
+
                 /// <see cref="Model.AddSave"/> returns result code (101=success)
                 this.view.DisplayMessage(model.AddSave(addSaveName, addSaveSrc, addSaveDest, AddSaveBackupType));
             }
             else
             {
-                this.view.DisplayMessage(205);  // "List is full"
+                this.view.DisplayMessage(205);
             }
         }
 
@@ -238,7 +451,7 @@ namespace easySave_BMT.ViewModel_
                 int choice = view.RemovesaveChoice();
                 if (choice == 0) return;
 
-                int index = choice - 1;  // 1-based → 0-based index
+                int index = choice - 1;
 
                 if (index >= 0 && index < this.model.saves.Count)
                 {
@@ -247,12 +460,12 @@ namespace easySave_BMT.ViewModel_
                 }
                 else
                 {
-                    this.view.DisplayMessage(206);  // Invalid index
+                    this.view.DisplayMessage(206);
                 }
             }
             else
             {
-                this.view.DisplayMessage(204);  // Empty list
+                this.view.DisplayMessage(204);
             }
         }
 
@@ -269,7 +482,7 @@ namespace easySave_BMT.ViewModel_
                 switch (userChoice)
                 {
                     case 0:
-                        return;  // Cancel
+                        return;
 
                     case 1:
                         /// <summary>Backup all saves in sequence</summary>
@@ -284,7 +497,7 @@ namespace easySave_BMT.ViewModel_
                                 model.FinishBackup(save);
                             }
 
-                            this.view.DisplayMessage(4);  // "Press Enter to continue"
+                            this.view.DisplayMessage(4);
                         }
                         break;
 
@@ -301,7 +514,7 @@ namespace easySave_BMT.ViewModel_
                         }
                         break;
                 }
-                this.view.DisplayMessage(1);  // "Back to menu"
+                this.view.DisplayMessage(1);
             }
             else
             {
@@ -346,7 +559,7 @@ namespace easySave_BMT.ViewModel_
                     return FullBackupSetup(_save, dir);
 
                 default:
-                    return 208;  // Invalid backup type
+                    return 208;
             }
         }
 
@@ -460,10 +673,10 @@ namespace easySave_BMT.ViewModel_
         private int DoBackup(Save _save, FileInfo[] _files, long _totalSize)
         {
             DateTime startTime = DateTime.Now;
-            
+
             /// <summary>Format: Destination/MySave_2024-01-15_14-30-00\</summary>
             string dst = _save.dst + _save.name + "_" + startTime.ToString("yyyy-MM-dd_HH-mm-ss") + "\\";
-            
+
             /// <summary>Update state with total files/size for progress tracking</summary>
             _save.state = new State(_files.Length, _totalSize, _save.src, dst);
             _save.lastBackupDate = startTime.ToString("yyyy/MM/dd_HH:mm:ss");
@@ -474,11 +687,11 @@ namespace easySave_BMT.ViewModel_
             }
             catch
             {
-                return 210;  // Cannot create backup directory
+                return 210;
             }
 
             Console.Clear();
-            
+
             /// <see cref="CopyFiles"/> returns list of failed files
             List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst);
             DateTime endTime = DateTime.Now;
@@ -487,14 +700,14 @@ namespace easySave_BMT.ViewModel_
 
             /// <summary>Log backup completion to JSON file</summary>
             this.model.AddLogInJSONFile();
-            this.view.DisplayMessage(3);  // "Backup information:"
+            this.view.DisplayMessage(3);
 
             /// <summary>Display failed files list</summary>
             foreach (string failedFile in failedFiles)
             {
                 this.view.DisplayFiledError(failedFile);
             }
-            
+
             /// <summary>Show final statistics (time, total size)</summary>
             this.view.DisplayBackupRecap(_save.name, transferTime);
 
