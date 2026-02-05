@@ -61,6 +61,30 @@ Pendant une sauvegarde, l’écran affiche en haut :
 
 En fin de sauvegarde, un récapitulatif affiche la durée totale, la progression à 100 %, ainsi que la liste des fichiers éventuellement en erreur.
 
+### Exécution automatique via la ligne de commande
+
+EasySave-BMT peut lancer directement une ou plusieurs sauvegardes au démarrage, sans passer par le menu interactif, en lui passant un argument en ligne de commande.
+
+- **Un seul index**: exécute la sauvegarde correspondante.
+- **Plusieurs index séparés par `;`**: exécute chaque sauvegarde listée.
+- **Plage avec `-`**: exécute toutes les sauvegardes du début à la fin de la plage (inclus).
+- **Mixte**: vous pouvez combiner des listes et des plages.
+
+Exemples (exécutable `EasySave.exe` situé dans le dossier courant) :
+
+```powershell
+.\EasySave.exe "1"          # exécute la sauvegarde 1
+.\EasySave.exe "1;3;5"      # exécute les sauvegardes 1, 3 et 5
+.\EasySave.exe "1-3;5"      # exécute les sauvegardes 1, 2, 3 et 5
+.\EasySave.exe "1-5"        # exécute les sauvegardes 1 à 5
+```
+
+> **Note (PowerShell)**: le caractère `;` est un séparateur de commandes dans PowerShell. Pour que EasySave reçoive bien la chaîne complète (`1;3;5`, `1-3;5`, etc.) comme **un seul argument**, il faut l’entourer de guillemets (`"..."`). Sous `cmd.exe`, l’exemple suivant fonctionne également sans guillemets :
+>
+> ```cmd
+> EasySave.exe 1;3;5
+> ```
+
 ### Structure du projet
 
 - **`Program`**: point d’entrée, initialise le `ViewModel` et lance `RunApp()`.
