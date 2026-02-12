@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using easySave_BMT.Model_;
+using easySave_BMT.ViewModel_.Backup;
 
 namespace easySave_BMT.ViewModel_.CommandLine
 {
@@ -41,7 +40,8 @@ namespace easySave_BMT.ViewModel_.CommandLine
                     Save save = _viewModel.model.saves[arrayIndex];
                     Console.WriteLine($"Executing backup {index}: {save.name}");
 
-                    int result = _viewModel._backupLauncher.LaunchBackupType(save);
+                    // ✅ Corrigé : accès direct au contrôleur public
+                    int result = _viewModel.backupLauncher.LaunchBackupType(save);
 
                     if (result == 104 || result == 105)
                     {
