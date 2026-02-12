@@ -38,5 +38,13 @@ namespace EasyLog.Models
         /// A value of -1 typically indicates a failed transfer.
         /// </summary>
         public long TransferTimeMs { get; set; }
+
+        /// <summary>
+        /// The time taken to encrypt the file in milliseconds.
+        /// 0 : no encryption
+        /// >0 : encryption time in ms
+        /// <0 : error code
+        /// </summary>
+        public long EncryptionTimeMs { get; set; }
     }
 }

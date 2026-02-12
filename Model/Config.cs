@@ -19,6 +19,9 @@ namespace easySave_BMT.Model_
         /// <summary>The preferred UI language code (e.g., "en", "fr"). Defaults to "fr".</summary>
         public string Language { get; set; } = "fr";
 
+        /// <summary>Preferred log file format: "XML" or "JSON". Defaults to XML to satisfy client requirement.</summary>
+        public string LogFormat { get; set; } = "XML";
+
         /// <summary>The relative path to the configuration file itself.</summary>
         private static readonly string ConfigPath = "./config.json";
 

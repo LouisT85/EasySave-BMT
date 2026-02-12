@@ -41,7 +41,13 @@ namespace easySave_BMT.Model_
             ResourceManager.SetLanguage(config.Language);
             RealTimeState.SetFilePath(config.StateFilePath);
             Directory.CreateDirectory(config.LogDirectory);
-            logger = new EasyLogger(config.LogDirectory);
+            // Determine log format from config (default to XML)
+            EasyLogger.LogFormat format = EasyLogger.LogFormat.XML;
+            if (!string.IsNullOrWhiteSpace(config.LogFormat) && config.LogFormat.Equals("JSON", StringComparison.OrdinalIgnoreCase))
+            {
+                format = EasyLogger.LogFormat.JSON;
+            }
+            logger = new EasyLogger(config.LogDirectory, format);
 
             Console.WriteLine($"Logs directory: {config.LogDirectory}");
             Console.WriteLine($"State file: {config.StateFilePath}");
@@ -272,7 +278,8 @@ namespace easySave_BMT.Model_
                     SourcePath = currentFile.FullName,
                     DestinationPath = dstFile,
                     FileSize = curSize,
-                    TransferTimeMs = transferTime
+                    TransferTimeMs = transferTime,
+                    EncryptionTimeMs = 0
                 });
 
                 return true;
@@ -289,7 +296,8 @@ namespace easySave_BMT.Model_
                     SourcePath = currentFile.FullName,
                     DestinationPath = dstFile,
                     FileSize = curSize,
-                    TransferTimeMs = -1
+                    TransferTimeMs = -1,
+                    EncryptionTimeMs = 0
                 });
 
                 return false;
@@ -333,9 +341,14 @@ namespace easySave_BMT.Model_
 
             RealTimeState.SetFilePath(config.StateFilePath);
 
-            // Refresh logger with new directory
+            // Refresh logger with new directory and configured format
             Directory.CreateDirectory(config.LogDirectory);
-            logger = new EasyLogger(config.LogDirectory);
+            EasyLogger.LogFormat format = EasyLogger.LogFormat.XML;
+            if (!string.IsNullOrWhiteSpace(config.LogFormat) && config.LogFormat.Equals("JSON", StringComparison.OrdinalIgnoreCase))
+            {
+                format = EasyLogger.LogFormat.JSON;
+            }
+            logger = new EasyLogger(config.LogDirectory, format);
         }
     }
 }

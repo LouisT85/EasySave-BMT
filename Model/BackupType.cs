@@ -15,6 +15,8 @@ namespace easySave_BMT.Model_
         /// A differential backup only copies files that have been created or modified 
         /// since the last full backup.
         /// </summary>
-        DIFFERENTIAL
+        DIFFERENTIAL,
+
+        NONE
     }
 }
