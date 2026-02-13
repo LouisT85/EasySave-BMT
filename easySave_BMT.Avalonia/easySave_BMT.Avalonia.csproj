@@ -5,10 +5,25 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- Empêche les doublons d'attributs d'assembly / TargetFramework -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <!-- Désactive le générateur x:Name qui échoue sur le projet de test copié -->
+    <AvaloniaNameGenerator>false</AvaloniaNameGenerator>
   </PropertyGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Assets/**"/>
+  </ItemGroup>
+
+  <!-- Ne pas compiler le projet de test EasySaveAvaloniaTest dans cette assembly -->
+  <ItemGroup>
+    <Compile Remove="EasySaveAvaloniaTest\**\*.cs" />
+  </ItemGroup>
+
+  <!-- Et ne pas inclure les XAML du projet de test dans la compilation Avalonia -->
+  <ItemGroup>
+    <AvaloniaXaml Remove="EasySaveAvaloniaTest\**\*.axaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,6 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\easySave_BMT\easySave_BMT.csproj" />
+    <!-- Référence le projet console principal pour réutiliser Model / ViewModel -->
+    <ProjectReference Include="..\EasySave-BMT.csproj" />
   </ItemGroup>
 </Project>

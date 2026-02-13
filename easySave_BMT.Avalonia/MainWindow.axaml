@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:easySaveBMT.Avalonia.ViewModels"
-        x:Class="easySaveBMT.Avalonia.MainWindow"
+        xmlns:vm="using:easySave_BMT.Avalonia.ViewModels"
+        x:Class="easySave_BMT.Avalonia.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="EasySave BMT"
         Width="900" Height="700"
@@ -25,9 +25,9 @@
       <ListBox.ItemTemplate>
         <DataTemplate>
           <StackPanel Orientation="Horizontal" Spacing="10">
-            <TextBlock Text="{Binding Name}" FontWeight="Bold" />
-            <TextBlock Text="{Binding Src}" />
-            <TextBlock Text="{Binding BackupType}" />
+            <TextBlock Text="{Binding name}" FontWeight="Bold" />
+            <TextBlock Text="{Binding src}" />
+            <TextBlock Text="{Binding backupType}" />
           </StackPanel>
         </DataTemplate>
       </ListBox.ItemTemplate>

@@ -29,6 +29,7 @@ namespace easySave_BMT.ViewModel_
         public BackupLauncher backupLauncher;
 
         // NOUVEAU : ObservableCollection pour binding GUI
+        // (la collection retournée par l'interface IProgressObserverGUI est celle réellement bindée)
         public ObservableCollection<Model_.Save> Saves => new ObservableCollection<Model_.Save>(model.saves);
 
         public ViewModel()
@@ -115,9 +116,24 @@ namespace easySave_BMT.ViewModel_
             }
 
             guiView.ShowMessage("✅ EasySave BMT prêt !");
-            saveListManager.DisplaySaves(); // Recharge liste
-            
+
+            // 🔁 Recharge la liste des sauvegardes mais SANS utiliser la vue console
+            saveListManager.DisplaySaves();
+
             // GUI prête - boutons liés aux contrôleurs
+        }
+        
+        // Utilitaire pour synchroniser la collection GUI avec le modèle
+        public void RefreshGuiSaves()
+        {
+            if (guiView == null) return;
+
+            var target = guiView.Saves;
+            target.Clear();
+            foreach (var save in model.saves)
+            {
+                target.Add(save);
+            }
         }
     }
 

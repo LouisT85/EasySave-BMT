@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,8 +6,18 @@
     <RootNamespace>EasySave_BMT</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Empêche la génération automatique des attributs d’assembly et du TargetFramework,
+         car ils sont déjà générés via WriteCodeFragment (voir obj\\..\\EasySave-BMT.AssemblyInfo.cs) -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
+
+  <!-- On ne veut compiler ici que le mode console (sans Avalonia ni projet de test Avalonia) -->
+  <ItemGroup>
+    <!-- Exclure tout le code Avalonia du projet console -->
+    <Compile Remove="easySave_BMT.Avalonia\**\*.cs" />
+    <!-- Exclure explicitement le projet de test Avalonia copié sous le répertoire principal -->
+    <Compile Remove="easySave_BMT.Avalonia\EasySaveAvaloniaTest\**\*.cs" />
+  </ItemGroup>
 
 </Project>

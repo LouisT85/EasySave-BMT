@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace easySaveBMT.Avalonia
+namespace easySave_BMT.Avalonia
 {
     public partial class MainWindow : Window
     {
