@@ -1,7 +1,8 @@
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage; // Nouvelle API Avalonia Storage (plus moderne)
 using easySave_BMT.Avalonia.ViewModels;
+using System;
 
 namespace easySave_BMT.Avalonia
 {
@@ -10,25 +11,27 @@ namespace easySave_BMT.Avalonia
         public MainWindow()
         {
             InitializeComponent();
-
-            if (DataContext is MainWindowViewModel vm)
-            {
-                vm.HostWindow = this;
-            }
         }
 
+        // Utilisation de la nouvelle API StorageProvider d'Avalonia 11+ (plus compatible)
+        // Si vous êtes sur une vieille version, gardez OpenFolderDialog
         private async void OnBrowseSourceClick(object? sender, RoutedEventArgs e)
         {
             if (DataContext is not MainWindowViewModel vm) return;
 
-            var dialog = new OpenFolderDialog
+            // Méthode moderne (StorageProvider)
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel == null) return;
+
+            var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                Title = "Choisir le dossier source"
-            };
-            var result = await dialog.ShowAsync(this);
-            if (!string.IsNullOrEmpty(result))
+                Title = "Choisir le dossier source",
+                AllowMultiple = false
+            });
+
+            if (folders.Count > 0)
             {
-                vm.NewSaveSourcePath = result;
+                vm.NewSaveSourcePath = folders[0].Path.LocalPath;
             }
         }
 
@@ -36,14 +39,18 @@ namespace easySave_BMT.Avalonia
         {
             if (DataContext is not MainWindowViewModel vm) return;
 
-            var dialog = new OpenFolderDialog
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel == null) return;
+
+            var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                Title = "Choisir le dossier destination"
-            };
-            var result = await dialog.ShowAsync(this);
-            if (!string.IsNullOrEmpty(result))
+                Title = "Choisir le dossier destination",
+                AllowMultiple = false
+            });
+
+            if (folders.Count > 0)
             {
-                vm.NewSaveDestinationPath = result;
+                vm.NewSaveDestinationPath = folders[0].Path.LocalPath;
             }
         }
     }

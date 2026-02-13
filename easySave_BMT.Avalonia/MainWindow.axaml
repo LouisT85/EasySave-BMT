@@ -3,85 +3,238 @@
         xmlns:vm="using:easySave_BMT.Avalonia.ViewModels"
         x:Class="easySave_BMT.Avalonia.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="EasySave BMT"
-        Width="900" Height="700"
-        CanResize="true">
-  <Design.DataContext>
-    <vm:MainWindowViewModel />
-  </Design.DataContext>
-  <StackPanel Margin="20" Spacing="10">
-    <!-- Statut global -->
-    <TextBlock Text="{Binding StatusText}" FontSize="16" />
+        Title="EasySave BMT - Dashboard"
+        Width="1000" Height="700"
+        WindowStartupLocation="CenterScreen"
+        Background="#F3F4F6">
 
-    <!-- Zone de création d'une nouvelle sauvegarde -->
-    <StackPanel Margin="0,10,0,0" Spacing="6">
-      <TextBlock Text="Nouvelle sauvegarde" FontWeight="Bold" />
-      <TextBox Text="{Binding NewSaveName}" Watermark="Nom de la sauvegarde" />
-      <StackPanel Orientation="Horizontal" Spacing="6">
-        <TextBox Text="{Binding NewSaveSourcePath}" Watermark="Dossier source" Width="400" IsReadOnly="True" IsEnabled="False" />
-        <Button Content="Parcourir..." Click="OnBrowseSourceClick" />
-      </StackPanel>
-      <StackPanel Orientation="Horizontal" Spacing="6">
-        <TextBox Text="{Binding NewSaveDestinationPath}" Watermark="Dossier destination" Width="400" IsReadOnly="True" IsEnabled="False" />
-        <Button Content="Parcourir..." Click="OnBrowseDestinationClick" />
-      </StackPanel>
-      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-        <TextBlock Text="Type de sauvegarde :" VerticalAlignment="Center" />
-        <ComboBox Width="160"
-                  SelectedItem="{Binding SelectedBackupType}">
-          <ComboBoxItem Content="Complet" />
-          <ComboBoxItem Content="Différentiel" />
-        </ComboBox>
-        <Button Command="{Binding AddCommand}" Content="Ajouter" HorizontalAlignment="Right" />
-      </StackPanel>
-    </StackPanel>
+	<Design.DataContext>
+		<vm:MainWindowViewModel />
+	</Design.DataContext>
 
-    <!-- Configuration (affichée via bouton) -->
-    <StackPanel Margin="0,10,0,0" Spacing="6" IsVisible="{Binding IsConfigVisible}">
-      <TextBlock Text="Configuration" FontWeight="Bold" />
-      <TextBlock Text="Dossier des logs" />
-      <TextBox Text="{Binding ConfigLogDirectory}" Width="500" />
-      <TextBlock Text="Fichier d'état" />
-      <TextBox Text="{Binding ConfigStateFilePath}" Width="500" />
-      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-        <TextBlock Text="Langue :" VerticalAlignment="Center" />
-        <ComboBox Width="80"
-                  SelectedItem="{Binding ConfigLanguage}">
-          <ComboBoxItem Content="fr" />
-          <ComboBoxItem Content="en" />
-        </ComboBox>
-        <Button Command="{Binding LoadConfigCommand}" Content="↻ Charger config" />
-        <Button Command="{Binding ConfigCommand}" Content="Enregistrer config" />
-      </StackPanel>
-    </StackPanel>
+	<Window.Styles>
+		<Style Selector="TextBlock">
+			<Setter Property="FontFamily" Value="Segoe UI, Roboto, Helvetica, Arial, sans-serif"/>
+		</Style>
 
-    <!-- Barre de commandes principales -->
-    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,10,0,0">
-      <Button Command="{Binding ListCommand}" Content="Rafraîchir la liste" />
-      <Button Command="{Binding RemoveCommand}" Content="Supprimer la sélection" />
-      <Button Command="{Binding LaunchCommand}" Content="Lancer backup de la sélection" />
-      <Button Command="{Binding ToggleConfigCommand}" Content="Config" />
-      <Button Command="{Binding QuitCommand}" Content="Quitter" />
-    </StackPanel>
+		<Style Selector="Button.primary">
+			<Setter Property="Background" Value="#3B82F6"/>
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="CornerRadius" Value="6"/>
+			<Setter Property="Padding" Value="15,8"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+		</Style>
+		<Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="#2563EB"/>
+			<Setter Property="Foreground" Value="White"/>
+		</Style>
 
-    <!-- Progression -->
-    <ProgressBar Value="{Binding ProgressPercent}" Height="20" Margin="0,10,0,0" />
-    <TextBlock Text="{Binding ProgressText}" />
+		<Style Selector="Button.danger">
+			<Setter Property="Background" Value="#EF4444"/>
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="CornerRadius" Value="6"/>
+		</Style>
 
-    <!-- Liste des sauvegardes -->
-    <ListBox ItemsSource="{Binding Saves}"
-             SelectedItem="{Binding SelectedSave}"
-             MinHeight="260"
-             Margin="0,10,0,0">
-      <ListBox.ItemTemplate>
-        <DataTemplate>
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <TextBlock Text="{Binding name}" FontWeight="Bold" />
-            <TextBlock Text="{Binding src}" />
-            <TextBlock Text="{Binding backupType}" />
-          </StackPanel>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
-  </StackPanel>
+		<Style Selector="Border.card">
+			<Setter Property="Background" Value="White"/>
+			<Setter Property="CornerRadius" Value="8"/>
+			<Setter Property="BoxShadow" Value="0 2 10 0 #15000000"/>
+			<Setter Property="Margin" Value="0,0,0,10"/>
+			<Setter Property="Padding" Value="15"/>
+		</Style>
+
+		<Style Selector="TabControl">
+			<Setter Property="Padding" Value="0"/>
+		</Style>
+		<Style Selector="TabItem">
+			<Setter Property="FontSize" Value="16"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="Height" Value="50"/>
+			<Setter Property="Width" Value="200"/>
+			<Setter Property="Foreground" Value="#9CA3AF"/>
+			<Setter Property="Padding" Value="20,0"/>
+			<Setter Property="HorizontalContentAlignment" Value="Left"/>
+		</Style>
+		<Style Selector="TabItem:selected">
+			<Setter Property="Foreground" Value="#3B82F6"/>
+			<Setter Property="Background" Value="Transparent"/>
+		</Style>
+		<Style Selector="TabItem:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="#F3F4F6"/>
+		</Style>
+	</Window.Styles>
+
+	<Grid ColumnDefinitions="Auto,*">
+
+		<Border Grid.Column="0" Background="White" BorderBrush="#E5E7EB" BorderThickness="0,0,1,0">
+			<Grid RowDefinitions="Auto,*">
+				<StackPanel Grid.Row="0" Margin="20,30,20,30">
+					<TextBlock Text="EasySave" FontWeight="Bold" FontSize="24" Foreground="#1E3A8A"/>
+					<TextBlock Text="Backup Management" FontSize="12" Foreground="#6B7280"/>
+				</StackPanel>
+			</Grid>
+		</Border>
+
+		<TabControl Grid.Column="0" Grid.ColumnSpan="2" TabStripPlacement="Left" Padding="0">
+			<TabControl.ItemsPanel>
+				<ItemsPanelTemplate>
+					<StackPanel Background="White" Width="220" Margin="0,100,0,0"/>
+				</ItemsPanelTemplate>
+			</TabControl.ItemsPanel>
+
+			<TabItem Header="📋 Mes Sauvegardes">
+				<Grid RowDefinitions="Auto,*,Auto" Margin="30">
+					<StackPanel Grid.Row="0" Margin="0,0,0,20">
+						<TextBlock Text="Tableau de bord" FontSize="28" FontWeight="Bold" Foreground="#111827"/>
+						<TextBlock Text="Gérez et lancez vos travaux de sauvegarde." Foreground="#6B7280" Margin="0,5,0,0"/>
+					</StackPanel>
+
+					<ScrollViewer Grid.Row="1">
+						<ListBox ItemsSource="{Binding Saves}" SelectedItem="{Binding SelectedSave}" Background="Transparent">
+							<ListBox.Styles>
+								<Style Selector="ListBoxItem">
+									<Setter Property="Padding" Value="0"/>
+									<Setter Property="Margin" Value="0,0,0,10"/>
+									<Setter Property="Background" Value="Transparent"/>
+								</Style>
+							</ListBox.Styles>
+							<ListBox.ItemTemplate>
+								<DataTemplate>
+									<Border Classes="card">
+										<Grid ColumnDefinitions="5, *, Auto, Auto" RowDefinitions="Auto, Auto">
+											<Rectangle Grid.Column="0" Grid.RowSpan="2" Fill="#3B82F6" RadiusX="2" RadiusY="2"/>
+
+											<StackPanel Grid.Column="1" Grid.Row="0" Margin="15,0,0,0">
+												<TextBlock Text="{Binding name}" FontWeight="Bold" FontSize="16" Foreground="#1F2937"/>
+												<TextBlock Text="{Binding backupType}" FontSize="12" Foreground="#9CA3AF" Margin="0,2,0,0"/>
+											</StackPanel>
+
+											<StackPanel Grid.Column="1" Grid.Row="1" Margin="15,10,0,0">
+												<TextBlock Text="{Binding src, StringFormat='Source: {0}'}" FontSize="12" Foreground="#4B5563" TextTrimming="CharacterEllipsis"/>
+											</StackPanel>
+
+											<StackPanel Grid.Column="2" Grid.Row="0" HorizontalAlignment="Right" Margin="20,0">
+												<TextBlock Text="Dernier backup" FontSize="10" Foreground="#9CA3AF"/>
+												<TextBlock Text="{Binding lastBackupDate}" FontWeight="SemiBold" Foreground="#374151"/>
+											</StackPanel>
+
+											<ProgressBar Grid.Column="2" Grid.Row="1" Width="100" Height="8"
+                                                         Value="{Binding state.progress, FallbackValue=0}"
+                                                         Foreground="#10B981" Background="#E5E7EB" Margin="20,10,20,0"/>
+										</Grid>
+									</Border>
+								</DataTemplate>
+							</ListBox.ItemTemplate>
+						</ListBox>
+					</ScrollViewer>
+
+					<Border Grid.Row="2" Background="White" CornerRadius="12" Padding="15" Margin="0,20,0,0" BoxShadow="0 -4 10 0 #10000000">
+						<Grid ColumnDefinitions="*, Auto">
+							<StackPanel Orientation="Vertical" VerticalAlignment="Center">
+								<TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" Foreground="#3B82F6"/>
+								<StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
+									<TextBlock Text="{Binding ProgressText}" FontSize="12" Foreground="#6B7280"/>
+									<ProgressBar Value="{Binding ProgressPercent}" Width="200" Height="6" VerticalAlignment="Center" IsVisible="{Binding ProgressPercent}"/>
+								</StackPanel>
+							</StackPanel>
+
+							<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+								<Button Command="{Binding ListCommand}" Content="Actualiser" Background="Transparent" Foreground="#6B7280"/>
+								<Button Classes="danger" Command="{Binding RemoveCommand}" Content="Supprimer"/>
+								<Button Classes="primary" Command="{Binding LaunchCommand}" Content="▶ Lancer Backup"/>
+							</StackPanel>
+						</Grid>
+					</Border>
+				</Grid>
+			</TabItem>
+
+			<TabItem Header="➕ Nouvelle Tâche">
+				<Grid Margin="40" RowDefinitions="Auto, *">
+					<TextBlock Text="Créer une sauvegarde" FontSize="24" FontWeight="Bold" Margin="0,0,0,30"/>
+
+					<Border Grid.Row="1" Background="White" CornerRadius="8" Padding="30" VerticalAlignment="Top" BoxShadow="0 4 6 -1 #1A000000">
+						<StackPanel Spacing="20">
+							<StackPanel>
+								<TextBlock Text="Nom de la tâche" FontWeight="SemiBold" Margin="0,0,0,8"/>
+								<TextBox Text="{Binding NewSaveName}" Watermark="Ex: Mes Documents Travail" Height="40"/>
+							</StackPanel>
+
+							<Grid ColumnDefinitions="*, 100">
+								<StackPanel Grid.Column="0">
+									<TextBlock Text="Dossier Source" FontWeight="SemiBold" Margin="0,0,0,8"/>
+									<TextBox Text="{Binding NewSaveSourcePath}" Watermark="C:\Users\..." Height="40"/>
+								</StackPanel>
+								<Button Grid.Column="1" Content="Choisir..." Margin="10,26,0,0" Height="40" Click="OnBrowseSourceClick"/>
+							</Grid>
+
+							<Grid ColumnDefinitions="*, 100">
+								<StackPanel Grid.Column="0">
+									<TextBlock Text="Dossier Destination" FontWeight="SemiBold" Margin="0,0,0,8"/>
+									<TextBox Text="{Binding NewSaveDestinationPath}" Watermark="D:\Backup\..." Height="40"/>
+								</StackPanel>
+								<Button Grid.Column="1" Content="Choisir..." Margin="10,26,0,0" Height="40" Click="OnBrowseDestinationClick"/>
+							</Grid>
+
+							<StackPanel>
+								<TextBlock Text="Type de sauvegarde" FontWeight="SemiBold" Margin="0,0,0,8"/>
+								<ComboBox ItemsSource="{Binding BackupTypeOptions}" SelectedItem="{Binding SelectedBackupType}" HorizontalAlignment="Stretch" Height="40"/>
+							</StackPanel>
+
+							<Button Classes="primary" Command="{Binding AddCommand}" Content="Ajouter la sauvegarde" HorizontalAlignment="Right" Margin="0,20,0,0"/>
+						</StackPanel>
+					</Border>
+				</Grid>
+			</TabItem>
+
+			<TabItem Header="📜 Journaux / Logs">
+				<Grid ColumnDefinitions="300, *" Margin="20">
+					<Border Grid.Column="0" Background="White" Margin="0,0,20,0" CornerRadius="8" Padding="10">
+						<Grid RowDefinitions="Auto, *, Auto">
+							<TextBlock Text="Fichiers Logs" FontWeight="Bold" Margin="0,0,0,10"/>
+							<ListBox Grid.Row="1" ItemsSource="{Binding LogFiles}" SelectedItem="{Binding SelectedLogFile}"/>
+							<Button Grid.Row="2" Command="{Binding LoadLogsCommand}" Content="Rafraîchir" HorizontalAlignment="Stretch" Margin="0,10,0,0"/>
+						</Grid>
+					</Border>
+
+					<Border Grid.Column="1" Background="#1E1E1E" CornerRadius="8" Padding="15">
+						<ScrollViewer>
+							<TextBlock Text="{Binding SelectedLogContent}" FontFamily="Consolas, Monospace" Foreground="#10B981" TextWrapping="Wrap"/>
+						</ScrollViewer>
+					</Border>
+				</Grid>
+			</TabItem>
+
+			<TabItem Header="⚙ Paramètres">
+				<StackPanel Margin="40" Spacing="20" MaxWidth="600" HorizontalAlignment="Left">
+					<TextBlock Text="Configuration Générale" FontSize="24" FontWeight="Bold"/>
+
+					<StackPanel Spacing="5">
+						<TextBlock Text="Répertoire des Logs"/>
+						<TextBox Text="{Binding ConfigLogDirectory}"/>
+					</StackPanel>
+
+					<StackPanel Spacing="5">
+						<TextBlock Text="Fichier d'état (State)"/>
+						<TextBox Text="{Binding ConfigStateFilePath}"/>
+					</StackPanel>
+
+					<StackPanel Spacing="5">
+						<TextBlock Text="Langue de l'interface"/>
+						<ComboBox SelectedItem="{Binding ConfigLanguage}" HorizontalAlignment="Stretch">
+							<ComboBoxItem Content="fr"/>
+							<ComboBoxItem Content="en"/>
+						</ComboBox>
+					</StackPanel>
+
+					<StackPanel Orientation="Horizontal" Spacing="10" Margin="0,20,0,0">
+						<Button Command="{Binding LoadConfigCommand}" Content="Annuler / Recharger"/>
+						<Button Classes="primary" Command="{Binding ConfigCommand}" Content="Enregistrer les modifications"/>
+					</StackPanel>
+
+					<Button Command="{Binding QuitCommand}" Content="Quitter l'application" Margin="0,40,0,0" Background="Transparent" Foreground="Red"/>
+				</StackPanel>
+			</TabItem>
+
+		</TabControl>
+	</Grid>
 </Window>
