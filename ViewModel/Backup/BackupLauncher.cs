@@ -155,8 +155,13 @@ namespace easySave_BMT.ViewModel_.Backup
             {
                 _save.lastBackupDate = DateTime.Now.ToString("yyyy/MM/dd_HH:mm:ss");
                 _viewModel.model.AddLogInJSONFile();
+
+                // Notification console
                 _viewModel.view.DisplayMessage(3);
                 _viewModel.view.DisplayBackupRecap(_save.name, 0);
+
+                // Notification GUI éventuelle
+                _viewModel.guiView?.OnBackupComplete(_save.name, 0);
                 return 105;
             }
             return DoBackup(_save, filesToCopy.ToArray(), totalSize);
@@ -212,15 +217,19 @@ namespace easySave_BMT.ViewModel_.Backup
             TimeSpan saveTime = endTime - startTime;
             double transferTime = saveTime.TotalMilliseconds;
 
-            _viewModel.model.AddLogInJSONFile();
-            _viewModel.view.DisplayMessage(3);
+                _viewModel.model.AddLogInJSONFile();
 
-            foreach (string failedFile in failedFiles)
-            {
-                _viewModel.view.DisplayFiledError(failedFile);
-            }
+                // Notifications console
+                _viewModel.view.DisplayMessage(3);
 
-            _viewModel.view.DisplayBackupRecap(_save.name, transferTime);
+                foreach (string failedFile in failedFiles)
+                {
+                    _viewModel.view.DisplayFiledError(failedFile);
+                    _viewModel.guiView?.OnFileError(failedFile);
+                }
+
+                _viewModel.view.DisplayBackupRecap(_save.name, transferTime);
+                _viewModel.guiView?.OnBackupComplete(_save.name, transferTime);
 
             return failedFiles.Count == 0 ? 104 : 216;
         }

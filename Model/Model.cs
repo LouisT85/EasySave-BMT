@@ -265,6 +265,9 @@ namespace easySave_BMT.Model_
 
                 UpdateSaveState(save);
 
+                // Notification de progression éventuelle pour la GUI
+                // (l'observateur GUI est porté par le ViewModel qui consomme ces états)
+
                 // Perform file copy
                 currentFile.CopyTo(dstFile, true);
 
