@@ -18,11 +18,11 @@
       <TextBlock Text="Nouvelle sauvegarde" FontWeight="Bold" />
       <TextBox Text="{Binding NewSaveName}" Watermark="Nom de la sauvegarde" />
       <StackPanel Orientation="Horizontal" Spacing="6">
-        <TextBox Text="{Binding NewSaveSourcePath}" Watermark="Dossier source" Width="400" IsReadOnly="True" />
+        <TextBox Text="{Binding NewSaveSourcePath}" Watermark="Dossier source" Width="400" IsReadOnly="True" IsEnabled="False" />
         <Button Content="Parcourir..." Click="OnBrowseSourceClick" />
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="6">
-        <TextBox Text="{Binding NewSaveDestinationPath}" Watermark="Dossier destination" Width="400" IsReadOnly="True" />
+        <TextBox Text="{Binding NewSaveDestinationPath}" Watermark="Dossier destination" Width="400" IsReadOnly="True" IsEnabled="False" />
         <Button Content="Parcourir..." Click="OnBrowseDestinationClick" />
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -32,7 +32,7 @@
           <ComboBoxItem Content="Complet" />
           <ComboBoxItem Content="Différentiel" />
         </ComboBox>
-        <Button Command="{Binding AddCommand}" Content="➕ Ajouter" HorizontalAlignment="Right" />
+        <Button Command="{Binding AddCommand}" Content="Ajouter" HorizontalAlignment="Right" />
       </StackPanel>
     </StackPanel>
 
@@ -51,17 +51,17 @@
           <ComboBoxItem Content="en" />
         </ComboBox>
         <Button Command="{Binding LoadConfigCommand}" Content="↻ Charger config" />
-        <Button Command="{Binding ConfigCommand}" Content="💾 Enregistrer config" />
+        <Button Command="{Binding ConfigCommand}" Content="Enregistrer config" />
       </StackPanel>
     </StackPanel>
 
     <!-- Barre de commandes principales -->
     <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,10,0,0">
-      <Button Command="{Binding ListCommand}" Content="📋 Rafraîchir la liste" />
-      <Button Command="{Binding RemoveCommand}" Content="🗑️ Supprimer la sélection" />
-      <Button Command="{Binding LaunchCommand}" Content="🚀 Lancer backup de la sélection" />
-      <Button Command="{Binding ToggleConfigCommand}" Content="⚙️ Config" />
-      <Button Command="{Binding QuitCommand}" Content="❌ Quitter" />
+      <Button Command="{Binding ListCommand}" Content="Rafraîchir la liste" />
+      <Button Command="{Binding RemoveCommand}" Content="Supprimer la sélection" />
+      <Button Command="{Binding LaunchCommand}" Content="Lancer backup de la sélection" />
+      <Button Command="{Binding ToggleConfigCommand}" Content="Config" />
+      <Button Command="{Binding QuitCommand}" Content="Quitter" />
     </StackPanel>
 
     <!-- Progression -->
