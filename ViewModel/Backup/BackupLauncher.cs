@@ -249,7 +249,11 @@ namespace easySave_BMT.ViewModel_.Backup
                 if (_viewModel.model.CopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent))
                 {
                     Thread.Sleep((int)(curSize / 1000000));
+                    // Mise à jour de la progression en console
                     _viewModel.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
+
+                    // Mise à jour de la progression en GUI (barre de progression / texte)
+                    _viewModel.guiView?.OnProgressUpdate(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
                 }
                 else
                 {

@@ -56,6 +56,28 @@ namespace easySave_BMT.Avalonia.ViewModels
             set => this.RaiseAndSetIfChanged(ref _selectedBackupType, value);
         }
 
+        // Champs de configuration (bindés à Config)
+        private string _configLogDirectory = string.Empty;
+        public string ConfigLogDirectory
+        {
+            get => _configLogDirectory;
+            set => this.RaiseAndSetIfChanged(ref _configLogDirectory, value);
+        }
+
+        private string _configStateFilePath = string.Empty;
+        public string ConfigStateFilePath
+        {
+            get => _configStateFilePath;
+            set => this.RaiseAndSetIfChanged(ref _configStateFilePath, value);
+        }
+
+        private string _configLanguage = string.Empty;
+        public string ConfigLanguage
+        {
+            get => _configLanguage;
+            set => this.RaiseAndSetIfChanged(ref _configLanguage, value);
+        }
+
         private int _progressPercent = 0;
         public int ProgressPercent
         {
@@ -81,8 +103,18 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> AddCommand { get; }
         public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
         public ReactiveCommand<Unit, Unit> LaunchCommand { get; }
+        public ReactiveCommand<Unit, Unit> ToggleConfigCommand { get; }
+        public ReactiveCommand<Unit, Unit> LoadConfigCommand { get; }
         public ReactiveCommand<Unit, Unit> ConfigCommand { get; }
         public ReactiveCommand<Unit, Unit> QuitCommand { get; }
+
+        // Visibilité du panneau de configuration
+        private bool _isConfigVisible = false;
+        public bool IsConfigVisible
+        {
+            get => _isConfigVisible;
+            set => this.RaiseAndSetIfChanged(ref _isConfigVisible, value);
+        }
 
         public MainWindowViewModel()
         {
@@ -94,8 +126,16 @@ namespace easySave_BMT.Avalonia.ViewModels
             AddCommand = ReactiveCommand.Create(AddSave);
             RemoveCommand = ReactiveCommand.Create(RemoveSave);
             LaunchCommand = ReactiveCommand.Create(LaunchBackup);
-            ConfigCommand = ReactiveCommand.Create(ConfigMenu);
+            ToggleConfigCommand = ReactiveCommand.Create<Unit>(_ =>
+            {
+                IsConfigVisible = !IsConfigVisible;
+            });
+            LoadConfigCommand = ReactiveCommand.Create(LoadConfigValuesFromModel);
+            ConfigCommand = ReactiveCommand.Create(SaveConfigFromViewModel);
             QuitCommand = ReactiveCommand.Create(Quit);
+
+            // Charger la configuration au démarrage
+            LoadConfigValuesFromModel();
         }
 
         private void ListSaves()
@@ -200,12 +240,23 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
         }
 
-        private void ConfigMenu()
+        private void LoadConfigValuesFromModel()
         {
-            // Pour l'instant, la configuration reste en mode console.
-            _coreViewModel.configController.ConfigurationMenu();
+            var cfg = _coreViewModel.model.GetConfig();
+            ConfigLogDirectory = cfg.LogDirectory;
+            ConfigStateFilePath = cfg.StateFilePath;
+            ConfigLanguage = cfg.Language;
+            StatusText = "Configuration chargée.";
+        }
+
+        private void SaveConfigFromViewModel()
+        {
+            // Met à jour la configuration à partir des champs GUI
+            _coreViewModel.model.UpdateConfig(ConfigLogDirectory, ConfigStateFilePath, ConfigLanguage);
+            // Recharge les valeurs normalisées depuis le modèle (chemins éventuellement ajustés)
+            LoadConfigValuesFromModel();
             _coreViewModel.saveListManager.DisplaySaves();
-            StatusText = "Configuration appliquée (via console).";
+            StatusText = "Configuration enregistrée.";
         }
 
         private void Quit() => Environment.Exit(0);
