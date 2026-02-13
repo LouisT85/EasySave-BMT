@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:EasySaveAvaloniaTest.ViewModels"
+        x:Class="EasySaveAvaloniaTest.MainWindow"
+        Title="EasySave BMT">
+  <Design.DataContext>
+    <vm:MainWindowViewModel/>
+  </Design.DataContext>
+  <StackPanel Margin="20" Spacing="15">
+    <TextBlock Text="{Binding StatusText}" FontSize="18"/>
+    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+      <Button Command="{Binding ListerSavesCommand}" Content="📋 Lister Saves"/>
+      <Button Command="{Binding AjouterSaveCommand}" Content="➕ Ajouter"/>
+      <Button Command="{Binding SupprimerSaveCommand}" Content="🗑️ Supprimer"/>
+      <Button Command="{Binding LancerBackupCommand}" Content="🚀 Backup"/>
+      <Button Command="{Binding ConfigCommand}" Content="⚙️ Config"/>
+    </StackPanel>
+    <ProgressBar Value="{Binding ProgressPercent}" Height="25"/>
+    <ListBox ItemsSource="{Binding Saves}" MinHeight="300">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
+            <TextBlock Text="{Binding Src}"/>
+            <TextBlock Text="{Binding BackupType}"/>
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </StackPanel>
+</Window>

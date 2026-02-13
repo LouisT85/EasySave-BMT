@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:easySaveBMT.Avalonia.ViewModels"
+        x:Class="easySaveBMT.Avalonia.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="EasySave BMT"
+        Width="900" Height="700"
+        CanResize="true">
+  <Design.DataContext>
+    <vm:MainWindowViewModel />
+  </Design.DataContext>
+  <StackPanel Margin="20" Spacing="10">
+    <TextBlock Text="{Binding StatusText}" FontSize="16" />
+    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+      <Button Command="{Binding ListCommand}" Content="📋 Lister Saves" />
+      <Button Command="{Binding AddCommand}" Content="➕ Ajouter Save" />
+      <Button Command="{Binding RemoveCommand}" Content="🗑️ Supprimer Save" />
+      <Button Command="{Binding LaunchCommand}" Content="🚀 Lancer Backup" />
+      <Button Command="{Binding ConfigCommand}" Content="⚙️ Config" />
+      <Button Command="{Binding QuitCommand}" Content="❌ Quitter" />
+    </StackPanel>
+    <ProgressBar Value="{Binding ProgressPercent}" Height="20" />
+    <TextBlock Text="{Binding ProgressText}" />
+    <ListBox ItemsSource="{Binding Saves}" MinHeight="300">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+            <TextBlock Text="{Binding Src}" />
+            <TextBlock Text="{Binding BackupType}" />
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </StackPanel>
+</Window>
