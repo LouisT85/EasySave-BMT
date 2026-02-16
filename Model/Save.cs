@@ -1,4 +1,7 @@
 using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace easySave_BMT.Model_
 {
@@ -7,7 +10,30 @@ namespace easySave_BMT.Model_
     /// the type of backup, and its current execution state.
     /// </summary>
     public class Save
+        : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        private int _uiProgressPercent;
+
+        /// <summary>
+        /// UI-only progress (0-100) for the GUI list. Not persisted to BackupSave.json.
+        /// </summary>
+        [JsonIgnore]
+        public int UiProgressPercent
+        {
+            get => _uiProgressPercent;
+            set
+            {
+                if (_uiProgressPercent == value) return;
+                _uiProgressPercent = value;
+                OnPropertyChanged();
+            }
+        }
+
         /// <summary>The unique name assigned to the backup job.</summary>
         public string name { get; set; }
 
@@ -36,6 +62,7 @@ namespace easySave_BMT.Model_
         {
             this.state = null;
             this.lastBackupDate = "";
+            this.UiProgressPercent = 0;
         }
 
         /// <summary>
@@ -53,6 +80,7 @@ namespace easySave_BMT.Model_
             this.backupType = backupType;
             this.state = null;
             this.lastBackupDate = "";
+            this.UiProgressPercent = 0;
         }
     }
 }

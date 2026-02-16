@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.IO;
+using System.Linq;
 using easySave_BMT.ViewModel_;
 using EasyLog;
 using EasyLog.Models;
@@ -16,7 +17,8 @@ namespace easySave_BMT.Model_
     /// </summary>
     public class Model
     {
-        private EasyLogger logger;
+        private EasyLogger xmlLogger;
+        private EasyLogger jsonLogger;
         private Config config;
         private string backupsaveSavePath = "./BackupSave.json";
 
@@ -41,13 +43,9 @@ namespace easySave_BMT.Model_
             ResourceManager.SetLanguage(config.Language);
             RealTimeState.SetFilePath(config.StateFilePath);
             Directory.CreateDirectory(config.LogDirectory);
-            // Determine log format from config (default to XML)
-            EasyLogger.LogFormat format = EasyLogger.LogFormat.XML;
-            if (!string.IsNullOrWhiteSpace(config.LogFormat) && config.LogFormat.Equals("JSON", StringComparison.OrdinalIgnoreCase))
-            {
-                format = EasyLogger.LogFormat.JSON;
-            }
-            logger = new EasyLogger(config.LogDirectory, format);
+            // Always produce both XML and JSON logs in parallel.
+            xmlLogger = new EasyLogger(config.LogDirectory, EasyLogger.LogFormat.XML);
+            jsonLogger = new EasyLogger(config.LogDirectory, EasyLogger.LogFormat.JSON);
 
             Console.WriteLine($"Logs directory: {config.LogDirectory}");
             Console.WriteLine($"State file: {config.StateFilePath}");
@@ -61,6 +59,53 @@ namespace easySave_BMT.Model_
         {
             try
             {
+                name = (name ?? string.Empty).Trim();
+                src = (src ?? string.Empty).Trim();
+                dst = (dst ?? string.Empty).Trim();
+
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    return 215; // EnterValidName
+                }
+
+                // Reject duplicate names (case-insensitive) to avoid ambiguity in GUI multi-select / runner.
+                if (this.saves.Any(s => string.Equals(s.name, name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return 214; // NameTaken
+                }
+
+                // Validate source/destination at creation time (user request).
+                if (!Directory.Exists(src))
+                {
+                    return 211; // DirectoryNotExist
+                }
+
+                if (!Directory.Exists(dst))
+                {
+                    return 213; // DestinationNotExist
+                }
+
+                // Prevent destination being inside source (can cause recursion / unexpected behavior).
+                try
+                {
+                    string srcFull = Path.GetFullPath(src).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                    string dstFull = Path.GetFullPath(dst).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+                    if (string.Equals(srcFull, dstFull, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return 212; // ChooseDifferentPath
+                    }
+
+                    if (dstFull.StartsWith(srcFull, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return 217; // DestinationInsideSource
+                    }
+                }
+                catch
+                {
+                    // If normalization fails, let the backup layer handle it later.
+                }
+
                 this.saves.Add(new Save(name, src, dst, backupType));
                 AddLogInJSONFile();
 
@@ -120,7 +165,7 @@ namespace easySave_BMT.Model_
                     string jsonContent = File.ReadAllText(this.backupsaveSavePath);
                     if (!string.IsNullOrEmpty(jsonContent))
                     {
-                        this.saves = JsonSerializer.Deserialize<List<Save>>(jsonContent);
+                        this.saves = JsonSerializer.Deserialize<List<Save>>(jsonContent) ?? new List<Save>();
                     }
                     else
                     {
@@ -234,15 +279,35 @@ namespace easySave_BMT.Model_
             int fileIndex,
             int pourcent)
         {
+            // Legacy signature kept for console/older call sites.
+            return TryCopyFile(save, currentFile, curSize, dst, leftSize, totalFile, fileIndex, pourcent, out _);
+        }
+
+        /// <summary>
+        /// Performs the physical copy of a file, updates progress state, and logs the operation.
+        /// Provides an error message when the copy fails.
+        /// </summary>
+        public bool TryCopyFile(
+            Save save,
+            FileInfo currentFile,
+            long curSize,
+            string dst,
+            long leftSize,
+            int totalFile,
+            int fileIndex,
+            int pourcent,
+            out string? error)
+        {
             DateTime startTimeFile = DateTime.Now;
 
-            string curDirPath = currentFile.DirectoryName;
+            string curDirPath = currentFile.DirectoryName ?? save.src ?? "";
             string dstDirectory = dst;
 
             // Handle sub-directory structure at the destination
-            if (Path.GetRelativePath(save.src, curDirPath).Length > 1)
+            string relativeDir = Path.GetRelativePath(save.src ?? "", curDirPath);
+            if (relativeDir.Length > 1)
             {
-                dstDirectory += Path.GetRelativePath(save.src, curDirPath) + "\\";
+                dstDirectory += relativeDir + "\\";
 
                 if (!Directory.Exists(dstDirectory))
                 {
@@ -254,6 +319,8 @@ namespace easySave_BMT.Model_
 
             try
             {
+                error = null;
+
                 // Update dynamic state before starting the copy
                 save.state.UpdateState(
                     pourcent,
@@ -274,7 +341,7 @@ namespace easySave_BMT.Model_
                 long transferTime = (long)(DateTime.Now - startTimeFile).TotalMilliseconds;
 
                 // Log success
-                logger.Write(new LogEntry
+                WriteLogEntry(new LogEntry
                 {
                     Timestamp = DateTime.Now,
                     BackupName = save.name,
@@ -290,9 +357,10 @@ namespace easySave_BMT.Model_
             catch (Exception ex)
             {
                 Console.WriteLine($"Error copying file: {ex.Message}");
+                error = ex.Message;
 
                 // Log error (TransferTime set to -1)
-                logger.Write(new LogEntry
+                WriteLogEntry(new LogEntry
                 {
                     Timestamp = DateTime.Now,
                     BackupName = save.name,
@@ -342,16 +410,55 @@ namespace easySave_BMT.Model_
                 ResourceManager.SetLanguage(language);
             }
 
-            RealTimeState.SetFilePath(config.StateFilePath);
+            try
+            {
+                RealTimeState.SetFilePath(config.StateFilePath);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error setting state file path: {ex.Message}");
+            }
 
             // Refresh logger with new directory and configured format
-            Directory.CreateDirectory(config.LogDirectory);
-            EasyLogger.LogFormat format = EasyLogger.LogFormat.XML;
-            if (!string.IsNullOrWhiteSpace(config.LogFormat) && config.LogFormat.Equals("JSON", StringComparison.OrdinalIgnoreCase))
+            try
             {
-                format = EasyLogger.LogFormat.JSON;
+                Directory.CreateDirectory(config.LogDirectory);
             }
-            logger = new EasyLogger(config.LogDirectory, format);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating logs directory: {ex.Message}");
+            }
+
+            try
+            {
+                xmlLogger = new EasyLogger(config.LogDirectory, EasyLogger.LogFormat.XML);
+                jsonLogger = new EasyLogger(config.LogDirectory, EasyLogger.LogFormat.JSON);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing logger: {ex.Message}");
+            }
+        }
+
+        private void WriteLogEntry(LogEntry entry)
+        {
+            try
+            {
+                xmlLogger?.Write(entry);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error writing XML log: {ex.Message}");
+            }
+
+            try
+            {
+                jsonLogger?.Write(entry);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error writing JSON log: {ex.Message}");
+            }
         }
     }
 }

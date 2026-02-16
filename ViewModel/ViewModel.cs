@@ -85,7 +85,7 @@ namespace easySave_BMT.ViewModel_
                         saveManager.RemoveSave();
                         break;
                     case 4:
-                        backupLauncher.LaunchBackupsave(); // ✅ CORRIGÉ : sans paramètre
+                        backupLauncher.LaunchBackupsave(); 
                         break;
                     case 5:
                         configController.ConfigurationMenu();
@@ -111,11 +111,11 @@ namespace easySave_BMT.ViewModel_
             int loadResult = model.CreateLogs();
             if (loadResult != 100)
             {
-                guiView.ShowMessage("❌ Erreur chargement logs");
+                guiView.ShowMessage(Resources_.ResourceManager.GetString("Error"));
                 return;
             }
 
-            guiView.ShowMessage("✅ EasySave BMT prêt !");
+            guiView.ShowMessage(Resources_.ResourceManager.GetString("UiReady"));
 
             // 🔁 Recharge la liste des sauvegardes mais SANS utiliser la vue console
             saveListManager.DisplaySaves();

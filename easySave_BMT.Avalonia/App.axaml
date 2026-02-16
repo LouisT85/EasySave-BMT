@@ -1,8 +1,135 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="using:easySave_BMT.Avalonia.Converters"
              x:Class="easySave_BMT.Avalonia.App"
              RequestedThemeVariant="Light">
+  <Application.Resources>
+    <SolidColorBrush x:Key="BrushBackground" Color="#F6F7FB"/>
+    <SolidColorBrush x:Key="BrushSurface" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BrushBorder" Color="#E5E7EB"/>
+    <SolidColorBrush x:Key="BrushText" Color="#0F172A"/>
+    <SolidColorBrush x:Key="BrushMuted" Color="#64748B"/>
+    <SolidColorBrush x:Key="BrushAccent" Color="#2563EB"/>
+    <SolidColorBrush x:Key="BrushAccentSoft" Color="#E8F0FF"/>
+    <SolidColorBrush x:Key="BrushDanger" Color="#DC2626"/>
+    <SolidColorBrush x:Key="BrushSuccess" Color="#16A34A"/>
+    <conv:BackupTypeToLocalizedStringConverter x:Key="BackupTypeToLocalizedStringConverter" />
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme />
+    <Style Selector="Window">
+      <Setter Property="Background" Value="{DynamicResource BrushBackground}"/>
+    </Style>
+
+    <Style Selector="TextBlock">
+      <Setter Property="FontFamily" Value="Inter, Segoe UI, Arial"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+    </Style>
+
+    <Style Selector="TextBox">
+      <Setter Property="Height" Value="38"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="{DynamicResource BrushSurface}"/>
+      <Setter Property="Padding" Value="10,6"/>
+    </Style>
+    <Style Selector="TextBox:focus">
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+    </Style>
+
+    <Style Selector="ComboBox">
+      <Setter Property="Height" Value="38"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="{DynamicResource BrushSurface}"/>
+      <Setter Property="Padding" Value="10,6"/>
+    </Style>
+    <Style Selector="ComboBox:focus">
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+    </Style>
+
+    <Style Selector="Button">
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="14,8"/>
+      <Setter Property="Background" Value="{DynamicResource BrushSurface}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#F1F5F9"/>
+    </Style>
+    <Style Selector="Button:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="#E2E8F0"/>
+    </Style>
+    <Style Selector="Button:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#1D4ED8"/>
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushMuted}"/>
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#EEF2FF"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
+    </Style>
+
+    <Style Selector="Button.danger">
+      <Setter Property="Background" Value="{DynamicResource BrushDanger}"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}"/>
+    </Style>
+    <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#B91C1C"/>
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{DynamicResource BrushSurface}"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="16"/>
+    </Style>
+
+    <Style Selector="ProgressBar">
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Height" Value="6"/>
+      <Setter Property="Background" Value="#E5E7EB"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushSuccess}"/>
+    </Style>
+
+    <Style Selector="TabItem">
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Margin" Value="12,6"/>
+      <Setter Property="Padding" Value="16,10"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushMuted}"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    </Style>
+    <Style Selector="TabItem:selected">
+      <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
+    </Style>
+    <Style Selector="TabItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}"/>
+    </Style>
+    <Style Selector="TabItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#EEF2FF"/>
+    </Style>
   </Application.Styles>
 </Application>

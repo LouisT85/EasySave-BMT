@@ -9,37 +9,24 @@ namespace easySave_BMT.ViewModel_.Saves
             _viewModel = viewModel;
         }
 
-        public void DisplaySaves()
+        public int DisplaySaves()
         {
             int reloadResult = _viewModel.model.ReloadSavesFromFile();
 
             if (reloadResult == 100)
             {
+                // GUI: always refresh the bound collection, even when empty (so deletions are reflected).
+                if (_viewModel.guiView is not null)
+                {
+                    _viewModel.RefreshGuiSaves();
+                    return reloadResult;
+                }
+
+                // Mode console historique
                 if (_viewModel.model.saves.Count > 0)
-                {
-                    // Si une vue GUI est présente, on met à jour la liste bindée
-                    if (_viewModel.guiView is not null)
-                    {
-                        _viewModel.RefreshGuiSaves();
-                        _viewModel.guiView.ShowMessage($"Liste mise à jour ({_viewModel.model.saves.Count} sauvegardes)");
-                    }
-                    else
-                    {
-                        // Mode console historique
-                        _viewModel.view.DisplayAllSaves();
-                    }
-                }
+                    _viewModel.view.DisplayAllSaves();
                 else
-                {
-                    if (_viewModel.guiView is not null)
-                    {
-                        _viewModel.guiView.ShowMessage("Aucune sauvegarde définie.");
-                    }
-                    else
-                    {
-                        _viewModel.view.DisplayMessage(204);
-                    }
-                }
+                    _viewModel.view.DisplayMessage(204);
             }
             else
             {
@@ -52,6 +39,8 @@ namespace easySave_BMT.ViewModel_.Saves
                     _viewModel.view.DisplayMessage(reloadResult);
                 }
             }
+
+            return reloadResult;
         }
     }
 }

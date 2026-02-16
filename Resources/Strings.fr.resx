@@ -283,4 +283,100 @@
   <data name="LaunchBackup" xml:space="preserve">
     <value>Lancer une sauvegarde</value>
   </data>
+  <data name="UiLogs" xml:space="preserve">
+    <value>Journaux</value>
+  </data>
+  <data name="UiChoose" xml:space="preserve">
+    <value>Choisir...</value>
+  </data>
+  <data name="UiReload" xml:space="preserve">
+    <value>Recharger</value>
+  </data>
+  <data name="UiSave" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="UiAppSubtitle" xml:space="preserve">
+    <value>Gestion des sauvegardes</value>
+  </data>
+  <data name="UiDashboardTitle" xml:space="preserve">
+    <value>Tableau de bord</value>
+  </data>
+  <data name="UiDashboardSubtitle" xml:space="preserve">
+    <value>Gérez et lancez vos travaux de sauvegarde.</value>
+  </data>
+  <data name="UiRefresh" xml:space="preserve">
+    <value>Actualiser</value>
+  </data>
+  <data name="UiDelete" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="UiRun" xml:space="preserve">
+    <value>Lancer</value>
+  </data>
+  <data name="UiCreateBackupTitle" xml:space="preserve">
+    <value>Créer une sauvegarde</value>
+  </data>
+  <data name="UiTaskName" xml:space="preserve">
+    <value>Nom de la tâche</value>
+  </data>
+  <data name="UiTaskNameHint" xml:space="preserve">
+    <value>Ex: Documents travail</value>
+  </data>
+  <data name="UiLogFiles" xml:space="preserve">
+    <value>Fichiers logs</value>
+  </data>
+  <data name="UiLastBackup" xml:space="preserve">
+    <value>Dernier backup</value>
+  </data>
+  <data name="UiReady" xml:space="preserve">
+    <value>Prêt.</value>
+  </data>
+  <data name="UiFillAllFields" xml:space="preserve">
+    <value>Veuillez remplir tous les champs.</value>
+  </data>
+  <data name="UiSelectBackup" xml:space="preserve">
+    <value>Veuillez sélectionner une sauvegarde.</value>
+  </data>
+  <data name="UiAddBackup" xml:space="preserve">
+    <value>Ajouter la sauvegarde</value>
+  </data>
+  <data name="UiListUpdated" xml:space="preserve">
+    <value>Liste mise à jour ({0} sauvegardes).</value>
+  </data>
+  <data name="UiNoBackupsDefined" xml:space="preserve">
+    <value>Aucune sauvegarde définie.</value>
+  </data>
+  <data name="UiLaunchingBackup" xml:space="preserve">
+    <value>Lancement de '{0}'...</value>
+  </data>
+  <data name="UiBackupsFinished" xml:space="preserve">
+    <value>Sauvegardes terminées.</value>
+  </data>
+  <data name="UiBackupFinished" xml:space="preserve">
+    <value>{0} fini en {1:0.00}s</value>
+  </data>
+  <data name="UiSelectLogFile" xml:space="preserve">
+    <value>Sélectionnez un fichier de log pour voir son contenu.</value>
+  </data>
+  <data name="UiNoLogsFound" xml:space="preserve">
+    <value>Aucun journal trouvé.</value>
+  </data>
+  <data name="UiLogsLoadError" xml:space="preserve">
+    <value>Erreur chargement journaux: {0}</value>
+  </data>
+  <data name="UiBackupException" xml:space="preserve">
+    <value>Erreur pendant le backup: {0}</value>
+  </data>
+  <data name="UiConfigLoadError" xml:space="preserve">
+    <value>Erreur chargement configuration: {0}</value>
+  </data>
+  <data name="UiConfigSaveError" xml:space="preserve">
+    <value>Erreur sauvegarde configuration: {0}</value>
+  </data>
+  <data name="UiClearSelection" xml:space="preserve">
+    <value>Effacer la sélection</value>
+  </data>
+  <data name="UiSelectAll" xml:space="preserve">
+    <value>Tout sélectionner</value>
+  </data>
 </root>

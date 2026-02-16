@@ -13,26 +13,20 @@ namespace easySave_BMT.ViewModel_.Saves
 
         public void AddSave()
         {
-            if (_viewModel.model.saves.Count < 5)
-            {
-                string addSaveName = _viewModel.view.SaveName();
-                if (addSaveName == "0") return;
+            // Unlimited number of tasks (requested).
+            string addSaveName = _viewModel.view.SaveName();
+            if (addSaveName == "0") return;
 
-                string addSaveSrc = _viewModel.view.SaveSrc();
-                if (addSaveSrc == "0") return;
+            string addSaveSrc = _viewModel.view.SaveSrc();
+            if (addSaveSrc == "0") return;
 
-                string addSaveDest = _viewModel.view.SaveDst(addSaveSrc);
-                if (addSaveDest == "0") return;
+            string addSaveDest = _viewModel.view.SaveDst(addSaveSrc);
+            if (addSaveDest == "0") return;
 
-                BackupType backupType = GetBackupType();
-                if (backupType == BackupType.NONE) return;
+            BackupType backupType = GetBackupType();
+            if (backupType == BackupType.NONE) return;
 
-                _viewModel.view.DisplayMessage(_viewModel.model.AddSave(addSaveName, addSaveSrc, addSaveDest, backupType));
-            }
-            else
-            {
-                _viewModel.view.DisplayMessage(205);
-            }
+            _viewModel.view.DisplayMessage(_viewModel.model.AddSave(addSaveName, addSaveSrc, addSaveDest, backupType));
         }
 
         public void RemoveSave()

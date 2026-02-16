@@ -1,57 +1,90 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
-using Avalonia.Platform.Storage; // Nouvelle API Avalonia Storage (plus moderne)
+using Avalonia.Input;
+using Avalonia.Platform.Storage;
+using Avalonia;
+using Avalonia.VisualTree;
 using easySave_BMT.Avalonia.ViewModels;
+using ReactiveUI;
 using System;
+using System.Linq;
 
 namespace easySave_BMT.Avalonia
 {
     public partial class MainWindow : Window
     {
+        private bool _handlersRegistered;
+
         public MainWindow()
         {
             InitializeComponent();
+            DataContextChanged += OnDataContextChanged;
         }
 
-        // Utilisation de la nouvelle API StorageProvider d'Avalonia 11+ (plus compatible)
-        // Si vous êtes sur une vieille version, gardez OpenFolderDialog
-        private async void OnBrowseSourceClick(object? sender, RoutedEventArgs e)
+        private void OnDataContextChanged(object? sender, EventArgs e)
         {
+            if (_handlersRegistered) return;
             if (DataContext is not MainWindowViewModel vm) return;
 
-            // Méthode moderne (StorageProvider)
-            var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel == null) return;
+            _handlersRegistered = true;
 
-            var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            vm.BrowseFolderInteraction.RegisterHandler(async interaction =>
             {
-                Title = "Choisir le dossier source",
-                AllowMultiple = false
+                var topLevel = TopLevel.GetTopLevel(this);
+                if (topLevel == null)
+                {
+                    interaction.SetOutput(null);
+                    return;
+                }
+
+                var options = interaction.Input ?? new FolderPickerOpenOptions
+                {
+                    Title = "Choisir un dossier",
+                    AllowMultiple = false
+                };
+
+                var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(options);
+                interaction.SetOutput(folders.Count > 0 ? folders[0].Path.LocalPath : null);
             });
 
-            if (folders.Count > 0)
+            vm.SaveFileInteraction.RegisterHandler(async interaction =>
             {
-                vm.NewSaveSourcePath = folders[0].Path.LocalPath;
-            }
+                var topLevel = TopLevel.GetTopLevel(this);
+                if (topLevel == null)
+                {
+                    interaction.SetOutput(null);
+                    return;
+                }
+
+                var options = interaction.Input ?? new FilePickerSaveOptions
+                {
+                    Title = "Enregistrer un fichier",
+                    SuggestedFileName = "state.json",
+                    DefaultExtension = "json"
+                };
+
+                var file = await topLevel.StorageProvider.SaveFilePickerAsync(options);
+                interaction.SetOutput(file?.Path.LocalPath);
+            });
         }
 
-        private async void OnBrowseDestinationClick(object? sender, RoutedEventArgs e)
+        private void OnDashboardPointerPressed(object? sender, PointerPressedEventArgs e)
         {
+            if (e.GetCurrentPoint(this).Properties.IsRightButtonPressed != true) return;
             if (DataContext is not MainWindowViewModel vm) return;
 
-            var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel == null) return;
-
-            var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            var visual = e.Source as Visual;
+            if (visual != null)
             {
-                Title = "Choisir le dossier destination",
-                AllowMultiple = false
-            });
+                // Ignore right-clicks on action buttons.
+                if (visual.GetVisualAncestors().OfType<Button>().Any()) return;
 
-            if (folders.Count > 0)
-            {
-                vm.NewSaveDestinationPath = folders[0].Path.LocalPath;
+                // Ignore right-clicks on a save item itself.
+                if (visual.GetVisualAncestors().OfType<ListBoxItem>().Any()) return;
             }
+
+            vm.SelectedSaves.Clear();
+            vm.SelectedSave = null;
+            e.Handled = true;
         }
     }
 }

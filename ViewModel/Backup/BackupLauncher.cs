@@ -8,6 +8,8 @@ namespace easySave_BMT.ViewModel_.Backup
 {
     public class BackupLauncher
     {
+        private const string FullMarkerFileName = ".easysave_full";
+
         private readonly ViewModel _viewModel;
 
         public BackupLauncher(ViewModel viewModel)
@@ -46,9 +48,31 @@ namespace easySave_BMT.ViewModel_.Backup
         {
             DirectoryInfo dir = new DirectoryInfo(_save.src);
 
-            if (!dir.Exists && !Directory.Exists(_save.dst))
+            // If source OR destination is invalid, abort safely
+            if (!dir.Exists || !Directory.Exists(_save.dst))
             {
                 return 207;
+            }
+
+            try
+            {
+                // Prevent destination being inside source (can cause recursion / unexpected behavior).
+                string srcFull = Path.GetFullPath(_save.src).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                string dstFull = Path.GetFullPath(_save.dst).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+                if (string.Equals(srcFull, dstFull, StringComparison.OrdinalIgnoreCase))
+                {
+                    return 212;
+                }
+
+                if (dstFull.StartsWith(srcFull, StringComparison.OrdinalIgnoreCase))
+                {
+                    return 217;
+                }
+            }
+            catch
+            {
+                // If path normalization fails, proceed and let the copy layer report errors.
             }
 
             var activeState = new State(0, 0, _save.src, _save.dst);
@@ -92,7 +116,7 @@ namespace easySave_BMT.ViewModel_.Backup
             switch (_save.backupType)
             {
                 case BackupType.DIFFERENTIAL:
-                    string fullBackupDir = GetFullBackupDir(_save);
+                    string? fullBackupDir = GetFullBackupDir(_save);
                     if (fullBackupDir != null)
                     {
                         return DifferentialBackupSetup(_save, _dir, fullBackupDir);
@@ -107,19 +131,35 @@ namespace easySave_BMT.ViewModel_.Backup
             }
         }
 
-        private string GetFullBackupDir(Save _save)
+        private string? GetFullBackupDir(Save _save)
         {
-            DirectoryInfo[] dirs = new DirectoryInfo(_save.dst).GetDirectories();
-
-            foreach (DirectoryInfo directory in dirs)
+            try
             {
-                if (directory.Name.IndexOf("_") > 0 &&
-                    _save.name == directory.Name.Substring(0, directory.Name.IndexOf("_")))
+                DirectoryInfo[] dirs = new DirectoryInfo(_save.dst).GetDirectories();
+
+                // Pick the most recent full backup folder for this save name.
+                var candidates = dirs
+                    .Where(d => d.Name.StartsWith(_save.name + "_", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                var fullCandidates = candidates
+                    .Where(d => File.Exists(Path.Combine(d.FullName, FullMarkerFileName)))
+                    .OrderByDescending(d => d.CreationTimeUtc)
+                    .ToList();
+
+                if (fullCandidates.Count > 0)
                 {
-                    return directory.FullName;
+                    return fullCandidates[0].FullName;
                 }
+
+                // Fallback for old backups (no marker): choose the most recent matching folder.
+                var latest = candidates.OrderByDescending(d => d.CreationTimeUtc).FirstOrDefault();
+                return latest?.FullName;
             }
-            return null;
+            catch
+            {
+                return null;
+            }
         }
 
         private int FullBackupSetup(Save _save, DirectoryInfo _dir)
@@ -142,7 +182,7 @@ namespace easySave_BMT.ViewModel_.Backup
 
             foreach (FileInfo file in srcFiles)
             {
-                string currFullBackPath = _fullBackupDir + "\\" + Path.GetRelativePath(_save.src, file.FullName);
+                string currFullBackPath = Path.Combine(_fullBackupDir, Path.GetRelativePath(_save.src, file.FullName));
 
                 if (!File.Exists(currFullBackPath) || !IsSameFile(currFullBackPath, file.FullName))
                 {
@@ -156,9 +196,12 @@ namespace easySave_BMT.ViewModel_.Backup
                 _save.lastBackupDate = DateTime.Now.ToString("yyyy/MM/dd_HH:mm:ss");
                 _viewModel.model.AddLogInJSONFile();
 
-                // Notification console
-                _viewModel.view.DisplayMessage(3);
-                _viewModel.view.DisplayBackupRecap(_save.name, 0);
+                // Notification console (only when running in console mode)
+                if (_viewModel.guiView is null)
+                {
+                    _viewModel.view.DisplayMessage(3);
+                    _viewModel.view.DisplayBackupRecap(_save.name, 0);
+                }
 
                 // Notification GUI éventuelle
                 _viewModel.guiView?.OnBackupComplete(_save.name, 0);
@@ -196,7 +239,8 @@ namespace easySave_BMT.ViewModel_.Backup
         private int DoBackup(Save _save, FileInfo[] _files, long _totalSize)
         {
             DateTime startTime = DateTime.Now;
-            string dst = _save.dst + _save.name + "_" + startTime.ToString("yyyy-MM-dd_HH-mm-ss") + "\\";
+            string backupDirName = _save.name + "_" + startTime.ToString("yyyy-MM-dd_HH-mm-ss");
+            string dst = Path.Combine(_save.dst, backupDirName) + Path.DirectorySeparatorChar;
 
             _save.state = new State(_files.Length, _totalSize, _save.src, dst);
             _save.lastBackupDate = startTime.ToString("yyyy/MM/dd_HH:mm:ss");
@@ -204,13 +248,32 @@ namespace easySave_BMT.ViewModel_.Backup
             try
             {
                 Directory.CreateDirectory(dst);
+
+                // Mark full backups so differential can reliably find the latest full.
+                if (_save.backupType == BackupType.FULL)
+                {
+                    try
+                    {
+                        string markerPath = Path.Combine(dst, FullMarkerFileName);
+                        File.WriteAllText(markerPath, "FULL");
+                        try { File.SetAttributes(markerPath, FileAttributes.Hidden); } catch { }
+                    }
+                    catch
+                    {
+                        // Ignore marker errors; backup can still proceed.
+                    }
+                }
             }
             catch
             {
                 return 210;
             }
 
-            Console.Clear();
+            // In Avalonia (WinExe), there is no console attached; Console.Clear/SetCursorPosition can throw.
+            if (_viewModel.guiView is null)
+            {
+                try { Console.Clear(); } catch { /* ignore */ }
+            }
 
             List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst);
             DateTime endTime = DateTime.Now;
@@ -219,16 +282,25 @@ namespace easySave_BMT.ViewModel_.Backup
 
                 _viewModel.model.AddLogInJSONFile();
 
-                // Notifications console
-                _viewModel.view.DisplayMessage(3);
+                // Notifications console (only when running in console mode)
+                if (_viewModel.guiView is null)
+                {
+                    _viewModel.view.DisplayMessage(3);
+                }
 
                 foreach (string failedFile in failedFiles)
                 {
-                    _viewModel.view.DisplayFiledError(failedFile);
+                    if (_viewModel.guiView is null)
+                    {
+                        _viewModel.view.DisplayFiledError(failedFile);
+                    }
                     _viewModel.guiView?.OnFileError(failedFile);
                 }
 
-                _viewModel.view.DisplayBackupRecap(_save.name, transferTime);
+                if (_viewModel.guiView is null)
+                {
+                    _viewModel.view.DisplayBackupRecap(_save.name, transferTime);
+                }
                 _viewModel.guiView?.OnBackupComplete(_save.name, transferTime);
 
             return failedFiles.Count == 0 ? 104 : 216;
@@ -246,18 +318,26 @@ namespace easySave_BMT.ViewModel_.Backup
                 long curSize = _files[i].Length;
                 leftSize -= curSize;
 
-                if (_viewModel.model.CopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent))
+                if (_viewModel.model.TryCopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent, out string? error))
                 {
                     Thread.Sleep((int)(curSize / 1000000));
-                    // Mise à jour de la progression en console
-                    _viewModel.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
+                    // Mise à jour de la progression en console (only when running in console mode)
+                    if (_viewModel.guiView is null)
+                    {
+                        _viewModel.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
+                    }
 
                     // Mise à jour de la progression en GUI (barre de progression / texte)
                     _viewModel.guiView?.OnProgressUpdate(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
                 }
                 else
                 {
-                    failedFiles.Add(_files[i].Name);
+                    // Still publish progress so the UI doesn't look stuck on failures.
+                    _viewModel.guiView?.OnProgressUpdate(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
+
+                    string detail = string.IsNullOrWhiteSpace(error) ? "Erreur de copie." : error;
+                    _viewModel.guiView?.OnFileError($"{_files[i].FullName}: {detail}");
+                    failedFiles.Add($"{_files[i].FullName}: {detail}");
                 }
             }
             return failedFiles;
