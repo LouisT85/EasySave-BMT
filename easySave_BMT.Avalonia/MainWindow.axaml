@@ -137,7 +137,7 @@
 							<Grid ColumnDefinitions="*, 120">
 								<StackPanel Grid.Column="0">
 									<TextBlock Text="{Binding Loc[Source]}" FontWeight="SemiBold" Margin="0,0,0,8"/>
-									<TextBox Text="{Binding NewSaveSourcePath}" Watermark="C:\Users\..."/>
+									<TextBox Text="{Binding NewSaveSourcePath}" Watermark="C:\Users\..." IsEnabled = "False"/>
 								</StackPanel>
 								<Button Grid.Column="1" Content="{Binding Loc[UiChoose]}" Margin="10,26,0,0" Command="{Binding BrowseSourceCommand}"/>
 							</Grid>
@@ -145,7 +145,7 @@
 							<Grid ColumnDefinitions="*, 120">
 								<StackPanel Grid.Column="0">
 									<TextBlock Text="{Binding Loc[Destination]}" FontWeight="SemiBold" Margin="0,0,0,8"/>
-									<TextBox Text="{Binding NewSaveDestinationPath}" Watermark="D:\Backup\..."/>
+									<TextBox Text="{Binding NewSaveDestinationPath}" Watermark="D:\Backup\..." IsEnabled = "False"/>
 								</StackPanel>
 								<Button Grid.Column="1" Content="{Binding Loc[UiChoose]}" Margin="10,26,0,0" Command="{Binding BrowseDestinationCommand}"/>
 							</Grid>
@@ -207,7 +207,7 @@
 							<StackPanel Spacing="6">
 								<TextBlock Text="{Binding Loc[LogDirectory]}" FontWeight="SemiBold"/>
 								<Grid ColumnDefinitions="*,120">
-									<TextBox Grid.Column="0" Text="{Binding ConfigLogDirectory}" Watermark="C:\ProgramData\EasySave\Logs"/>
+									<TextBox Grid.Column="0" Text="{Binding ConfigLogDirectory}" Watermark="C:\ProgramData\EasySave\Logs" IsEnabled = "False"/>
 									<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiChoose]}" Command="{Binding BrowseLogDirectoryCommand}"/>
 								</Grid>
 							</StackPanel>
@@ -215,7 +215,7 @@
 							<StackPanel Spacing="6">
 								<TextBlock Text="{Binding Loc[StateFile]}" FontWeight="SemiBold"/>
 								<Grid ColumnDefinitions="*,120">
-									<TextBox Grid.Column="0" Text="{Binding ConfigStateFilePath}" Watermark="C:\ProgramData\EasySave\state.json"/>
+									<TextBox Grid.Column="0" Text="{Binding ConfigStateFilePath}" Watermark="C:\ProgramData\EasySave\state.json" IsEnabled = "False"/>
 									<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiChoose]}" Command="{Binding BrowseStateFilePathCommand}"/>
 								</Grid>
 							</StackPanel>
