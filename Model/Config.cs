@@ -22,6 +22,20 @@ namespace easySave_BMT.Model_
         /// <summary>Preferred log file format: "XML" or "JSON". Defaults to XML to satisfy client requirement.</summary>
         public string LogFormat { get; set; } = "XML";
 
+        /// <summary>Enable file encryption using CryptoSoft after copy.</summary>
+        public bool EnableEncryption { get; set; } = false;
+
+        /// <summary>
+        /// File extensions eligible for encryption (e.g., [".txt", ".pdf"]).
+        /// Comparison is case-insensitive.
+        /// </summary>
+        public System.Collections.Generic.List<string> EncryptionExtensions { get; set; } = new System.Collections.Generic.List<string>();
+
+        /// <summary>
+        /// Optional explicit path to CryptoSoft executable. If empty, EasySave will try to auto-detect it.
+        /// </summary>
+        public string CryptoSoftPath { get; set; } = "";
+
         /// <summary>The relative path to the configuration file itself.</summary>
         private static readonly string ConfigPath = "./config.json";
 
@@ -84,7 +98,13 @@ namespace easySave_BMT.Model_
         /// <param name="logDir">New directory for logs (ignored if empty).</param>
         /// <param name="statePath">New path for the state file (ignored if empty).</param>
         /// <param name="lang">New language code (ignored if empty).</param>
-        public void UpdateFromUserInput(string logDir, string statePath, string lang)
+        public void UpdateFromUserInput(
+            string logDir,
+            string statePath,
+            string lang,
+            bool? enableEncryption = null,
+            System.Collections.Generic.List<string>? encryptionExtensions = null,
+            string? cryptoSoftPath = null)
         {
             if (!string.IsNullOrWhiteSpace(logDir))
                 LogDirectory = logDir;
@@ -94,6 +114,15 @@ namespace easySave_BMT.Model_
 
             if (!string.IsNullOrWhiteSpace(lang))
                 Language = lang;
+
+            if (enableEncryption.HasValue)
+                EnableEncryption = enableEncryption.Value;
+
+            if (encryptionExtensions is not null)
+                EncryptionExtensions = encryptionExtensions;
+
+            if (cryptoSoftPath is not null)
+                CryptoSoftPath = cryptoSoftPath;
 
             Save();
         }

@@ -143,6 +143,7 @@ namespace easySave_BMT.ViewModel_
         void OnProgressUpdate(string backupName, int filesLeft, long sizeLeft, long currentFileSize, int percent);
         void OnBackupComplete(string backupName, double transferTime);
         void OnFileError(string fileName);
+        void OnEncryptionSummary(string backupName, int encryptedCount, int skippedAlreadyEncryptedCount);
         void ShowMessage(string message);
         ObservableCollection<Model_.Save> Saves { get; }
     }

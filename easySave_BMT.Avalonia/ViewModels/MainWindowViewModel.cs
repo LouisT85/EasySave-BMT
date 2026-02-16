@@ -15,6 +15,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace easySave_BMT.Avalonia.ViewModels
@@ -32,6 +33,9 @@ namespace easySave_BMT.Avalonia.ViewModels
             NewTask,
             Config
         }
+
+        private static readonly TimeSpan MessageAutoClearDelay = TimeSpan.FromSeconds(5);
+        private readonly Dictionary<MessageArea, CancellationTokenSource> _messageClearTokens = new();
 
         // --- Collections ---
         public ObservableCollection<Model_.Save> Saves { get; } = new();
@@ -101,6 +105,17 @@ namespace easySave_BMT.Avalonia.ViewModels
 
         private string _configLanguageDraft = "fr";
         public string ConfigLanguageDraft { get => _configLanguageDraft; set => this.RaiseAndSetIfChanged(ref _configLanguageDraft, value); }
+
+        private bool _configEnableEncryptionDraft;
+        public bool ConfigEnableEncryptionDraft { get => _configEnableEncryptionDraft; set => this.RaiseAndSetIfChanged(ref _configEnableEncryptionDraft, value); }
+
+        public ObservableCollection<string> ConfigEncryptionExtensionsDraft { get; } = new();
+
+        private string _newEncryptionExtension = "";
+        public string NewEncryptionExtension { get => _newEncryptionExtension; set => this.RaiseAndSetIfChanged(ref _newEncryptionExtension, value); }
+
+        private string? _selectedEncryptionExtension;
+        public string? SelectedEncryptionExtension { get => _selectedEncryptionExtension; set => this.RaiseAndSetIfChanged(ref _selectedEncryptionExtension, value); }
 
         public LocalizationService Loc { get; } = new();
 
@@ -190,6 +205,8 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> BrowseStateFilePathCommand { get; }
         public ReactiveCommand<Unit, Unit> LoadConfigCommand { get; }
         public ReactiveCommand<Unit, Unit> ConfigCommand { get; }
+        public ReactiveCommand<Unit, Unit> AddEncryptionExtensionCommand { get; }
+        public ReactiveCommand<Unit, Unit> RemoveEncryptionExtensionCommand { get; }
         public ReactiveCommand<Unit, Unit> LoadLogsCommand { get; }
         public ReactiveCommand<Unit, Unit> QuitCommand { get; }
 
@@ -279,6 +296,41 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             LoadConfigCommand = ReactiveCommand.Create(LoadConfigValuesFromModel);
             ConfigCommand = ReactiveCommand.Create(SaveConfigFromViewModel);
+
+            AddEncryptionExtensionCommand = ReactiveCommand.Create(() =>
+            {
+                string ext = (NewEncryptionExtension ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(ext))
+                {
+                    SetTimedAreaMessage(MessageArea.Config, Loc["UiEnterExtension"]);
+                    return;
+                }
+
+                if (!ext.StartsWith(".")) ext = "." + ext;
+                ext = ext.ToLowerInvariant();
+
+                // Basic validation: ".a" .. ".ext" allowed
+                if (ext.Length < 2 || ext.Any(ch => char.IsWhiteSpace(ch)) || ext.Contains(Path.DirectorySeparatorChar) || ext.Contains(Path.AltDirectorySeparatorChar))
+                {
+                    SetTimedAreaMessage(MessageArea.Config, Loc["UiInvalidExtension"]);
+                    return;
+                }
+
+                if (!ConfigEncryptionExtensionsDraft.Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase)))
+                {
+                    ConfigEncryptionExtensionsDraft.Add(ext);
+                }
+
+                NewEncryptionExtension = "";
+            });
+
+            RemoveEncryptionExtensionCommand = ReactiveCommand.Create(() =>
+            {
+                if (string.IsNullOrWhiteSpace(SelectedEncryptionExtension)) return;
+                ConfigEncryptionExtensionsDraft.Remove(SelectedEncryptionExtension);
+                SelectedEncryptionExtension = null;
+            });
+
             LoadLogsCommand = ReactiveCommand.Create(LoadLogs);
             QuitCommand = ReactiveCommand.Create(() =>
             {
@@ -340,24 +392,111 @@ namespace easySave_BMT.Avalonia.ViewModels
 
         private void SetAreaMessage(MessageArea area, string message)
         {
-            switch (area)
-            {
-                case MessageArea.NewTask:
-                    NewTaskMessage = message;
-                    break;
-                case MessageArea.Config:
-                    ConfigMessage = message;
-                    break;
-                default:
-                    DashboardMessage = message;
-                    break;
-            }
+            SetTimedAreaMessage(area, message);
         }
 
         private void SetMessageFromCode(int code, MessageArea area)
         {
             string key = GetMessageKeyFromCode(code);
             SetAreaMessage(area, Loc[key]);
+        }
+
+        private void CancelMessageAutoClear(MessageArea area)
+        {
+            if (_messageClearTokens.TryGetValue(area, out var cts))
+            {
+                try { cts.Cancel(); } catch { }
+                cts.Dispose();
+                _messageClearTokens.Remove(area);
+            }
+        }
+
+        private void ScheduleMessageAutoClear(MessageArea area)
+        {
+            CancelMessageAutoClear(area);
+
+            var cts = new CancellationTokenSource();
+            _messageClearTokens[area] = cts;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(MessageAutoClearDelay, cts.Token).ConfigureAwait(false);
+                }
+                catch (TaskCanceledException)
+                {
+                    return;
+                }
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    // Clear only if no newer message replaced it (token still current).
+                    if (_messageClearTokens.TryGetValue(area, out var current) && ReferenceEquals(current, cts))
+                    {
+                        ClearAreaMessage(area);
+                    }
+                });
+            });
+        }
+
+        private void ClearAreaMessage(MessageArea area)
+        {
+            CancelMessageAutoClear(area);
+
+            switch (area)
+            {
+                case MessageArea.NewTask:
+                    NewTaskMessage = "";
+                    NewTaskStatusText = "";
+                    break;
+                case MessageArea.Config:
+                    ConfigMessage = "";
+                    break;
+                default:
+                    DashboardMessage = "";
+                    DashboardStatusText = "";
+                    break;
+            }
+        }
+
+        private void SetTimedAreaMessage(MessageArea area, string message, string? statusText = null)
+        {
+            switch (area)
+            {
+                case MessageArea.NewTask:
+                    NewTaskMessage = message ?? "";
+                    if (statusText is not null) NewTaskStatusText = statusText;
+                    break;
+                case MessageArea.Config:
+                    ConfigMessage = message ?? "";
+                    break;
+                default:
+                    DashboardMessage = message ?? "";
+                    if (statusText is not null) DashboardStatusText = statusText;
+                    break;
+            }
+
+            // The user asked that messages in the "backup list" tab (Dashboard area) must NOT auto-disappear.
+            if (area == MessageArea.Dashboard)
+            {
+                CancelMessageAutoClear(area);
+                return;
+            }
+
+            bool hasContent =
+                !string.IsNullOrWhiteSpace(message) ||
+                !string.IsNullOrWhiteSpace(statusText);
+
+            if (hasContent) ScheduleMessageAutoClear(area);
+            else CancelMessageAutoClear(area);
+        }
+
+        private void SetTimedDashboardStatusText(string statusText)
+        {
+            DashboardStatusText = statusText ?? "";
+            // Dashboard must not auto-disappear.
+            CancelMessageAutoClear(MessageArea.Dashboard);
         }
 
         private void ListSaves(bool showUserFeedback)
@@ -375,9 +514,9 @@ namespace easySave_BMT.Avalonia.ViewModels
                 if (reloadResult == 100)
                 {
                     if (_coreViewModel.model.saves.Count > 0)
-                        DashboardStatusText = string.Format(Loc["UiListUpdated"], _coreViewModel.model.saves.Count);
+                        SetTimedDashboardStatusText(string.Format(Loc["UiListUpdated"], _coreViewModel.model.saves.Count));
                     else
-                        DashboardStatusText = Loc["UiNoBackupsDefined"];
+                        SetTimedDashboardStatusText(Loc["UiNoBackupsDefined"]);
                 }
                 // On error, SaveListManager already pushed a message via guiView.ShowMessage().
             }
@@ -405,8 +544,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             if (string.IsNullOrWhiteSpace(NewSaveName) || string.IsNullOrWhiteSpace(NewSaveSourcePath) || string.IsNullOrWhiteSpace(NewSaveDestinationPath))
             {
-                NewTaskMessage = Loc["UiFillAllFields"];
-                NewTaskStatusText = "";
+                SetTimedAreaMessage(MessageArea.NewTask, Loc["UiFillAllFields"], "");
                 return;
             }
 
@@ -431,8 +569,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             var names = GetSelectedSaveNames();
             if (names.Count == 0)
             {
-                DashboardMessage = Loc["UiSelectBackup"];
-                DashboardStatusText = "";
+                SetTimedAreaMessage(MessageArea.Dashboard, Loc["UiSelectBackup"], "");
                 return;
             }
 
@@ -454,7 +591,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             SelectedSave = null;
             ListSaves(showUserFeedback: false);
             SetMessageFromCode(indices.Count > 0 ? 103 : 203, MessageArea.Dashboard);
-            DashboardStatusText = "";
+            SetTimedDashboardStatusText("");
         }
 
         private async Task LaunchBackupAsync()
@@ -462,8 +599,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             var names = GetSelectedSaveNames();
             if (names.Count == 0)
             {
-                DashboardMessage = Loc["UiSelectBackup"];
-                DashboardStatusText = "";
+                SetTimedAreaMessage(MessageArea.Dashboard, Loc["UiSelectBackup"], "");
                 return;
             }
 
@@ -479,8 +615,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                 var toRun = _coreViewModel.model.saves.Where(s => names.Contains(s.name)).ToList();
                 if (toRun.Count == 0)
                 {
-                    DashboardMessage = Loc["UiSelectBackup"];
-                    DashboardStatusText = "";
+                    SetTimedAreaMessage(MessageArea.Dashboard, Loc["UiSelectBackup"], "");
                     return;
                 }
 
@@ -489,8 +624,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                     // Reset per-save progress at the start of each run.
                     SetSaveUiProgress(save.name, 0);
 
-                    DashboardMessage = string.Format(Loc["UiLaunchingBackup"], save.name);
-                    DashboardStatusText = "";
+                    SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiLaunchingBackup"], save.name), "");
                     lastResult = await Task.Run(() => _coreViewModel.backupLauncher.LaunchBackupType(save));
 
                     if (lastResult == 104 || lastResult == 105 || lastResult == 216)
@@ -504,8 +638,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
             catch (Exception ex)
             {
-                DashboardMessage = string.Format(Loc["UiBackupException"], ex.Message);
-                DashboardStatusText = "";
+                SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiBackupException"], ex.Message), "");
                 return;
             }
 
@@ -515,12 +648,21 @@ namespace easySave_BMT.Avalonia.ViewModels
             SetMessageFromCode(lastResult, MessageArea.Dashboard);
             if (names.Count > 1)
             {
-                DashboardStatusText = Loc["UiBackupsFinished"];
+                // Keep any per-backup details (ex: encryption summary) and append the global status.
+                string done = Loc["UiBackupsFinished"];
+                if (string.IsNullOrWhiteSpace(DashboardStatusText))
+                {
+                    SetTimedDashboardStatusText(done);
+                }
+                else if (!DashboardStatusText.Contains(done, StringComparison.Ordinal))
+                {
+                    DashboardStatusText = DashboardStatusText.TrimEnd() + "\n" + done;
+                }
             }
             else if (lastResult == 105)
             {
                 // Differential backup with no changes: avoid confusing "finished in 0s" status text.
-                DashboardStatusText = "";
+                SetTimedDashboardStatusText("");
             }
         }
 
@@ -533,13 +675,27 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ConfigStateFilePath = cfg.StateFilePath;
                 ConfigLanguage = cfg.Language;
                 ConfigLanguageDraft = cfg.Language;
+                ConfigEnableEncryptionDraft = cfg.EnableEncryption;
+                ConfigEncryptionExtensionsDraft.Clear();
+                if (cfg.EncryptionExtensions is not null)
+                {
+                    foreach (var extRaw in cfg.EncryptionExtensions)
+                    {
+                        var ext = (extRaw ?? "").Trim();
+                        if (string.IsNullOrWhiteSpace(ext)) continue;
+                        if (!ext.StartsWith(".")) ext = "." + ext;
+                        ext = ext.ToLowerInvariant();
+                        if (!ConfigEncryptionExtensionsDraft.Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase)))
+                            ConfigEncryptionExtensionsDraft.Add(ext);
+                    }
+                }
                 Loc.SetLanguage(cfg.Language);
                 RefreshBackupTypeOptions();
-                ConfigMessage = "";
+                ClearAreaMessage(MessageArea.Config);
             }
             catch (Exception ex)
             {
-                ConfigMessage = string.Format(Loc["UiConfigLoadError"], ex.Message);
+                SetTimedAreaMessage(MessageArea.Config, string.Format(Loc["UiConfigLoadError"], ex.Message));
             }
         }
 
@@ -547,7 +703,19 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             try
             {
-                _coreViewModel.model.UpdateConfig(ConfigLogDirectory, ConfigStateFilePath, ConfigLanguageDraft);
+                var exts = ConfigEncryptionExtensionsDraft
+                    .Select(e => (e ?? "").Trim())
+                    .Where(e => !string.IsNullOrWhiteSpace(e))
+                    .Select(e => e.StartsWith(".") ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                _coreViewModel.model.UpdateConfig(
+                    ConfigLogDirectory,
+                    ConfigStateFilePath,
+                    ConfigLanguageDraft,
+                    enableEncryption: ConfigEnableEncryptionDraft,
+                    encryptionExtensions: exts);
 
                 // Apply language to the current UI only after Save.
                 ConfigLanguage = ConfigLanguageDraft;
@@ -562,7 +730,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
             catch (Exception ex)
             {
-                ConfigMessage = string.Format(Loc["UiConfigSaveError"], ex.Message);
+                SetTimedAreaMessage(MessageArea.Config, string.Format(Loc["UiConfigSaveError"], ex.Message));
             }
         }
 
@@ -648,13 +816,37 @@ namespace easySave_BMT.Avalonia.ViewModels
 
                 ProgressPercent = 100;
                 IsProgressVisible = true;
-                DashboardStatusText = string.Format(Loc["UiBackupFinished"], backupName, transferTime);
+                SetTimedDashboardStatusText(string.Format(Loc["UiBackupFinished"], backupName, transferTime));
             });
         }
 
         public void OnFileError(string fileName)
         {
-            Dispatcher.UIThread.Post(() => DashboardStatusText = $"{Loc["CopyFailed"]}: {fileName}");
+            Dispatcher.UIThread.Post(() => SetTimedDashboardStatusText($"{Loc["CopyFailed"]}: {fileName}"));
+        }
+
+        public void OnEncryptionSummary(string backupName, int encryptedCount, int skippedAlreadyEncryptedCount)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                // Message stays visible on the backup list tab (no auto-clear for Dashboard).
+                string? summary = null;
+                if (encryptedCount <= 0 && skippedAlreadyEncryptedCount > 0)
+                {
+                    summary = string.Format(Loc["UiAllFilesAlreadyEncrypted"], backupName);
+                }
+                else if (encryptedCount > 0 && skippedAlreadyEncryptedCount > 0)
+                {
+                    summary = string.Format(Loc["UiEncryptionSummary"], backupName, encryptedCount, skippedAlreadyEncryptedCount);
+                }
+
+                if (string.IsNullOrWhiteSpace(summary)) return;
+
+                if (string.IsNullOrWhiteSpace(DashboardStatusText))
+                    DashboardStatusText = summary;
+                else
+                    DashboardStatusText = DashboardStatusText.TrimEnd() + "\n" + summary;
+            });
         }
 
         public void ShowMessage(string message)
@@ -664,11 +856,11 @@ namespace easySave_BMT.Avalonia.ViewModels
                 // Route generic core messages to the currently visible tab.
                 // (Backup actions set DashboardMessage explicitly.)
                 if (SelectedTabIndex == 1)
-                    NewTaskMessage = message;
+                    SetTimedAreaMessage(MessageArea.NewTask, message);
                 else if (SelectedTabIndex == 3)
-                    ConfigMessage = message;
+                    SetTimedAreaMessage(MessageArea.Config, message);
                 else
-                    DashboardMessage = message;
+                    SetTimedAreaMessage(MessageArea.Dashboard, message);
             });
         }
 

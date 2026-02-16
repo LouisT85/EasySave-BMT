@@ -379,4 +379,34 @@
   <data name="UiSelectAll" xml:space="preserve">
     <value>Tout sélectionner</value>
   </data>
+  <data name="UiEncryptionTitle" xml:space="preserve">
+    <value>Cryptage (CryptoSoft)</value>
+  </data>
+  <data name="UiEnableEncryption" xml:space="preserve">
+    <value>Activer le cryptage</value>
+  </data>
+  <data name="UiEncryptExtensions" xml:space="preserve">
+    <value>Crypter uniquement ces extensions (exemple : .txt)</value>
+  </data>
+  <data name="UiExtensionHint" xml:space="preserve">
+    <value>.txt</value>
+  </data>
+  <data name="UiAdd" xml:space="preserve">
+    <value>Ajouter</value>
+  </data>
+  <data name="UiRemove" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="UiEnterExtension" xml:space="preserve">
+    <value>Veuillez saisir une extension.</value>
+  </data>
+  <data name="UiInvalidExtension" xml:space="preserve">
+    <value>Extension invalide.</value>
+  </data>
+  <data name="UiAllFilesAlreadyEncrypted" xml:space="preserve">
+    <value>{0} : tous les fichiers correspondants sont déjà cryptés. Aucun cryptage effectué.</value>
+  </data>
+  <data name="UiEncryptionSummary" xml:space="preserve">
+    <value>{0} : cryptage effectué sur {1} fichier(s), {2} fichier(s) déjà crypté(s) ignoré(s).</value>
+  </data>
 </root>

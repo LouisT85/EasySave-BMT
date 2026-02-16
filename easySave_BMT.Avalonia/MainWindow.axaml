@@ -224,6 +224,25 @@
 								<TextBlock Text="{Binding Loc[Language]}" FontWeight="SemiBold"/>
 								<ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding ConfigLanguageDraft}" HorizontalAlignment="Stretch"/>
 							</StackPanel>
+
+							<Border Background="{DynamicResource BrushBackground}" CornerRadius="8" Padding="12" Margin="0,6,0,0">
+								<StackPanel Spacing="10">
+									<TextBlock Text="{Binding Loc[UiEncryptionTitle]}" FontWeight="SemiBold"/>
+									<CheckBox Content="{Binding Loc[UiEnableEncryption]}" IsChecked="{Binding ConfigEnableEncryptionDraft}"/>
+
+									<TextBlock Text="{Binding Loc[UiEncryptExtensions]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
+
+									<Grid ColumnDefinitions="*,120" Margin="0,2,0,0">
+										<TextBox Grid.Column="0" Text="{Binding NewEncryptionExtension}" Watermark="{Binding Loc[UiExtensionHint]}"/>
+										<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiAdd]}" Command="{Binding AddEncryptionExtensionCommand}"/>
+									</Grid>
+
+									<Grid ColumnDefinitions="*,120">
+										<ListBox Grid.Column="0" ItemsSource="{Binding ConfigEncryptionExtensionsDraft}" SelectedItem="{Binding SelectedEncryptionExtension}" Height="110"/>
+										<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiRemove]}" Command="{Binding RemoveEncryptionExtensionCommand}"/>
+									</Grid>
+								</StackPanel>
+							</Border>
 						</StackPanel>
 					</Border>
 

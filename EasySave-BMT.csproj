@@ -18,6 +18,15 @@
     <Compile Remove="easySave_BMT.Avalonia\**\*.cs" />
     <!-- Exclure explicitement le projet de test Avalonia copié sous le répertoire principal -->
     <Compile Remove="easySave_BMT.Avalonia\EasySaveAvaloniaTest\**\*.cs" />
+    <!-- Exclure les sources des projets externes (référencés via ProjectReference) -->
+    <Compile Remove="EasyLog\**\*.cs" />
+    <Compile Remove="CryptoSoft\**\*.cs" />
+  </ItemGroup>
+
+  <!-- Build CryptoSoft alongside EasySave (used as an external encryption tool). -->
+  <ItemGroup>
+    <ProjectReference Include="EasyLog\EasyLog.csproj" />
+    <ProjectReference Include="CryptoSoft\CryptoSoft.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

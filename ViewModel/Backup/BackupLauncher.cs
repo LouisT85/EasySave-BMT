@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using easySave_BMT.Model_;
 
@@ -8,7 +10,8 @@ namespace easySave_BMT.ViewModel_.Backup
 {
     public class BackupLauncher
     {
-        private const string FullMarkerFileName = ".easysave_full";
+        private const string EasySaveCryptoMagicV1 = "EASYSAVECRYPT1";
+        private const string EasySaveCryptoMagicV2 = "EASYSAVECRYPT2";
 
         private readonly ViewModel _viewModel;
 
@@ -137,22 +140,11 @@ namespace easySave_BMT.ViewModel_.Backup
             {
                 DirectoryInfo[] dirs = new DirectoryInfo(_save.dst).GetDirectories();
 
-                // Pick the most recent full backup folder for this save name.
+                // Pick the most recent backup folder for this save name.
                 var candidates = dirs
                     .Where(d => d.Name.StartsWith(_save.name + "_", StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
-                var fullCandidates = candidates
-                    .Where(d => File.Exists(Path.Combine(d.FullName, FullMarkerFileName)))
-                    .OrderByDescending(d => d.CreationTimeUtc)
-                    .ToList();
-
-                if (fullCandidates.Count > 0)
-                {
-                    return fullCandidates[0].FullName;
-                }
-
-                // Fallback for old backups (no marker): choose the most recent matching folder.
                 var latest = candidates.OrderByDescending(d => d.CreationTimeUtc).FirstOrDefault();
                 return latest?.FullName;
             }
@@ -210,25 +202,95 @@ namespace easySave_BMT.ViewModel_.Backup
             return DoBackup(_save, filesToCopy.ToArray(), totalSize);
         }
 
+        private static bool TryReadEasySaveCryptoHeader(string filePath, out bool isEncrypted, out string? plaintextSha256Hex)
+        {
+            isEncrypted = false;
+            plaintextSha256Hex = null;
+
+            try
+            {
+                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                byte[] buf = new byte[256];
+                int read = fs.Read(buf, 0, buf.Length);
+                if (read <= 0) return false;
+
+                int nl1 = Array.IndexOf(buf, (byte)'\n', 0, read);
+                if (nl1 <= 0) return false;
+
+                string line1 = Encoding.ASCII.GetString(buf, 0, nl1).TrimEnd('\r');
+                if (!string.Equals(line1, EasySaveCryptoMagicV1, StringComparison.Ordinal) &&
+                    !string.Equals(line1, EasySaveCryptoMagicV2, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                isEncrypted = true;
+
+                if (string.Equals(line1, EasySaveCryptoMagicV2, StringComparison.Ordinal))
+                {
+                    int start2 = nl1 + 1;
+                    int nl2 = Array.IndexOf(buf, (byte)'\n', start2, read - start2);
+                    if (nl2 > start2)
+                    {
+                        string line2 = Encoding.ASCII.GetString(buf, start2, nl2 - start2).TrimEnd('\r').Trim();
+                        if (line2.Length == 64 && line2.All(ch => Uri.IsHexDigit(ch)))
+                        {
+                            plaintextSha256Hex = line2.ToLowerInvariant();
+                        }
+                    }
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool HasEasySaveCryptoHeader(string filePath)
+        {
+            return TryReadEasySaveCryptoHeader(filePath, out bool isEncrypted, out _) && isEncrypted;
+        }
+
+        private static string ComputeSha256Hex(string filePath)
+        {
+            using var sha = SHA256.Create();
+            using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            var hash = sha.ComputeHash(fs);
+
+            var sb = new StringBuilder(hash.Length * 2);
+            foreach (byte b in hash)
+            {
+                sb.Append(b.ToString("x2"));
+            }
+            return sb.ToString();
+        }
+
         private bool IsSameFile(string path1, string path2)
         {
             try
             {
+                // If the reference file is EasySave-encrypted (v2), compare the stored plaintext hash to avoid decrypting.
+                if (TryReadEasySaveCryptoHeader(path1, out bool isEncrypted, out string? expectedHash) &&
+                    isEncrypted &&
+                    !string.IsNullOrWhiteSpace(expectedHash))
+                {
+                    string actual = ComputeSha256Hex(path2);
+                    return string.Equals(expectedHash, actual, StringComparison.OrdinalIgnoreCase);
+                }
+
+                // Fallback: byte-by-byte equality (works for non-encrypted backups and already-encrypted sources).
                 byte[] file1 = File.ReadAllBytes(path1);
                 byte[] file2 = File.ReadAllBytes(path2);
 
-                if (file1.Length == file2.Length)
+                if (file1.Length != file2.Length) return false;
+
+                for (int i = 0; i < file1.Length; i++)
                 {
-                    for (int i = 0; i < file1.Length; i++)
-                    {
-                        if (file1[i] != file2[i])
-                        {
-                            return false;
-                        }
-                    }
-                    return true;
+                    if (file1[i] != file2[i]) return false;
                 }
-                return false;
+                return true;
             }
             catch
             {
@@ -248,21 +310,6 @@ namespace easySave_BMT.ViewModel_.Backup
             try
             {
                 Directory.CreateDirectory(dst);
-
-                // Mark full backups so differential can reliably find the latest full.
-                if (_save.backupType == BackupType.FULL)
-                {
-                    try
-                    {
-                        string markerPath = Path.Combine(dst, FullMarkerFileName);
-                        File.WriteAllText(markerPath, "FULL");
-                        try { File.SetAttributes(markerPath, FileAttributes.Hidden); } catch { }
-                    }
-                    catch
-                    {
-                        // Ignore marker errors; backup can still proceed.
-                    }
-                }
             }
             catch
             {
@@ -275,7 +322,7 @@ namespace easySave_BMT.ViewModel_.Backup
                 try { Console.Clear(); } catch { /* ignore */ }
             }
 
-            List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst);
+            List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst, out int encryptedCount, out int skippedEncryptedCount);
             DateTime endTime = DateTime.Now;
             TimeSpan saveTime = endTime - startTime;
             double transferTime = saveTime.TotalMilliseconds;
@@ -302,15 +349,18 @@ namespace easySave_BMT.ViewModel_.Backup
                     _viewModel.view.DisplayBackupRecap(_save.name, transferTime);
                 }
                 _viewModel.guiView?.OnBackupComplete(_save.name, transferTime);
+                _viewModel.guiView?.OnEncryptionSummary(_save.name, encryptedCount, skippedEncryptedCount);
 
             return failedFiles.Count == 0 ? 104 : 216;
         }
 
-        private List<string> CopyFiles(Save _save, FileInfo[] _files, long _totalSize, string _dst)
+        private List<string> CopyFiles(Save _save, FileInfo[] _files, long _totalSize, string _dst, out int encryptedCount, out int skippedAlreadyEncryptedCount)
         {
             long leftSize = _totalSize;
             int totalFile = _files.Length;
             List<string> failedFiles = new List<string>();
+            encryptedCount = 0;
+            skippedAlreadyEncryptedCount = 0;
 
             for (int i = 0; i < _files.Length; i++)
             {
@@ -318,8 +368,11 @@ namespace easySave_BMT.ViewModel_.Backup
                 long curSize = _files[i].Length;
                 leftSize -= curSize;
 
-                if (_viewModel.model.TryCopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent, out string? error))
+                if (_viewModel.model.TryCopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent, out string? error, out EncryptionAction encryptionAction))
                 {
+                    if (encryptionAction == EncryptionAction.Encrypted) encryptedCount++;
+                    else if (encryptionAction == EncryptionAction.SkippedAlreadyEncrypted) skippedAlreadyEncryptedCount++;
+
                     Thread.Sleep((int)(curSize / 1000000));
                     // Mise à jour de la progression en console (only when running in console mode)
                     if (_viewModel.guiView is null)
