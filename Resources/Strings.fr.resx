@@ -409,4 +409,25 @@
   <data name="UiEncryptionSummary" xml:space="preserve">
     <value>{0} : cryptage effectué sur {1} fichier(s), {2} fichier(s) déjà crypté(s) ignoré(s).</value>
   </data>
+  <data name="UiStop" xml:space="preserve">
+    <value>Arrêter</value>
+  </data>
+  <data name="UiStopRequested" xml:space="preserve">
+    <value>Arrêt demandé. La sauvegarde s'arrêtera après le fichier en cours.</value>
+  </data>
+  <data name="UiBackupStoppedByUser" xml:space="preserve">
+    <value>{0} : sauvegarde arrêtée par l'utilisateur.</value>
+  </data>
+  <data name="UiBackupStoppedByBusiness" xml:space="preserve">
+    <value>{0} : sauvegarde bloquée/arrêtée car le logiciel métier est en cours ({1}).</value>
+  </data>
+  <data name="UiBusinessSoftware" xml:space="preserve">
+    <value>Logiciel métier</value>
+  </data>
+  <data name="UiBusinessSoftwareHint" xml:space="preserve">
+    <value>calc (ou C:\Chemin\Vers\App.exe)</value>
+  </data>
+  <data name="UiBusinessSoftwareHelp" xml:space="preserve">
+    <value>Si détecté, EasySave bloque les nouvelles sauvegardes et arrête une sauvegarde en cours après le fichier en cours.</value>
+  </data>
 </root>

@@ -11,7 +11,6 @@ using System.Threading;
 using System.Text;
 using System.Security.Cryptography;
 using easySave_BMT.Resources_;
-
 namespace easySave_BMT.Model_
 {
     /// <summary>
@@ -24,6 +23,11 @@ namespace easySave_BMT.Model_
         private EasyLogger jsonLogger;
         private Config config;
         private string backupsaveSavePath = "./BackupSave.json";
+
+        private volatile bool _stopRequested;
+        private volatile BackupStopReason _stopReason = BackupStopReason.None;
+        private string? _stopDetail;
+        private readonly object _stopLock = new();
 
         /// <summary>List of all configured backup jobs.</summary>
         public List<Save> saves { get; private set; }
@@ -454,6 +458,69 @@ namespace easySave_BMT.Model_
             return config;
         }
 
+        public void ClearStopRequest()
+        {
+            lock (_stopLock)
+            {
+                _stopRequested = false;
+                _stopReason = BackupStopReason.None;
+                _stopDetail = null;
+            }
+        }
+
+        public void RequestStop(BackupStopReason reason, string? detail = null)
+        {
+            lock (_stopLock)
+            {
+                _stopRequested = true;
+                _stopReason = reason;
+                _stopDetail = detail;
+            }
+        }
+
+        public bool IsStopRequested()
+        {
+            return _stopRequested;
+        }
+
+        public BackupStopReason PeekStopReason()
+        {
+            lock (_stopLock)
+            {
+                return _stopRequested ? _stopReason : BackupStopReason.None;
+            }
+        }
+
+        public string? PeekStopDetail()
+        {
+            lock (_stopLock)
+            {
+                return _stopRequested ? _stopDetail : null;
+            }
+        }
+
+        public bool TryConsumeStopInfo(out BackupStopReason reason, out string? detail)
+        {
+            lock (_stopLock)
+            {
+                if (!_stopRequested)
+                {
+                    reason = BackupStopReason.None;
+                    detail = null;
+                    return false;
+                }
+
+                reason = _stopReason;
+                detail = _stopDetail;
+
+                // Consume so subsequent operations start clean.
+                _stopRequested = false;
+                _stopReason = BackupStopReason.None;
+                _stopDetail = null;
+                return true;
+            }
+        }
+
         /// <summary>
         /// Updates application settings, including language, log directory, and state file path.
         /// </summary>
@@ -463,9 +530,10 @@ namespace easySave_BMT.Model_
             string? language,
             bool? enableEncryption = null,
             List<string>? encryptionExtensions = null,
-            string? cryptoSoftPath = null)
+            string? cryptoSoftPath = null,
+            string? businessSoftware = null)
         {
-            config.UpdateFromUserInput(logDir, statePath, language, enableEncryption, encryptionExtensions, cryptoSoftPath);
+            config.UpdateFromUserInput(logDir, statePath, language, enableEncryption, encryptionExtensions, cryptoSoftPath, businessSoftware);
 
             if (!string.IsNullOrWhiteSpace(language))
             {
@@ -508,6 +576,89 @@ namespace easySave_BMT.Model_
             if (ext.Length == 0) return string.Empty;
             if (!ext.StartsWith(".")) ext = "." + ext;
             return ext.ToLowerInvariant();
+        }
+
+        public string GetBusinessSoftwareSpec()
+        {
+            return (config.BusinessSoftware ?? "").Trim();
+        }
+
+        private static string NormalizeProcessName(string spec)
+        {
+            spec = (spec ?? "").Trim();
+            if (spec.Length == 0) return "";
+
+            try
+            {
+                // Allow "C:\path\to\calc.exe" as well as "calc" / "calc.exe"
+                if (spec.Contains(Path.DirectorySeparatorChar) || spec.Contains(Path.AltDirectorySeparatorChar))
+                    spec = Path.GetFileName(spec);
+            }
+            catch { }
+
+            if (spec.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                spec = spec[..^4];
+
+            return spec.Trim();
+        }
+
+        public bool IsBusinessSoftwareRunning()
+        {
+            string spec = GetBusinessSoftwareSpec();
+            if (string.IsNullOrWhiteSpace(spec)) return false;
+
+            string procName = NormalizeProcessName(spec);
+            if (string.IsNullOrWhiteSpace(procName)) return false;
+
+            try
+            {
+                // Fast path on Windows: by name (case-insensitive).
+                var procs = Process.GetProcessesByName(procName);
+                if (procs is not null && procs.Length > 0) return true;
+            }
+            catch
+            {
+                // Ignore detection failures; treat as not running.
+            }
+
+            // Fallback: enumerate and compare ProcessName.
+            try
+            {
+                foreach (var p in Process.GetProcesses())
+                {
+                    try
+                    {
+                        if (string.Equals(p.ProcessName, procName, StringComparison.OrdinalIgnoreCase))
+                            return true;
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            return false;
+        }
+
+        public void WriteBackupStopLog(string backupName, BackupStopReason reason, string? currentFile = null)
+        {
+            string spec = GetBusinessSoftwareSpec();
+            string why = reason switch
+            {
+                BackupStopReason.UserRequested => "STOP: user requested",
+                BackupStopReason.BusinessSoftwareDetected => $"STOP: business software detected ({spec})",
+                _ => "STOP"
+            };
+
+            WriteLogEntry(new LogEntry
+            {
+                Timestamp = DateTime.Now,
+                BackupName = backupName ?? "",
+                SourcePath = currentFile ?? "",
+                DestinationPath = why,
+                FileSize = 0,
+                TransferTimeMs = -2,
+                EncryptionTimeMs = 0
+            });
         }
 
         // Marker to make encryption idempotent in EasySave:
