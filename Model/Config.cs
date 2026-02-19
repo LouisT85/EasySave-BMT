@@ -36,6 +36,12 @@ namespace easySave_BMT.Model_
         /// </summary>
         public string CryptoSoftPath { get; set; } = "";
 
+        /// <summary>
+        /// Optional "business software" process name (or exe path). When running, backups must be blocked/stopped.
+        /// Example for demos: "calc" or "calc.exe".
+        /// </summary>
+        public string BusinessSoftware { get; set; } = "";
+
         /// <summary>The relative path to the configuration file itself.</summary>
         private static readonly string ConfigPath = "./config.json";
 
@@ -104,7 +110,8 @@ namespace easySave_BMT.Model_
             string lang,
             bool? enableEncryption = null,
             System.Collections.Generic.List<string>? encryptionExtensions = null,
-            string? cryptoSoftPath = null)
+            string? cryptoSoftPath = null,
+            string? businessSoftware = null)
         {
             if (!string.IsNullOrWhiteSpace(logDir))
                 LogDirectory = logDir;
@@ -123,6 +130,9 @@ namespace easySave_BMT.Model_
 
             if (cryptoSoftPath is not null)
                 CryptoSoftPath = cryptoSoftPath;
+
+            if (businessSoftware is not null)
+                BusinessSoftware = businessSoftware;
 
             Save();
         }

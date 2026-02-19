@@ -49,6 +49,14 @@ namespace easySave_BMT.ViewModel_.Backup
 
         public int LaunchBackupType(Save _save)
         {
+            // Business software check: if detected, do not start the backup.
+            if (_viewModel.model.IsBusinessSoftwareRunning())
+            {
+                _viewModel.model.RequestStop(BackupStopReason.BusinessSoftwareDetected, _viewModel.model.GetBusinessSoftwareSpec());
+                _viewModel.model.WriteBackupStopLog(_save.name, BackupStopReason.BusinessSoftwareDetected);
+                return 216;
+            }
+
             DirectoryInfo dir = new DirectoryInfo(_save.src);
 
             if (!dir.Exists || !Directory.Exists(_save.dst))
@@ -93,6 +101,12 @@ namespace easySave_BMT.ViewModel_.Backup
                 if (result == 104 || result == 105 || result == 216)
                 {
                     _viewModel.model.FinishBackup(save);
+                }
+
+                // If business software is detected, stop the sequential execution.
+                if (_viewModel.model.PeekStopReason() == BackupStopReason.BusinessSoftwareDetected)
+                {
+                    break;
                 }
 
                 _viewModel.view.DisplayMessage(4);
@@ -361,6 +375,17 @@ namespace easySave_BMT.ViewModel_.Backup
 
             for (int i = 0; i < _files.Length; i++)
             {
+                // Manual stop requested: stop between files (finish current file is already done).
+                if (_viewModel.model.IsStopRequested())
+                {
+                    var reason = _viewModel.model.PeekStopReason();
+                    if (reason == BackupStopReason.None) reason = BackupStopReason.UserRequested;
+
+                    // Log the last completed/in-progress file (state was set before the copy).
+                    _viewModel.model.WriteBackupStopLog(_save.name, reason, _save.state?.currentPathSrc);
+                    break;
+                }
+
                 int pourcent = ((i + 1) * 100) / totalFile;
                 long curSize = _files[i].Length;
                 leftSize -= curSize;
@@ -388,6 +413,14 @@ namespace easySave_BMT.ViewModel_.Backup
                     string detail = string.IsNullOrWhiteSpace(error) ? "Erreur de copie." : error;
                     _viewModel.guiView?.OnFileError($"{_files[i].FullName}: {detail}");
                     failedFiles.Add($"{_files[i].FullName}: {detail}");
+                }
+
+                // Business software detection: finish this file then stop before the next one.
+                if (_viewModel.model.IsBusinessSoftwareRunning())
+                {
+                    _viewModel.model.RequestStop(BackupStopReason.BusinessSoftwareDetected, _viewModel.model.GetBusinessSoftwareSpec());
+                    _viewModel.model.WriteBackupStopLog(_save.name, BackupStopReason.BusinessSoftwareDetected, _files[i].FullName);
+                    break;
                 }
             }
             return failedFiles;

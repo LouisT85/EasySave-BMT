@@ -19,6 +19,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ConfigLanguageDraft = cfg.Language;
 
                 ConfigEnableEncryptionDraft = cfg.EnableEncryption;
+                ConfigBusinessSoftwareDraft = (cfg.BusinessSoftware ?? "").Trim();
 
                 ConfigEncryptionExtensionsDraft.Clear();
                 if (cfg.EncryptionExtensions is not null)
@@ -62,7 +63,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                     ConfigStateFilePath,
                     ConfigLanguageDraft,
                     enableEncryption: ConfigEnableEncryptionDraft,
-                    encryptionExtensions: exts);
+                    encryptionExtensions: exts,
+                    businessSoftware: ConfigBusinessSoftwareDraft);
 
                 // Apply language to the current UI only after Save.
                 ConfigLanguage = ConfigLanguageDraft;

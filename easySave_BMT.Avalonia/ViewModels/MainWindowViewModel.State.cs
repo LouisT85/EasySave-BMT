@@ -88,6 +88,13 @@ namespace easySave_BMT.Avalonia.ViewModels
             set => this.RaiseAndSetIfChanged(ref _configEnableEncryptionDraft, value);
         }
 
+        private string _configBusinessSoftwareDraft = "";
+        public string ConfigBusinessSoftwareDraft
+        {
+            get => _configBusinessSoftwareDraft;
+            set => this.RaiseAndSetIfChanged(ref _configBusinessSoftwareDraft, value);
+        }
+
         public ObservableCollection<string> ConfigEncryptionExtensionsDraft { get; } = new();
 
         private string _newEncryptionExtension = "";
@@ -127,6 +134,9 @@ namespace easySave_BMT.Avalonia.ViewModels
 
         private int _selectedTabIndex;
         public int SelectedTabIndex { get => _selectedTabIndex; set => this.RaiseAndSetIfChanged(ref _selectedTabIndex, value); }
+
+        private bool _isBackupRunning;
+        public bool IsBackupRunning { get => _isBackupRunning; private set => this.RaiseAndSetIfChanged(ref _isBackupRunning, value); }
 
         private string _dashboardMessage = string.Empty;
         public string DashboardMessage { get => _dashboardMessage; set => this.RaiseAndSetIfChanged(ref _dashboardMessage, value); }

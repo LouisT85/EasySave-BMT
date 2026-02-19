@@ -122,8 +122,11 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             ProgressPercent = 0;
             IsProgressVisible = true;
+            IsBackupRunning = true;
+            _coreViewModel.model.ClearStopRequest();
 
             int lastResult = 0;
+            bool stoppedOrBlocked = false;
             try
             {
                 // Reload from file so a task still runs correctly after closing/reopening the app.
@@ -144,6 +147,24 @@ namespace easySave_BMT.Avalonia.ViewModels
                     SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiLaunchingBackup"], save.name), "");
                     lastResult = await Task.Run(() => _coreViewModel.backupLauncher.LaunchBackupType(save));
 
+                    // Stop batch execution if a stop/block was requested (user or business software).
+                    if (_coreViewModel.model.TryConsumeStopInfo(out var stopReason, out var stopDetail))
+                    {
+                        if (stopReason == BackupStopReason.BusinessSoftwareDetected)
+                        {
+                            string spec = string.IsNullOrWhiteSpace(stopDetail) ? _coreViewModel.model.GetBusinessSoftwareSpec() : stopDetail;
+                            DashboardMessage = string.Format(Loc["UiBackupStoppedByBusiness"], save.name, spec);
+                        }
+                        else if (stopReason == BackupStopReason.UserRequested)
+                        {
+                            DashboardMessage = string.Format(Loc["UiBackupStoppedByUser"], save.name);
+                        }
+
+                        _coreViewModel.model.FinishBackup(save);
+                        stoppedOrBlocked = true;
+                        break;
+                    }
+
                     if (lastResult == 104 || lastResult == 105 || lastResult == 216)
                     {
                         _coreViewModel.model.FinishBackup(save);
@@ -156,13 +177,20 @@ namespace easySave_BMT.Avalonia.ViewModels
                 SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiBackupException"], ex.Message), "");
                 return;
             }
+            finally
+            {
+                IsBackupRunning = false;
+            }
 
             // Update last backup dates before showing the final result message.
             ListSaves(showUserFeedback: false);
 
-            SetMessageFromCode(lastResult, MessageArea.Dashboard);
+            if (!stoppedOrBlocked)
+            {
+                SetMessageFromCode(lastResult, MessageArea.Dashboard);
+            }
 
-            if (names.Count > 1)
+            if (!stoppedOrBlocked && names.Count > 1)
             {
                 string done = Loc["UiBackupsFinished"];
                 if (string.IsNullOrWhiteSpace(DashboardStatusText))
@@ -174,7 +202,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                     DashboardStatusText = DashboardStatusText.TrimEnd() + "\n" + done;
                 }
             }
-            else if (lastResult == 105)
+            else if (!stoppedOrBlocked && lastResult == 105)
             {
                 // Differential backup with no changes: avoid confusing status text.
                 SetTimedDashboardStatusText("");

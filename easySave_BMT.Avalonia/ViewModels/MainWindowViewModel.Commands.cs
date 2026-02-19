@@ -26,6 +26,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> AddEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> RemoveEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> LoadLogsCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> StopCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> QuitCommand { get; private set; } = null!;
 
         private void InitCommands()
@@ -120,6 +121,12 @@ namespace easySave_BMT.Avalonia.ViewModels
             RemoveEncryptionExtensionCommand = ReactiveCommand.Create(RemoveEncryptionExtension);
 
             LoadLogsCommand = ReactiveCommand.Create(LoadLogs);
+
+            StopCommand = ReactiveCommand.Create(() =>
+            {
+                _coreViewModel.model.RequestStop(easySave_BMT.Model_.BackupStopReason.UserRequested);
+                DashboardStatusText = Loc["UiStopRequested"];
+            });
 
             QuitCommand = ReactiveCommand.Create(ShutdownApp);
         }
