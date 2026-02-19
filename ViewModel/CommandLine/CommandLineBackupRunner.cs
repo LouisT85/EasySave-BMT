@@ -40,7 +40,6 @@ namespace easySave_BMT.ViewModel_.CommandLine
                     Save save = _viewModel.model.saves[arrayIndex];
                     Console.WriteLine($"Executing backup {index}: {save.name}");
 
-                    // ✅ Corrigé : accès direct au contrôleur public
                     int result = _viewModel.backupLauncher.LaunchBackupType(save);
 
                     if (result == 104 || result == 105)

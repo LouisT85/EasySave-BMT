@@ -51,7 +51,6 @@ namespace easySave_BMT.ViewModel_.Backup
         {
             DirectoryInfo dir = new DirectoryInfo(_save.src);
 
-            // If source OR destination is invalid, abort safely
             if (!dir.Exists || !Directory.Exists(_save.dst))
             {
                 return 207;
@@ -59,7 +58,6 @@ namespace easySave_BMT.ViewModel_.Backup
 
             try
             {
-                // Prevent destination being inside source (can cause recursion / unexpected behavior).
                 string srcFull = Path.GetFullPath(_save.src).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
                 string dstFull = Path.GetFullPath(_save.dst).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
 
@@ -195,7 +193,6 @@ namespace easySave_BMT.ViewModel_.Backup
                     _viewModel.view.DisplayBackupRecap(_save.name, 0);
                 }
 
-                // Notification GUI éventuelle
                 _viewModel.guiView?.OnBackupComplete(_save.name, 0);
                 return 105;
             }

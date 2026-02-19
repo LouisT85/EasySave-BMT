@@ -15,14 +15,12 @@ namespace easySave_BMT.ViewModel_.Saves
 
             if (reloadResult == 100)
             {
-                // GUI: always refresh the bound collection, even when empty (so deletions are reflected).
                 if (_viewModel.guiView is not null)
                 {
                     _viewModel.RefreshGuiSaves();
                     return reloadResult;
                 }
 
-                // Mode console historique
                 if (_viewModel.model.saves.Count > 0)
                     _viewModel.view.DisplayAllSaves();
                 else

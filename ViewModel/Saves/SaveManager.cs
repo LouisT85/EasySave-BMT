@@ -13,7 +13,6 @@ namespace easySave_BMT.ViewModel_.Saves
 
         public void AddSave()
         {
-            // Unlimited number of tasks (requested).
             string addSaveName = _viewModel.view.SaveName();
             if (addSaveName == "0") return;
 

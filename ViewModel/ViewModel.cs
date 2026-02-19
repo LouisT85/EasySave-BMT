@@ -103,7 +103,6 @@ namespace easySave_BMT.ViewModel_
             }
         }
 
-        // 🚀 NOUVEAU : Pour AVALONIA GUI
         public void RunAppGUI(IProgressObserverGUI guiView)
         {
             this.guiView = guiView;
@@ -117,13 +116,10 @@ namespace easySave_BMT.ViewModel_
 
             guiView.ShowMessage(Resources_.ResourceManager.GetString("UiReady"));
 
-            // 🔁 Recharge la liste des sauvegardes mais SANS utiliser la vue console
             saveListManager.DisplaySaves();
 
-            // GUI prête - boutons liés aux contrôleurs
         }
         
-        // Utilitaire pour synchroniser la collection GUI avec le modèle
         public void RefreshGuiSaves()
         {
             if (guiView == null) return;
@@ -137,7 +133,6 @@ namespace easySave_BMT.ViewModel_
         }
     }
 
-    // 🚀 NOUVELLE INTERFACE pour GUI (à CÔTÉ de ViewModel)
     public interface IProgressObserverGUI
     {
         void OnProgressUpdate(string backupName, int filesLeft, long sizeLeft, long currentFileSize, int percent);
