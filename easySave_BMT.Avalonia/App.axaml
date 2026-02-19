@@ -2,19 +2,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="using:easySave_BMT.Avalonia.Converters"
              x:Class="easySave_BMT.Avalonia.App"
-             RequestedThemeVariant="Light">
+             RequestedThemeVariant="Dark">
+
   <Application.Resources>
-    <SolidColorBrush x:Key="BrushBackground" Color="#F6F7FB"/>
-    <SolidColorBrush x:Key="BrushSurface" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="BrushBorder" Color="#E5E7EB"/>
-    <SolidColorBrush x:Key="BrushText" Color="#0F172A"/>
-    <SolidColorBrush x:Key="BrushMuted" Color="#64748B"/>
-    <SolidColorBrush x:Key="BrushAccent" Color="#2563EB"/>
-    <SolidColorBrush x:Key="BrushAccentSoft" Color="#E8F0FF"/>
-    <SolidColorBrush x:Key="BrushDanger" Color="#DC2626"/>
-    <SolidColorBrush x:Key="BrushSuccess" Color="#16A34A"/>
+    <!-- Dark palette: changements MINIMAUX (seulement les couleurs) -->
+    <SolidColorBrush x:Key="BrushBackground" Color="#111827"/>    <!-- was #F6F7FB -->
+    <SolidColorBrush x:Key="BrushSurface" Color="#1F2937"/>       <!-- was #FFFFFF -->
+    <SolidColorBrush x:Key="BrushBorder" Color="#374151"/>        <!-- was #E5E7EB -->
+    <SolidColorBrush x:Key="BrushText" Color="#F9FAFB"/>          <!-- was #0F172A -->
+    <SolidColorBrush x:Key="BrushMuted" Color="#9CA3AF"/>         <!-- was #64748B -->
+    <SolidColorBrush x:Key="BrushAccent" Color="#2563EB"/>        <!-- unchanged -->
+    <SolidColorBrush x:Key="BrushAccentSoft" Color="#332563EB"/>  <!-- was #E8F0FF (soft accent with alpha) -->
+    <SolidColorBrush x:Key="BrushDanger" Color="#DC2626"/>        <!-- unchanged -->
+    <SolidColorBrush x:Key="BrushSuccess" Color="#16A34A"/>       <!-- unchanged -->
     <conv:BackupTypeToLocalizedStringConverter x:Key="BackupTypeToLocalizedStringConverter" />
   </Application.Resources>
+
   <Application.Styles>
     <FluentTheme />
     <Style Selector="Window">
@@ -59,11 +62,13 @@
       <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
+
+    <!-- Couleurs hover/pressed: uniquement les valeurs (pas de nouveaux selectors) -->
     <Style Selector="Button:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#F1F5F9"/>
+      <Setter Property="Background" Value="#2B3647"/> <!-- was #F1F5F9 -->
     </Style>
     <Style Selector="Button:pressed /template/ ContentPresenter">
-      <Setter Property="Background" Value="#E2E8F0"/>
+      <Setter Property="Background" Value="#223041"/> <!-- was #E2E8F0 -->
     </Style>
     <Style Selector="Button:disabled /template/ ContentPresenter">
       <Setter Property="Opacity" Value="0.5"/>
@@ -85,7 +90,7 @@
       <Setter Property="Foreground" Value="{DynamicResource BrushMuted}"/>
     </Style>
     <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#EEF2FF"/>
+      <Setter Property="Background" Value="#1E293B"/> <!-- was #EEF2FF -->
       <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
     </Style>
 
@@ -110,7 +115,7 @@
     <Style Selector="ProgressBar">
       <Setter Property="CornerRadius" Value="6"/>
       <Setter Property="Height" Value="6"/>
-      <Setter Property="Background" Value="#E5E7EB"/>
+      <Setter Property="Background" Value="#374151"/> <!-- was #E5E7EB -->
       <Setter Property="Foreground" Value="{DynamicResource BrushSuccess}"/>
     </Style>
 
@@ -129,7 +134,8 @@
       <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}"/>
     </Style>
     <Style Selector="TabItem:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#EEF2FF"/>
+      <Setter Property="Background" Value="#1E293B"/> <!-- was #EEF2FF -->
     </Style>
+
   </Application.Styles>
 </Application>
