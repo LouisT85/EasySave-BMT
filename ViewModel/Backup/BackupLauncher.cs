@@ -5,26 +5,44 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using easySave_BMT.Model_;
+using easySave_BMT.View_;
+using easySave_BMT.ViewModel_;
 
 namespace easySave_BMT.ViewModel_.Backup
 {
+    /// <summary>
+    /// Executes full and differential backups and reports progress to console and GUI observers.
+    /// </summary>
     public class BackupLauncher
     {
         private const string EasySaveCryptoMagicV1 = "EASYSAVECRYPT1";
         private const string EasySaveCryptoMagicV2 = "EASYSAVECRYPT2";
 
-        private readonly ViewModel _viewModel;
+        private readonly Model _model;
+        private readonly View _view;
+        private readonly Func<IProgressObserverGUI?> _guiAccessor;
 
-        public BackupLauncher(ViewModel viewModel)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BackupLauncher"/> class.
+        /// </summary>
+        /// <param name="model">The domain model facade.</param>
+        /// <param name="view">The console view adapter.</param>
+        /// <param name="guiAccessor">Returns the current GUI observer when available.</param>
+        public BackupLauncher(Model model, View view, Func<IProgressObserverGUI?> guiAccessor)
         {
-            _viewModel = viewModel;
+            _model = model;
+            _view = view;
+            _guiAccessor = guiAccessor;
         }
 
+        /// <summary>
+        /// Prompts the user for backup execution in console mode and runs the selected jobs.
+        /// </summary>
         public void LaunchBackupsave()
         {
-            if (_viewModel.model.saves.Count > 0)
+            if (_model.saves.Count > 0)
             {
-                int userChoice = _viewModel.view.LaunchBackupChoice();
+                int userChoice = _view.LaunchBackupChoice();
 
                 switch (userChoice)
                 {
@@ -39,14 +57,19 @@ namespace easySave_BMT.ViewModel_.Backup
                         BackupSingleSave(userChoice);
                         break;
                 }
-                _viewModel.view.DisplayMessage(1);
+                _view.DisplayMessage(1);
             }
             else
             {
-                _viewModel.view.DisplayMessage(204);
+                _view.DisplayMessage(204);
             }
         }
 
+        /// <summary>
+        /// Launches one save using its configured backup strategy.
+        /// </summary>
+        /// <param name="_save">The save definition to run.</param>
+        /// <returns>A status code representing the execution result.</returns>
         public int LaunchBackupType(Save _save)
         {
             DirectoryInfo dir = new DirectoryInfo(_save.src);
@@ -78,37 +101,37 @@ namespace easySave_BMT.ViewModel_.Backup
 
             var activeState = new State(0, 0, _save.src, _save.dst);
             _save.state = activeState;
-            _viewModel.model.UpdateSaveState(_save);
+            _model.UpdateSaveState(_save);
 
             return ExecuteBackupStrategy(_save, dir);
         }
 
         private void BackupAllSaves()
         {
-            foreach (Save save in _viewModel.model.saves)
+            foreach (Save save in _model.saves)
             {
                 int result = LaunchBackupType(save);
-                _viewModel.view.DisplayMessage(result);
+                _view.DisplayMessage(result);
 
                 if (result == 104 || result == 105 || result == 216)
                 {
-                    _viewModel.model.FinishBackup(save);
+                    _model.FinishBackup(save);
                 }
 
-                _viewModel.view.DisplayMessage(4);
+                _view.DisplayMessage(4);
             }
         }
 
         private void BackupSingleSave(int userChoice)
         {
             int indexsave = userChoice - 2;
-            Save selectedSave = _viewModel.model.saves[indexsave];
+            Save selectedSave = _model.saves[indexsave];
             int backupResult = LaunchBackupType(selectedSave);
-            _viewModel.view.DisplayMessage(backupResult);
+            _view.DisplayMessage(backupResult);
 
             if (backupResult == 104 || backupResult == 105 || backupResult == 216)
             {
-                _viewModel.model.FinishBackup(selectedSave);
+                _model.FinishBackup(selectedSave);
             }
         }
 
@@ -184,16 +207,16 @@ namespace easySave_BMT.ViewModel_.Backup
             if (filesToCopy.Count == 0)
             {
                 _save.lastBackupDate = DateTime.Now.ToString("yyyy/MM/dd_HH:mm:ss");
-                _viewModel.model.AddLogInJSONFile();
+                _model.AddLogInJSONFile();
 
                 // Notification console (only when running in console mode)
-                if (_viewModel.guiView is null)
+                if (_guiAccessor() is null)
                 {
-                    _viewModel.view.DisplayMessage(3);
-                    _viewModel.view.DisplayBackupRecap(_save.name, 0);
+                    _view.DisplayMessage(3);
+                    _view.DisplayBackupRecap(_save.name, 0);
                 }
 
-                _viewModel.guiView?.OnBackupComplete(_save.name, 0);
+                _guiAccessor()?.OnBackupComplete(_save.name, 0);
                 return 105;
             }
             return DoBackup(_save, filesToCopy.ToArray(), totalSize);
@@ -314,7 +337,7 @@ namespace easySave_BMT.ViewModel_.Backup
             }
 
             // In Avalonia (WinExe), there is no console attached; Console.Clear/SetCursorPosition can throw.
-            if (_viewModel.guiView is null)
+            if (_guiAccessor() is null)
             {
                 try { Console.Clear(); } catch { /* ignore */ }
             }
@@ -324,29 +347,29 @@ namespace easySave_BMT.ViewModel_.Backup
             TimeSpan saveTime = endTime - startTime;
             double transferTime = saveTime.TotalMilliseconds;
 
-                _viewModel.model.AddLogInJSONFile();
+                _model.AddLogInJSONFile();
 
                 // Notifications console (only when running in console mode)
-                if (_viewModel.guiView is null)
+                if (_guiAccessor() is null)
                 {
-                    _viewModel.view.DisplayMessage(3);
+                    _view.DisplayMessage(3);
                 }
 
                 foreach (string failedFile in failedFiles)
                 {
-                    if (_viewModel.guiView is null)
+                    if (_guiAccessor() is null)
                     {
-                        _viewModel.view.DisplayFiledError(failedFile);
+                        _view.DisplayFiledError(failedFile);
                     }
-                    _viewModel.guiView?.OnFileError(failedFile);
+                    _guiAccessor()?.OnFileError(failedFile);
                 }
 
-                if (_viewModel.guiView is null)
+                if (_guiAccessor() is null)
                 {
-                    _viewModel.view.DisplayBackupRecap(_save.name, transferTime);
+                    _view.DisplayBackupRecap(_save.name, transferTime);
                 }
-                _viewModel.guiView?.OnBackupComplete(_save.name, transferTime);
-                _viewModel.guiView?.OnEncryptionSummary(_save.name, encryptedCount, skippedEncryptedCount);
+                _guiAccessor()?.OnBackupComplete(_save.name, transferTime);
+                _guiAccessor()?.OnEncryptionSummary(_save.name, encryptedCount, skippedEncryptedCount);
 
             return failedFiles.Count == 0 ? 104 : 216;
         }
@@ -365,28 +388,28 @@ namespace easySave_BMT.ViewModel_.Backup
                 long curSize = _files[i].Length;
                 leftSize -= curSize;
 
-                if (_viewModel.model.TryCopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent, out string? error, out EncryptionAction encryptionAction))
+                if (_model.TryCopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent, out string? error, out EncryptionAction encryptionAction))
                 {
                     if (encryptionAction == EncryptionAction.Encrypted) encryptedCount++;
                     else if (encryptionAction == EncryptionAction.SkippedAlreadyEncrypted) skippedAlreadyEncryptedCount++;
 
                     Thread.Sleep((int)(curSize / 1000000));
                     // Mise à jour de la progression en console (only when running in console mode)
-                    if (_viewModel.guiView is null)
+                    if (_guiAccessor() is null)
                     {
-                        _viewModel.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
+                        _view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
                     }
 
                     // Mise à jour de la progression en GUI (barre de progression / texte)
-                    _viewModel.guiView?.OnProgressUpdate(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
+                    _guiAccessor()?.OnProgressUpdate(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
                 }
                 else
                 {
                     // Still publish progress so the UI doesn't look stuck on failures.
-                    _viewModel.guiView?.OnProgressUpdate(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
+                    _guiAccessor()?.OnProgressUpdate(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
 
                     string detail = string.IsNullOrWhiteSpace(error) ? "Erreur de copie." : error;
-                    _viewModel.guiView?.OnFileError($"{_files[i].FullName}: {detail}");
+                    _guiAccessor()?.OnFileError($"{_files[i].FullName}: {detail}");
                     failedFiles.Add($"{_files[i].FullName}: {detail}");
                 }
             }
@@ -394,3 +417,4 @@ namespace easySave_BMT.ViewModel_.Backup
         }
     }
 }
+

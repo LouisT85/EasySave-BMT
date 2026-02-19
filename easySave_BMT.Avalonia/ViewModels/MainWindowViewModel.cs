@@ -36,7 +36,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             // Core
             _coreViewModel = new ViewModel();
-            _coreViewModel.guiView = this;
+            _coreViewModel.GuiView = this;
             _coreViewModel.RunAppGUI(this);
 
             // Commands
@@ -65,3 +65,4 @@ namespace easySave_BMT.Avalonia.ViewModels
         }
     }
 }
+

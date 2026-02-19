@@ -3,16 +3,20 @@ using easySave_BMT.ViewModel_;
 
 namespace easySave_BMT
 {
-    class Program
+    /// <summary>
+    /// Console application entry point.
+    /// </summary>
+    internal static class Program
     {
-        static void Main(string[] args) // Method who runs the app
+        /// <summary>
+        /// Starts the console workflow.
+        /// </summary>
+        /// <param name="args">Process arguments.</param>
+        public static void Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-            
-            // Initialize the application
-            ViewModel viewModel = new ViewModel();
-            
-            // Run the application
+
+            var viewModel = new ViewModel();
             viewModel.RunApp();
         }
     }

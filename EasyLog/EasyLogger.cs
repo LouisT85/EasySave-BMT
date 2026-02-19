@@ -1,38 +1,50 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Xml.Linq;
 using EasyLog.Models;
 
-
 namespace EasyLog
 {
     /// <summary>
-    /// EasyLogger is class for write backup logs in JSON files daily.
-    /// Each day one file with array of log entries, format human readable.
+    /// Writes daily backup logs in JSON or XML format.
     /// </summary>
     public class EasyLogger
     {
-        /// <summary>
-        /// The directory path where store log files.
-        /// Created if not exist.
-        /// </summary>
         private readonly string _logDirectory;
-
+        private readonly LogFormat _format;
 
         /// <summary>
-        /// Constructor initialize logger with log directory.
-        /// Create directory if needed.
+        /// Supported log serialization formats.
         /// </summary>
-        /// <param name="logDirectory">Path for log files.</param>
-        public enum LogFormat { XML, JSON }
+        public enum LogFormat
+        {
+            /// <summary>
+            /// XML log output.
+            /// </summary>
+            XML,
 
-        private readonly LogFormat _format = LogFormat.XML;
+            /// <summary>
+            /// JSON log output.
+            /// </summary>
+            JSON
+        }
 
-        public EasyLogger(string logDirectory) : this(logDirectory, LogFormat.XML)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EasyLogger"/> class using XML output.
+        /// </summary>
+        /// <param name="logDirectory">The directory where logs are written.</param>
+        public EasyLogger(string logDirectory)
+            : this(logDirectory, LogFormat.XML)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EasyLogger"/> class.
+        /// </summary>
+        /// <param name="logDirectory">The directory where logs are written.</param>
+        /// <param name="format">The output log format.</param>
         public EasyLogger(string logDirectory, LogFormat format)
         {
             _logDirectory = logDirectory;
@@ -40,120 +52,114 @@ namespace EasyLog
             Directory.CreateDirectory(logDirectory);
         }
 
-
         /// <summary>
-        /// Write one log entry to todays JSON file.
-        /// Append to array if file exist, create new if first.
-        /// Use french date format dd/MM/yyyy.
+        /// Appends one log entry to the current daily log file.
         /// </summary>
-        /// <param name="entry">The LogEntry with backup details.</param>
+        /// <param name="entry">The log entry to write.</param>
         public void Write(LogEntry entry)
         {
-            string fileName = $"{DateTime.Now:yyyy-MM-dd}." + (_format == LogFormat.XML ? "xml" : "json");
-            string filePath = Path.Combine(_logDirectory, fileName);
+            if (entry is null)
+            {
+                throw new ArgumentNullException(nameof(entry));
+            }
+
+            string filePath = GetDailyFilePath();
 
             if (_format == LogFormat.JSON)
             {
-                // Format JSON with date in french style
-                var logObject = new
+                WriteJson(filePath, entry);
+                return;
+            }
+
+            WriteXml(filePath, entry);
+        }
+
+        private string GetDailyFilePath()
+        {
+            string extension = _format == LogFormat.XML ? "xml" : "json";
+            string fileName = $"{DateTime.Now:yyyy-MM-dd}.{extension}";
+            return Path.Combine(_logDirectory, fileName);
+        }
+
+        private static object CreateJsonRecord(LogEntry entry)
+        {
+            return new
+            {
+                Name = entry.BackupName,
+                FileSource = entry.SourcePath,
+                FileTarget = entry.DestinationPath,
+                FileSize = entry.FileSize,
+                FileTransferTime = entry.TransferTimeMs,
+                EncryptionTime = entry.EncryptionTimeMs,
+                Time = entry.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")
+            };
+        }
+
+        private static XElement CreateXmlRecord(LogEntry entry)
+        {
+            return new XElement("Log",
+                new XElement("Name", entry.BackupName),
+                new XElement("FileSource", entry.SourcePath),
+                new XElement("FileTarget", entry.DestinationPath),
+                new XElement("FileSize", entry.FileSize),
+                new XElement("FileTransferTime", entry.TransferTimeMs),
+                new XElement("EncryptionTime", entry.EncryptionTimeMs),
+                new XElement("Time", entry.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")));
+        }
+
+        private static void WriteJson(string filePath, LogEntry entry)
+        {
+            List<object> records = new();
+
+            if (File.Exists(filePath) && new FileInfo(filePath).Length > 0)
+            {
+                try
                 {
-                    Name = entry.BackupName,
-                    FileSource = entry.SourcePath,
-                    FileTarget = entry.DestinationPath,
-                    FileSize = entry.FileSize,
-                    FileTransferTime = entry.TransferTimeMs,
-                    EncryptionTime = entry.EncryptionTimeMs,
-                    time = entry.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")
-                };
-
-                string json = JsonSerializer.Serialize(
-                    logObject,
-                    new JsonSerializerOptions { WriteIndented = true }
-                );
-
-                // If file exist and not empty, append with comma
-                if (File.Exists(filePath) && new FileInfo(filePath).Length > 0)
-                {
-                    // Read existing content
-                    string existingContent = File.ReadAllText(filePath).Trim();
-
-                    // If no open bracket, add it
-                    if (!existingContent.StartsWith("["))
+                    string existing = File.ReadAllText(filePath);
+                    var parsed = JsonSerializer.Deserialize<List<JsonElement>>(existing);
+                    if (parsed is not null)
                     {
-                        existingContent = $"[{existingContent}";
+                        records.AddRange(parsed);
                     }
-
-                    // Manage close bracket and add comma if need
-                    if (!existingContent.EndsWith("]"))
-                    {
-                        existingContent = existingContent.TrimEnd(',', '\n', '\r', ' ');
-                        existingContent += ",\n";
-                    }
-                    else
-                    {
-                        // Remove close ] and add comma
-                        existingContent = existingContent.TrimEnd(']');
-                        existingContent += ",\n";
-                    }
-
-                    // Add new entry and close array
-                    string newContent = existingContent + json + "\n]";
-                    File.WriteAllText(filePath, newContent);
                 }
-                else
+                catch
                 {
-                    // New file, create array with one entry
-                    string newContent = $"[{json}\n]";
-                    File.WriteAllText(filePath, newContent);
+                    records = new List<object>();
+                }
+            }
+
+            records.Add(CreateJsonRecord(entry));
+            File.WriteAllText(filePath, JsonSerializer.Serialize(records, new JsonSerializerOptions { WriteIndented = true }));
+        }
+
+        private static void WriteXml(string filePath, LogEntry entry)
+        {
+            XDocument doc;
+
+            if (File.Exists(filePath) && new FileInfo(filePath).Length > 0)
+            {
+                try
+                {
+                    doc = XDocument.Load(filePath);
+                }
+                catch
+                {
+                    doc = new XDocument(new XElement("Logs"));
                 }
             }
             else
             {
-                // XML format: store as root <Logs><Log>...</Log></Logs>
-                XElement logElement = new XElement("Log",
-                    new XElement("Name", entry.BackupName),
-                    new XElement("FileSource", entry.SourcePath),
-                    new XElement("FileTarget", entry.DestinationPath),
-                    new XElement("FileSize", entry.FileSize),
-                    new XElement("FileTransferTime", entry.TransferTimeMs),
-                    new XElement("EncryptionTime", entry.EncryptionTimeMs),
-                    new XElement("Time", entry.Timestamp.ToString("dd/MM/yyyy HH:mm:ss"))
-                );
-
-                if (File.Exists(filePath) && new FileInfo(filePath).Length > 0)
-                {
-                    // Load existing XML and append
-                    XDocument doc;
-                    try
-                    {
-                        doc = XDocument.Load(filePath);
-                    }
-                    catch
-                    {
-                        // If file is corrupted or empty, create new document
-                        doc = new XDocument(new XElement("Logs"));
-                    }
-
-                    var root = doc.Element("Logs");
-                    if (root == null)
-                    {
-                        root = new XElement("Logs");
-                        doc.Add(root);
-                    }
-
-                    root.Add(logElement);
-                    doc.Save(filePath);
-                }
-                else
-                {
-                    // Create new XML document
-                    XDocument doc = new XDocument(
-                        new XDeclaration("1.0", "utf-8", "yes"),
-                        new XElement("Logs", logElement)
-                    );
-                    doc.Save(filePath);
-                }
+                doc = new XDocument(new XDeclaration("1.0", "utf-8", "yes"), new XElement("Logs"));
             }
+
+            XElement root = doc.Element("Logs") ?? new XElement("Logs");
+            if (doc.Element("Logs") is null)
+            {
+                doc.Add(root);
+            }
+
+            root.Add(CreateXmlRecord(entry));
+            doc.Save(filePath);
         }
     }
 }

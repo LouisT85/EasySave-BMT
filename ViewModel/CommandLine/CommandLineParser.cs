@@ -1,97 +1,93 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace easySave_BMT.ViewModel_.CommandLine
 {
+    /// <summary>
+    /// Parses and validates backup indices provided by command-line arguments.
+    /// </summary>
     public class CommandLineParser
     {
+        /// <summary>
+        /// Parses command-line arguments and launches selected backups.
+        /// </summary>
+        /// <param name="args">The full process argument list.</param>
+        /// <param name="runner">The command-line runner service.</param>
         public void HandleCommandLine(string[] args, CommandLineBackupRunner runner)
         {
+            if (args.Length < 2)
+            {
+                ShowUsageError();
+                return;
+            }
+
             string backupArg = args[1];
-            
+
             if (args.Length > 2)
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("\nWarning: Only the first argument after the executable name is used.");
+                Console.WriteLine("\nWarning: only the first argument after the executable name is used.");
                 Console.WriteLine("Use semicolons (;) to separate multiple backup indices.");
                 Console.ResetColor();
             }
-            
-            List<int> backupIndices = ParseCommandLineArguments(backupArg);
 
-            if (backupIndices != null && backupIndices.Count > 0)
+            List<int> backupIndices = ParseCommandLineArguments(backupArg);
+            if (backupIndices.Count > 0)
             {
                 runner.ExecuteCommandLineBackups(backupIndices);
+                return;
             }
-            else
-            {
-                ShowUsageError();
-            }
+
+            ShowUsageError();
         }
 
-        private List<int> ParseCommandLineArguments(string argument)
+        private static List<int> ParseCommandLineArguments(string argument)
         {
             if (string.IsNullOrWhiteSpace(argument))
-                return null;
-
-            List<int> indices = new List<int>();
-
-            try
             {
-                string[] parts = argument.Split(';');
+                return new List<int>();
+            }
 
-                foreach (string part in parts)
+            var indices = new HashSet<int>();
+            string[] parts = argument.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (string part in parts)
+            {
+                if (part.Contains('-'))
                 {
-                    if (string.IsNullOrWhiteSpace(part))
-                        continue;
-
-                    if (part.Contains("-"))
+                    string[] range = part.Split('-', StringSplitOptions.TrimEntries);
+                    if (range.Length != 2 || !int.TryParse(range[0], out int start) || !int.TryParse(range[1], out int end))
                     {
-                        string[] range = part.Split('-');
-                        if (range.Length == 2)
-                        {
-                            int start = int.Parse(range[0].Trim());
-                            int end = int.Parse(range[1].Trim());
+                        return new List<int>();
+                    }
 
-                            if (start > 0 && end > 0 && start <= end)
-                            {
-                                for (int i = start; i <= end; i++)
-                                {
-                                    if (!indices.Contains(i))
-                                        indices.Add(i);
-                                }
-                            }
-                            else
-                            {
-                                return null;
-                            }
-                        }
-                        else
-                        {
-                            return null;
-                        }
-                    }
-                    else
+                    if (start <= 0 || end <= 0 || start > end)
                     {
-                        int index = int.Parse(part.Trim());
-                        if (index > 0 && !indices.Contains(index))
-                            indices.Add(index);
-                        else if (index <= 0)
-                            return null;
+                        return new List<int>();
                     }
+
+                    for (int i = start; i <= end; i++)
+                    {
+                        indices.Add(i);
+                    }
+
+                    continue;
                 }
 
-                indices.Sort();
-                return indices;
+                if (!int.TryParse(part, out int index) || index <= 0)
+                {
+                    return new List<int>();
+                }
+
+                indices.Add(index);
             }
-            catch
-            {
-                return null;
-            }
+
+            var result = new List<int>(indices);
+            result.Sort();
+            return result;
         }
 
-        private void ShowUsageError()
+        private static void ShowUsageError()
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("\nInvalid command line argument format.");

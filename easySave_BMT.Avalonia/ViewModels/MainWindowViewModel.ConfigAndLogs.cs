@@ -11,7 +11,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             try
             {
-                var cfg = _coreViewModel.model.GetConfig();
+                var cfg = _coreViewModel.Model.GetConfig();
 
                 ConfigLogDirectory = cfg.LogDirectory;
                 ConfigStateFilePath = cfg.StateFilePath;
@@ -57,7 +57,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
-                _coreViewModel.model.UpdateConfig(
+                _coreViewModel.Model.UpdateConfig(
                     ConfigLogDirectory,
                     ConfigStateFilePath,
                     ConfigLanguageDraft,
@@ -147,3 +147,4 @@ namespace easySave_BMT.Avalonia.ViewModels
         }
     }
 }
+

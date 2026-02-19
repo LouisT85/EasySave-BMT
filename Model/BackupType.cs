@@ -1,22 +1,23 @@
 namespace easySave_BMT.Model_
 {
     /// <summary>
-    /// Defines the supported backup strategies for the application.
+    /// Defines supported backup strategies.
     /// </summary>
     public enum BackupType
     {
         /// <summary>
-        /// A full backup copies all selected files from the source to the destination, 
-        /// regardless of whether they have changed.
+        /// Copies every file from source to destination.
         /// </summary>
         FULL,
 
         /// <summary>
-        /// A differential backup only copies files that have been created or modified 
-        /// since the last full backup.
+        /// Copies only files changed since the last full backup.
         /// </summary>
         DIFFERENTIAL,
 
+        /// <summary>
+        /// Represents no selected backup type.
+        /// </summary>
         NONE
     }
 }

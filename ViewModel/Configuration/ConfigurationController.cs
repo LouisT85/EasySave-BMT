@@ -1,55 +1,69 @@
+using easySave_BMT.Model_;
 using easySave_BMT.View_;
 
 namespace easySave_BMT.ViewModel_.Configuration
 {
+    /// <summary>
+    /// Handles configuration-related user interactions.
+    /// </summary>
     public class ConfigurationController
     {
-        private readonly ViewModel _viewModel;
+        private readonly View _view;
+        private readonly Model _model;
 
-        public ConfigurationController(ViewModel viewModel)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConfigurationController"/> class.
+        /// </summary>
+        /// <param name="view">The console view adapter.</param>
+        /// <param name="model">The domain model facade.</param>
+        public ConfigurationController(View view, Model model)
         {
-            _viewModel = viewModel;
+            _view = view;
+            _model = model;
         }
 
+        /// <summary>
+        /// Runs the interactive configuration menu loop.
+        /// </summary>
         public void ConfigurationMenu()
         {
             bool inConfigMenu = true;
 
             while (inConfigMenu)
             {
-                int choice = _viewModel.view.ConfigurationMenu();
+                int choice = _view.ConfigurationMenu();
 
                 switch (choice)
                 {
                     case 1:
-                        var config = _viewModel.model.GetConfig();
-                        _viewModel.view.DisplayCurrentConfiguration(config);
+                        var config = _model.GetConfig();
+                        _view.DisplayCurrentConfiguration(config);
                         break;
 
                     case 2:
-                        string newLogDir = _viewModel.view.AskForLogDirectory();
+                        string newLogDir = _view.AskForLogDirectory();
                         if (!string.IsNullOrWhiteSpace(newLogDir))
                         {
-                            _viewModel.model.UpdateConfig(newLogDir, null, null);
-                            _viewModel.view.DisplayMessage(218);
+                            _model.UpdateConfig(newLogDir, null, null);
+                            _view.DisplayMessage(218);
                         }
                         break;
 
                     case 3:
-                        string newStatePath = _viewModel.view.AskForStateFilePath();
+                        string newStatePath = _view.AskForStateFilePath();
                         if (!string.IsNullOrWhiteSpace(newStatePath))
                         {
-                            _viewModel.model.UpdateConfig(null, newStatePath, null);
-                            _viewModel.view.DisplayMessage(218);
+                            _model.UpdateConfig(null, newStatePath, null);
+                            _view.DisplayMessage(218);
                         }
                         break;
 
                     case 4:
-                        string newLang = _viewModel.view.AskForLanguage();
+                        string newLang = _view.AskForLanguage();
                         if (!string.IsNullOrWhiteSpace(newLang))
                         {
-                            _viewModel.model.UpdateConfig(null, null, newLang);
-                            _viewModel.view.DisplayMessage(218);
+                            _model.UpdateConfig(null, null, newLang);
+                            _view.DisplayMessage(218);
                         }
                         break;
 
@@ -58,7 +72,7 @@ namespace easySave_BMT.ViewModel_.Configuration
                         break;
 
                     default:
-                        _viewModel.view.DisplayMessage(206);
+                        _view.DisplayMessage(206);
                         break;
                 }
             }

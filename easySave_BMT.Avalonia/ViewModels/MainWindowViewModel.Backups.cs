@@ -17,15 +17,15 @@ namespace easySave_BMT.Avalonia.ViewModels
                 selectedNames.Add(SelectedSave.name);
             }
 
-            int reloadResult = _coreViewModel.saveListManager.DisplaySaves();
+            int reloadResult = _coreViewModel.SaveListManager.DisplaySaves();
             ApplyUiProgressCacheToSaves();
 
             if (showUserFeedback)
             {
                 if (reloadResult == 100)
                 {
-                    if (_coreViewModel.model.saves.Count > 0)
-                        SetTimedDashboardStatusText(string.Format(Loc["UiListUpdated"], _coreViewModel.model.saves.Count));
+                    if (_coreViewModel.Model.saves.Count > 0)
+                        SetTimedDashboardStatusText(string.Format(Loc["UiListUpdated"], _coreViewModel.Model.saves.Count));
                     else
                         SetTimedDashboardStatusText(Loc["UiNoBackupsDefined"]);
                 }
@@ -63,7 +63,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
 
             BackupType type = SelectedBackupTypeItem?.Type ?? BackupType.FULL;
-            int res = _coreViewModel.model.AddSave(NewSaveName, NewSaveSourcePath, NewSaveDestinationPath, type);
+            int res = _coreViewModel.Model.AddSave(NewSaveName, NewSaveSourcePath, NewSaveDestinationPath, type);
 
             SetMessageFromCode(res, MessageArea.NewTask);
             NewTaskStatusText = "";
@@ -91,7 +91,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
 
             // Remove by descending index to avoid shifting.
-            var indices = _coreViewModel.model.saves
+            var indices = _coreViewModel.Model.saves
                 .Select((s, idx) => new { s, idx })
                 .Where(x => names.Contains(x.s.name))
                 .Select(x => x.idx)
@@ -101,7 +101,7 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             foreach (var idx in indices)
             {
-                _coreViewModel.model.RemoveSave(idx);
+                _coreViewModel.Model.RemoveSave(idx);
             }
 
             SelectedSaves.Clear();
@@ -129,7 +129,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                 // Reload from file so a task still runs correctly after closing/reopening the app.
                 ListSaves(showUserFeedback: false);
 
-                var toRun = _coreViewModel.model.saves.Where(s => names.Contains(s.name)).ToList();
+                var toRun = _coreViewModel.Model.saves.Where(s => names.Contains(s.name)).ToList();
                 if (toRun.Count == 0)
                 {
                     SetTimedAreaMessage(MessageArea.Dashboard, Loc["UiSelectBackup"], "");
@@ -142,11 +142,11 @@ namespace easySave_BMT.Avalonia.ViewModels
                     SetSaveUiProgress(save.name, 0);
 
                     SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiLaunchingBackup"], save.name), "");
-                    lastResult = await Task.Run(() => _coreViewModel.backupLauncher.LaunchBackupType(save));
+                    lastResult = await Task.Run(() => _coreViewModel.BackupLauncher.LaunchBackupType(save));
 
                     if (lastResult == 104 || lastResult == 105 || lastResult == 216)
                     {
-                        _coreViewModel.model.FinishBackup(save);
+                        _coreViewModel.Model.FinishBackup(save);
                         SetSaveUiProgress(save.name, 100);
                     }
                 }
@@ -288,3 +288,4 @@ namespace easySave_BMT.Avalonia.ViewModels
         }
     }
 }
+

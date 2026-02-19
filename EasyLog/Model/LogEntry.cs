@@ -4,46 +4,43 @@ namespace EasyLog.Models
 {
     /// <summary>
     /// Represents a single log entry for a file transfer operation.
-    /// This data is persisted to provide a history of backup activities.
     /// </summary>
     public class LogEntry
     {
         /// <summary>
-        /// The date and time when the file transfer operation occurred.
+        /// Gets or sets the timestamp of the operation.
         /// </summary>
         public DateTime Timestamp { get; set; }
 
         /// <summary>
-        /// The name of the backup job associated with this entry.
+        /// Gets or sets the backup job name.
         /// </summary>
-        public string BackupName { get; set; }
+        public string BackupName { get; set; } = string.Empty;
 
         /// <summary>
-        /// The full source path of the file that was copied.
+        /// Gets or sets the source file path.
         /// </summary>
-        public string SourcePath { get; set; }
+        public string SourcePath { get; set; } = string.Empty;
 
         /// <summary>
-        /// The full destination path where the file was stored.
+        /// Gets or sets the destination file path.
         /// </summary>
-        public string DestinationPath { get; set; }
+        public string DestinationPath { get; set; } = string.Empty;
 
         /// <summary>
-        /// The size of the file in bytes.
+        /// Gets or sets the file size in bytes.
         /// </summary>
         public long FileSize { get; set; }
 
         /// <summary>
-        /// The time taken to transfer the file in milliseconds. 
-        /// A value of -1 typically indicates a failed transfer.
+        /// Gets or sets the transfer duration in milliseconds.
+        /// A negative value indicates an error.
         /// </summary>
         public long TransferTimeMs { get; set; }
 
         /// <summary>
-        /// The time taken to encrypt the file in milliseconds.
-        /// 0 : no encryption
-        /// >0 : encryption time in ms
-        /// <0 : error code
+        /// Gets or sets the encryption duration in milliseconds.
+        /// <c>0</c> means no encryption, a negative value is an error code.
         /// </summary>
         public long EncryptionTimeMs { get; set; }
     }

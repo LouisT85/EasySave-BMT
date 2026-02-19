@@ -99,9 +99,9 @@ namespace easySave_BMT.Model_
         /// <param name="statePath">New path for the state file (ignored if empty).</param>
         /// <param name="lang">New language code (ignored if empty).</param>
         public void UpdateFromUserInput(
-            string logDir,
-            string statePath,
-            string lang,
+            string? logDir,
+            string? statePath,
+            string? lang,
             bool? enableEncryption = null,
             System.Collections.Generic.List<string>? encryptionExtensions = null,
             string? cryptoSoftPath = null)

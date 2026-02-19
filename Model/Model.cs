@@ -343,6 +343,7 @@ namespace easySave_BMT.Model_
                 dstFile = Path.Combine(dstDirectory, currentFile.Name);
 
                 // Update dynamic state before starting the copy
+                save.state ??= new State(totalFile, curSize + leftSize, save.src, dstDirectory);
                 save.state.UpdateState(
                     pourcent,
                     (totalFile - fileIndex),
@@ -457,9 +458,9 @@ namespace easySave_BMT.Model_
         /// Updates application settings, including language, log directory, and state file path.
         /// </summary>
         public void UpdateConfig(
-            string logDir,
-            string statePath,
-            string language,
+            string? logDir,
+            string? statePath,
+            string? language,
             bool? enableEncryption = null,
             List<string>? encryptionExtensions = null,
             string? cryptoSoftPath = null)

@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
@@ -6,21 +5,19 @@ using System.Text.Json.Serialization;
 namespace easySave_BMT.Model_
 {
     /// <summary>
-    /// Represents a backup job configuration, containing the source and destination paths,
-    /// the type of backup, and its current execution state.
+    /// Represents a backup job configuration and its runtime UI state.
     /// </summary>
-    public class Save
-        : INotifyPropertyChanged
+    public class Save : INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
         private int _uiProgressPercent;
 
         /// <summary>
-        /// UI-only progress (0-100) for the GUI list. Not persisted to BackupSave.json.
+        /// Occurs when a bindable property value changes.
+        /// </summary>
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        /// <summary>
+        /// UI-only progress (0-100) for the GUI list. Not persisted to <c>BackupSave.json</c>.
         /// </summary>
         [JsonIgnore]
         public int UiProgressPercent
@@ -28,59 +25,73 @@ namespace easySave_BMT.Model_
             get => _uiProgressPercent;
             set
             {
-                if (_uiProgressPercent == value) return;
+                if (_uiProgressPercent == value)
+                {
+                    return;
+                }
+
                 _uiProgressPercent = value;
                 OnPropertyChanged();
             }
         }
 
-        /// <summary>The unique name assigned to the backup job.</summary>
-        public string name { get; set; }
+        /// <summary>
+        /// Gets or sets the backup job name.
+        /// </summary>
+        public string name { get; set; } = string.Empty;
 
-        /// <summary>The source directory path to be backed up.</summary>
-        public string src { get; set; }
+        /// <summary>
+        /// Gets or sets the source directory path.
+        /// </summary>
+        public string src { get; set; } = string.Empty;
 
-        /// <summary>The destination directory path where the backup will be stored.</summary>
-        public string dst { get; set; }
+        /// <summary>
+        /// Gets or sets the destination directory path.
+        /// </summary>
+        public string dst { get; set; } = string.Empty;
 
-        /// <summary>The type of backup to perform (e.g., Full or Differential).</summary>
+        /// <summary>
+        /// Gets or sets the backup strategy type.
+        /// </summary>
         public BackupType backupType { get; set; }
 
         /// <summary>
-        /// The current dynamic state of the job, tracking progress and file details 
-        /// during execution.
+        /// Gets or sets the runtime state for the running backup.
         /// </summary>
-        public State state { get; set; }
+        public State? state { get; set; }
 
-        /// <summary>The timestamp of the last time this backup job was successfully completed.</summary>
-        public string lastBackupDate { get; set; }
+        /// <summary>
+        /// Gets or sets the last successful backup timestamp.
+        /// </summary>
+        public string lastBackupDate { get; set; } = string.Empty;
 
         /// <summary>
         /// Initializes a new empty instance of the <see cref="Save"/> class.
         /// </summary>
         public Save()
         {
-            this.state = null;
-            this.lastBackupDate = "";
-            this.UiProgressPercent = 0;
+            UiProgressPercent = 0;
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Save"/> class with specific configuration details.
+        /// Initializes a new instance of the <see cref="Save"/> class.
         /// </summary>
-        /// <param name="name">The name of the backup task.</param>
-        /// <param name="src">The source folder path.</param>
-        /// <param name="dst">The destination folder path.</param>
-        /// <param name="backupType">The selected <see cref="BackupType"/> for this job.</param>
+        /// <param name="name">The backup name.</param>
+        /// <param name="src">The source directory path.</param>
+        /// <param name="dst">The destination directory path.</param>
+        /// <param name="backupType">The backup strategy type.</param>
         public Save(string name, string src, string dst, BackupType backupType)
         {
             this.name = name;
             this.src = src;
             this.dst = dst;
             this.backupType = backupType;
-            this.state = null;
-            this.lastBackupDate = "";
-            this.UiProgressPercent = 0;
+            UiProgressPercent = 0;
+        }
+
+        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
