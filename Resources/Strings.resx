@@ -385,6 +385,27 @@
   <data name="UiEnableEncryption" xml:space="preserve">
     <value>Enable encryption</value>
   </data>
+  <data name="UiEncryptionKey" xml:space="preserve">
+    <value>CryptoSoft key</value>
+  </data>
+  <data name="UiEncryptionKeyHelp" xml:space="preserve">
+    <value>Set the encryption key used by CryptoSoft (plain text or hexadecimal value starting with 0x).</value>
+  </data>
+  <data name="UiEncryptionKeyHint" xml:space="preserve">
+    <value>0x0123456789ABCDEF</value>
+  </data>
+  <data name="UiGenerateKey" xml:space="preserve">
+    <value>Generate</value>
+  </data>
+  <data name="UiEncryptionKeyTrace" xml:space="preserve">
+    <value>Key generation trace</value>
+  </data>
+  <data name="UiEncryptionKeyGenerated" xml:space="preserve">
+    <value>A new encryption key has been generated.</value>
+  </data>
+  <data name="UiEncryptionKeyTraceEntry" xml:space="preserve">
+    <value>{0} - key generated (fingerprint: ...{1})</value>
+  </data>
   <data name="UiEncryptExtensions" xml:space="preserve">
     <value>Encrypt only these file extensions (example: .txt). Leave empty to encrypt all files.</value>
   </data>
@@ -408,6 +429,9 @@
   </data>
   <data name="UiEncryptionSummary" xml:space="preserve">
     <value>{0}: encryption applied to {1} file(s), {2} already encrypted file(s) skipped.</value>
+  </data>
+  <data name="UiEncryptionSummarySimple" xml:space="preserve">
+    <value>{0}: encryption applied to {1} file(s).</value>
   </data>
   <data name="UiEncryptionFallbackAllFiles" xml:space="preserve">
     <value>No configured encryption extension matches this backup. Encrypting all files for this run.</value>

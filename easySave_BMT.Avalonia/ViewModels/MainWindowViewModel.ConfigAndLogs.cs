@@ -27,13 +27,20 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             var cfg = _coreViewModel.model.GetConfig();
             var exts = BuildNormalizedEncryptionExtensionsDraft();
+            string cryptoSoftKey = (ConfigCryptoSoftKeyDraft ?? "").Trim();
+            var keyTrace = EncryptionKeyCreationTraceDraft
+                .Select(e => (e ?? "").Trim())
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .ToList();
 
             _coreViewModel.model.UpdateConfig(
                 cfg.LogDirectory,
                 cfg.StateFilePath,
                 cfg.Language,
                 enableEncryption: ConfigEnableEncryptionDraft,
-                encryptionExtensions: exts);
+                encryptionExtensions: exts,
+                cryptoSoftKey: cryptoSoftKey,
+                encryptionKeyCreationTrace: keyTrace);
         }
 
         private void LoadConfigValuesFromModel()
@@ -48,10 +55,12 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ConfigLanguageDraft = cfg.Language;
 
                 ConfigEnableEncryptionDraft = cfg.EnableEncryption;
+                ConfigCryptoSoftKeyDraft = (cfg.CryptoSoftKey ?? "").Trim();
                 ConfigBusinessSoftwareDraft = (cfg.BusinessSoftware ?? "").Trim();
                 NewBusinessSoftwareEntry = "";
                 SelectedBusinessSoftwareEntry = null;
                 ConfigBusinessSoftwareEntriesDraft.Clear();
+                EncryptionKeyCreationTraceDraft.Clear();
 
                 foreach (var entry in ParseBusinessSoftwareEntries(ConfigBusinessSoftwareDraft))
                 {
@@ -74,6 +83,16 @@ namespace easySave_BMT.Avalonia.ViewModels
 
                         if (!ConfigEncryptionExtensionsDraft.Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase)))
                             ConfigEncryptionExtensionsDraft.Add(ext);
+                    }
+                }
+
+                if (cfg.EncryptionKeyCreationTrace is not null)
+                {
+                    foreach (var trace in cfg.EncryptionKeyCreationTrace)
+                    {
+                        string normalizedTrace = (trace ?? "").Trim();
+                        if (string.IsNullOrWhiteSpace(normalizedTrace)) continue;
+                        EncryptionKeyCreationTraceDraft.Add(normalizedTrace);
                     }
                 }
 
@@ -107,6 +126,12 @@ namespace easySave_BMT.Avalonia.ViewModels
 
                 string businessSoftware = string.Join("; ", businessEntries);
                 ConfigBusinessSoftwareDraft = businessSoftware;
+                string cryptoSoftKey = (ConfigCryptoSoftKeyDraft ?? "").Trim();
+                ConfigCryptoSoftKeyDraft = cryptoSoftKey;
+                var keyTrace = EncryptionKeyCreationTraceDraft
+                    .Select(e => (e ?? "").Trim())
+                    .Where(e => !string.IsNullOrWhiteSpace(e))
+                    .ToList();
 
                 _coreViewModel.model.UpdateConfig(
                     ConfigLogDirectory,
@@ -114,6 +139,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                     ConfigLanguageDraft,
                     enableEncryption: ConfigEnableEncryptionDraft,
                     encryptionExtensions: exts,
+                    cryptoSoftKey: cryptoSoftKey,
+                    encryptionKeyCreationTrace: keyTrace,
                     businessSoftware: businessSoftware);
 
                 // Apply language to the current UI only after Save.
