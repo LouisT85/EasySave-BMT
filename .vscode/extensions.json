@@ -1,6 +1,11 @@
 {
   "recommendations": [
-    "ms-dotnettools.csdevkit",
-    "ms-dotnettools.csharp"
+    "anysphere.csharp",
+    "ms-dotnettools.vscode-dotnet-runtime"
+  ],
+  "unwantedRecommendations": [
+    "dotnetdev-kr-custom.csharp",
+    "ms-dotnettools.csharp",
+    "ms-dotnettools.csdevkit"
   ]
 }
