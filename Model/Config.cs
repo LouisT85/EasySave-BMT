@@ -37,8 +37,8 @@ namespace easySave_BMT.Model_
         public string CryptoSoftPath { get; set; } = "";
 
         /// <summary>
-        /// Optional "business software" process name (or exe path). When running, backups must be blocked/stopped.
-        /// Example for demos: "calc" or "calc.exe".
+        /// Optional business-software process patterns (separated by ';', ',', or newline).
+        /// Each entry can be a process name, an .exe path, or a wildcard pattern (e.g. "calc;notepad;excel*").
         /// </summary>
         public string BusinessSoftware { get; set; } = "";
 

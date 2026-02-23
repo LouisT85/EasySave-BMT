@@ -26,6 +26,8 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> ConfigCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> AddEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> RemoveEncryptionExtensionCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> AddBusinessSoftwareEntryCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> RemoveBusinessSoftwareEntryCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> LoadLogsCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> PauseCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> StopCommand { get; private set; } = null!;
@@ -121,6 +123,8 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             AddEncryptionExtensionCommand = ReactiveCommand.Create(AddEncryptionExtension);
             RemoveEncryptionExtensionCommand = ReactiveCommand.Create(RemoveEncryptionExtension);
+            AddBusinessSoftwareEntryCommand = ReactiveCommand.Create(AddBusinessSoftwareEntry);
+            RemoveBusinessSoftwareEntryCommand = ReactiveCommand.Create(RemoveBusinessSoftwareEntry);
 
             LoadLogsCommand = ReactiveCommand.Create(LoadLogs);
 
@@ -191,6 +195,56 @@ namespace easySave_BMT.Avalonia.ViewModels
             if (string.IsNullOrWhiteSpace(SelectedEncryptionExtension)) return;
             ConfigEncryptionExtensionsDraft.Remove(SelectedEncryptionExtension);
             SelectedEncryptionExtension = null;
+        }
+
+        private void AddBusinessSoftwareEntry()
+        {
+            string entry = NormalizeBusinessSoftwareEntry(NewBusinessSoftwareEntry);
+            if (string.IsNullOrWhiteSpace(entry))
+            {
+                SetTimedAreaMessage(MessageArea.Config, Loc["UiEnterBusinessSoftwareEntry"]);
+                return;
+            }
+
+            if (entry.Contains(';') || entry.Contains(',') || entry.Contains('|') || entry.Contains('\n') || entry.Contains('\r'))
+            {
+                SetTimedAreaMessage(MessageArea.Config, Loc["UiInvalidBusinessSoftwareEntry"]);
+                return;
+            }
+
+            if (!ConfigBusinessSoftwareEntriesDraft.Any(e => string.Equals(e, entry, StringComparison.OrdinalIgnoreCase)))
+            {
+                ConfigBusinessSoftwareEntriesDraft.Add(entry);
+            }
+
+            NewBusinessSoftwareEntry = "";
+        }
+
+        private void RemoveBusinessSoftwareEntry()
+        {
+            if (string.IsNullOrWhiteSpace(SelectedBusinessSoftwareEntry)) return;
+            ConfigBusinessSoftwareEntriesDraft.Remove(SelectedBusinessSoftwareEntry);
+            SelectedBusinessSoftwareEntry = null;
+        }
+
+        private static string NormalizeBusinessSoftwareEntry(string? raw)
+        {
+            string entry = (raw ?? "").Trim().Trim('"');
+            if (string.IsNullOrWhiteSpace(entry)) return "";
+
+            try
+            {
+                if (entry.Contains(System.IO.Path.DirectorySeparatorChar) || entry.Contains(System.IO.Path.AltDirectorySeparatorChar))
+                {
+                    entry = System.IO.Path.GetFileName(entry);
+                }
+            }
+            catch { }
+
+            if (entry.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                entry = entry[..^4];
+
+            return entry.Trim();
         }
     }
 }

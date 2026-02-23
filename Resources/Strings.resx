@@ -437,15 +437,21 @@
     <value>Business software</value>
   </data>
   <data name="UiBusinessSoftwareHint" xml:space="preserve">
-    <value>calc (or C:\Path\To\App.exe)</value>
+    <value>Example: calc; notepad; excel* (name, .exe path, or wildcard)</value>
   </data>
   <data name="UiBusinessSoftwareHelp" xml:space="preserve">
-    <value>If detected running, EasySave automatically pauses backups and resumes when the business software is closed.</value>
+    <value>You can provide multiple entries (separated by ; , or newline). On detection, EasySave pauses and resumes automatically.</value>
   </data>
   <data name="UiPausedByBusinessDetected" xml:space="preserve">
     <value>Automatic pause: business software detected ({0}).</value>
   </data>
   <data name="UiResumedAfterBusiness" xml:space="preserve">
     <value>Automatic resume: business software closed ({0}).</value>
+  </data>
+  <data name="UiEnterBusinessSoftwareEntry" xml:space="preserve">
+    <value>Please enter a business software entry to add.</value>
+  </data>
+  <data name="UiInvalidBusinessSoftwareEntry" xml:space="preserve">
+    <value>Invalid entry. Add one process name/pattern at a time.</value>
   </data>
 </root>

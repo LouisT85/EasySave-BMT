@@ -10,6 +10,7 @@ using EasyLog.Models;
 using System.Threading;
 using System.Text;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using easySave_BMT.Resources_;
 namespace easySave_BMT.Model_
 {
@@ -634,7 +635,21 @@ namespace easySave_BMT.Model_
             return (config.BusinessSoftware ?? "").Trim();
         }
 
-        private static string NormalizeProcessName(string spec)
+        public IReadOnlyList<string> GetBusinessSoftwareSpecs()
+        {
+            string raw = GetBusinessSoftwareSpec();
+            if (string.IsNullOrWhiteSpace(raw))
+                return Array.Empty<string>();
+
+            return raw
+                .Split(new[] { ';', ',', '|', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(NormalizeProcessPattern)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static string NormalizeProcessPattern(string spec)
         {
             spec = (spec ?? "").Trim();
             if (spec.Length == 0) return "";
@@ -653,41 +668,98 @@ namespace easySave_BMT.Model_
             return spec.Trim();
         }
 
-        public bool IsBusinessSoftwareRunning()
+        private static bool HasWildcard(string pattern)
         {
-            string spec = GetBusinessSoftwareSpec();
-            if (string.IsNullOrWhiteSpace(spec)) return false;
+            return pattern.Contains('*') || pattern.Contains('?');
+        }
 
-            string procName = NormalizeProcessName(spec);
-            if (string.IsNullOrWhiteSpace(procName)) return false;
+        private static bool IsProcessMatch(string processName, string pattern)
+        {
+            if (string.IsNullOrWhiteSpace(processName) || string.IsNullOrWhiteSpace(pattern))
+                return false;
+
+            if (!HasWildcard(pattern))
+                return string.Equals(processName, pattern, StringComparison.OrdinalIgnoreCase);
+
+            string regexPattern = "^" + Regex.Escape(pattern)
+                .Replace(@"\*", ".*")
+                .Replace(@"\?", ".") + "$";
 
             try
             {
-                // Fast path on Windows: by name (case-insensitive).
-                var procs = Process.GetProcessesByName(procName);
-                if (procs is not null && procs.Length > 0) return true;
+                return Regex.IsMatch(processName, regexPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
             }
             catch
             {
-                // Ignore detection failures; treat as not running.
+                return false;
             }
+        }
 
-            // Fallback: enumerate and compare ProcessName.
+        public bool TryGetRunningBusinessSoftware(out string runningProcessName)
+        {
+            runningProcessName = "";
+            var specs = GetBusinessSoftwareSpecs();
+            if (specs.Count == 0) return false;
+
+            // Fast path for exact names.
+            try
+            {
+                foreach (string spec in specs.Where(s => !HasWildcard(s)))
+                {
+                    Process[]? exact = null;
+                    try
+                    {
+                        exact = Process.GetProcessesByName(spec);
+                        if (exact is not null && exact.Length > 0)
+                        {
+                            runningProcessName = spec;
+                            return true;
+                        }
+                    }
+                    catch { }
+                    finally
+                    {
+                        if (exact is not null)
+                        {
+                            foreach (var p in exact)
+                            {
+                                try { p.Dispose(); } catch { }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            // Wildcard + fallback matching against running process names.
             try
             {
                 foreach (var p in Process.GetProcesses())
                 {
                     try
                     {
-                        if (string.Equals(p.ProcessName, procName, StringComparison.OrdinalIgnoreCase))
+                        string name = p.ProcessName;
+                        if (specs.Any(spec => IsProcessMatch(name, spec)))
+                        {
+                            runningProcessName = name;
                             return true;
+                        }
                     }
                     catch { }
+                    finally
+                    {
+                        try { p.Dispose(); } catch { }
+                    }
                 }
             }
             catch { }
 
             return false;
+        }
+
+        public bool IsBusinessSoftwareRunning()
+        {
+            return TryGetRunningBusinessSoftware(out _);
         }
 
         public void WriteBackupStopLog(string backupName, BackupStopReason reason, string? currentFile = null)

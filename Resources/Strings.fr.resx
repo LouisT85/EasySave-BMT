@@ -437,15 +437,21 @@
     <value>Logiciel métier</value>
   </data>
   <data name="UiBusinessSoftwareHint" xml:space="preserve">
-    <value>calc (ou C:\Chemin\Vers\App.exe)</value>
+    <value>Ex: calc; notepad; excel* (nom, chemin .exe ou joker)</value>
   </data>
   <data name="UiBusinessSoftwareHelp" xml:space="preserve">
-    <value>Si détecté, EasySave met les sauvegardes en pause automatiquement puis reprend quand le logiciel métier est fermé.</value>
+    <value>Vous pouvez mettre plusieurs entrées (séparées par ; , ou retour ligne). En détection, EasySave met en pause puis reprend automatiquement.</value>
   </data>
   <data name="UiPausedByBusinessDetected" xml:space="preserve">
     <value>Pause automatique : logiciel métier détecté ({0}).</value>
   </data>
   <data name="UiResumedAfterBusiness" xml:space="preserve">
     <value>Reprise automatique : logiciel métier fermé ({0}).</value>
+  </data>
+  <data name="UiEnterBusinessSoftwareEntry" xml:space="preserve">
+    <value>Veuillez saisir un logiciel métier à ajouter.</value>
+  </data>
+  <data name="UiInvalidBusinessSoftwareEntry" xml:space="preserve">
+    <value>Entrée invalide. Ajoutez un seul nom/pattern à la fois.</value>
   </data>
 </root>
