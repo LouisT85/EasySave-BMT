@@ -3,15 +3,23 @@
   "configurations": [
     {
       "name": "EasySave Console",
-      "type": "dotnet",
+      "type": "coreclr",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/EasySave-BMT.csproj"
+      "preLaunchTask": "build-console",
+      "program": "${workspaceFolder}/bin/Debug/net9.0/EasySave-BMT.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
     },
     {
       "name": "EasySave GUI (Avalonia)",
-      "type": "dotnet",
+      "type": "coreclr",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/easySave_BMT.Avalonia/easySave_BMT.Avalonia.csproj"
+      "preLaunchTask": "build-gui",
+      "program": "${workspaceFolder}/easySave_BMT.Avalonia/bin/Debug/net9.0/easySave_BMT.Avalonia.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/easySave_BMT.Avalonia",
+      "console": "integratedTerminal"
     }
   ]
 }
