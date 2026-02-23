@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -8,6 +10,9 @@ using easySave_BMT.Model_;
 
 namespace easySave_BMT.ViewModel_.Backup
 {
+    /// <summary>
+    /// Executes backup jobs (full/differential), handles pause/stop, and reports progress to console/GUI.
+    /// </summary>
     public class BackupLauncher
     {
         private const string EasySaveCryptoMagicV1 = "EASYSAVECRYPT1";
@@ -39,6 +44,7 @@ namespace easySave_BMT.ViewModel_.Backup
                         BackupSingleSave(userChoice);
                         break;
                 }
+
                 _viewModel.view.DisplayMessage(1);
             }
             else
@@ -49,7 +55,6 @@ namespace easySave_BMT.ViewModel_.Backup
 
         public int LaunchBackupType(Save _save)
         {
-            // Business software check: if detected, do not start the backup.
             if (_viewModel.model.IsBusinessSoftwareRunning())
             {
                 _viewModel.model.RequestStop(BackupStopReason.BusinessSoftwareDetected, _viewModel.model.GetBusinessSoftwareSpec());
@@ -81,15 +86,12 @@ namespace easySave_BMT.ViewModel_.Backup
             }
             catch
             {
-                // If path normalization fails, proceed and let the copy layer report errors.
+                // Intentionally ignored; the copy layer will surface errors.
             }
 
-            // Keep any existing unfinished state so we can reuse the same destination folder
-            // after a pause/app restart (overwrite existing files in-place).
             if (_save.state is null || _save.state.progress >= 100)
             {
-                var activeState = new State(0, 0, _save.src, _save.dst);
-                _save.state = activeState;
+                _save.state = new State(0, 0, _save.src, _save.dst);
             }
 
             _viewModel.model.UpdateSaveState(_save);
@@ -109,7 +111,6 @@ namespace easySave_BMT.ViewModel_.Backup
                     _viewModel.model.FinishBackup(save);
                 }
 
-                // If business software is detected, stop the sequential execution.
                 if (_viewModel.model.PeekStopReason() == BackupStopReason.BusinessSoftwareDetected)
                 {
                     break;
@@ -123,6 +124,7 @@ namespace easySave_BMT.ViewModel_.Backup
         {
             int indexsave = userChoice - 2;
             Save selectedSave = _viewModel.model.saves[indexsave];
+
             int backupResult = LaunchBackupType(selectedSave);
             _viewModel.view.DisplayMessage(backupResult);
 
@@ -134,22 +136,23 @@ namespace easySave_BMT.ViewModel_.Backup
 
         private int ExecuteBackupStrategy(Save _save, DirectoryInfo _dir)
         {
-            switch (_save.backupType)
+            return _save.backupType switch
             {
-                case BackupType.DIFFERENTIAL:
-                    string? fullBackupDir = GetFullBackupDir(_save);
-                    if (fullBackupDir != null)
-                    {
-                        return DifferentialBackupSetup(_save, _dir, fullBackupDir);
-                    }
-                    return FullBackupSetup(_save, _dir);
+                BackupType.DIFFERENTIAL => DifferentialOrFallbackToFull(_save, _dir),
+                BackupType.FULL => FullBackupSetup(_save, _dir),
+                _ => 208
+            };
+        }
 
-                case BackupType.FULL:
-                    return FullBackupSetup(_save, _dir);
-
-                default:
-                    return 208;
+        private int DifferentialOrFallbackToFull(Save _save, DirectoryInfo _dir)
+        {
+            string? fullBackupDir = GetFullBackupDir(_save);
+            if (fullBackupDir != null)
+            {
+                return DifferentialBackupSetup(_save, _dir, fullBackupDir);
             }
+
+            return FullBackupSetup(_save, _dir);
         }
 
         private string? GetFullBackupDir(Save _save)
@@ -158,7 +161,6 @@ namespace easySave_BMT.ViewModel_.Backup
             {
                 DirectoryInfo[] dirs = new DirectoryInfo(_save.dst).GetDirectories();
 
-                // Pick the most recent backup folder for this save name.
                 var candidates = dirs
                     .Where(d => d.Name.StartsWith(_save.name + "_", StringComparison.OrdinalIgnoreCase))
                     .ToList();
@@ -181,6 +183,7 @@ namespace easySave_BMT.ViewModel_.Backup
             {
                 totalSize += file.Length;
             }
+
             return DoBackup(_save, files, totalSize);
         }
 
@@ -206,7 +209,6 @@ namespace easySave_BMT.ViewModel_.Backup
                 _save.lastBackupDate = DateTime.Now.ToString("yyyy/MM/dd_HH:mm:ss");
                 _viewModel.model.AddLogInJSONFile();
 
-                // Notification console (only when running in console mode)
                 if (_viewModel.guiView is null)
                 {
                     _viewModel.view.DisplayMessage(3);
@@ -216,6 +218,7 @@ namespace easySave_BMT.ViewModel_.Backup
                 _viewModel.guiView?.OnBackupComplete(_save.name, 0);
                 return 105;
             }
+
             return DoBackup(_save, filesToCopy.ToArray(), totalSize);
         }
 
@@ -250,7 +253,7 @@ namespace easySave_BMT.ViewModel_.Backup
                     if (nl2 > start2)
                     {
                         string line2 = Encoding.ASCII.GetString(buf, start2, nl2 - start2).TrimEnd('\r').Trim();
-                        if (line2.Length == 64 && line2.All(ch => Uri.IsHexDigit(ch)))
+                        if (line2.Length == 64 && line2.All(Uri.IsHexDigit))
                         {
                             plaintextSha256Hex = line2.ToLowerInvariant();
                         }
@@ -263,11 +266,6 @@ namespace easySave_BMT.ViewModel_.Backup
             {
                 return false;
             }
-        }
-
-        private static bool HasEasySaveCryptoHeader(string filePath)
-        {
-            return TryReadEasySaveCryptoHeader(filePath, out bool isEncrypted, out _) && isEncrypted;
         }
 
         private static string ComputeSha256Hex(string filePath)
@@ -288,7 +286,6 @@ namespace easySave_BMT.ViewModel_.Backup
         {
             try
             {
-                // If the reference file is EasySave-encrypted (v2), compare the stored plaintext hash to avoid decrypting.
                 if (TryReadEasySaveCryptoHeader(path1, out bool isEncrypted, out string? expectedHash) &&
                     isEncrypted &&
                     !string.IsNullOrWhiteSpace(expectedHash))
@@ -297,7 +294,6 @@ namespace easySave_BMT.ViewModel_.Backup
                     return string.Equals(expectedHash, actual, StringComparison.OrdinalIgnoreCase);
                 }
 
-                // Fallback: byte-by-byte equality (works for non-encrypted backups and already-encrypted sources).
                 byte[] file1 = File.ReadAllBytes(path1);
                 byte[] file2 = File.ReadAllBytes(path2);
 
@@ -307,6 +303,7 @@ namespace easySave_BMT.ViewModel_.Backup
                 {
                     if (file1[i] != file2[i]) return false;
                 }
+
                 return true;
             }
             catch
@@ -320,8 +317,6 @@ namespace easySave_BMT.ViewModel_.Backup
             try
             {
                 if (save.state is null) return null;
-
-                // Only try to resume if there was an unfinished run.
                 if (save.state.progress <= 0 || save.state.progress >= 100) return null;
 
                 string currentDest = save.state.currentPathDest ?? "";
@@ -330,7 +325,6 @@ namespace easySave_BMT.ViewModel_.Backup
                 string dstBase = Path.GetFullPath(save.dst)
                     .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
 
-                // If currentPathDest is a file, start from its directory.
                 string dir = Directory.Exists(currentDest)
                     ? currentDest
                     : (Path.GetDirectoryName(currentDest) ?? "");
@@ -346,7 +340,6 @@ namespace easySave_BMT.ViewModel_.Backup
                     string parentFull = parent.FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
                     if (string.Equals(parentFull, dstBase, StringComparison.OrdinalIgnoreCase))
                     {
-                        // The backup root folder is the first child under the destination base.
                         return di.FullName;
                     }
 
@@ -355,7 +348,7 @@ namespace easySave_BMT.ViewModel_.Backup
             }
             catch
             {
-                // Ignore resume detection failures.
+                // Intentionally ignored.
             }
 
             return null;
@@ -369,7 +362,6 @@ namespace easySave_BMT.ViewModel_.Backup
 
             if (!string.IsNullOrWhiteSpace(resumeRoot) && Directory.Exists(resumeRoot))
             {
-                // Resume in the same folder and overwrite files.
                 dst = resumeRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
             }
             else
@@ -390,85 +382,112 @@ namespace easySave_BMT.ViewModel_.Backup
                 return 210;
             }
 
-            // In Avalonia (WinExe), there is no console attached; Console.Clear/SetCursorPosition can throw.
             if (_viewModel.guiView is null)
             {
-                try { Console.Clear(); } catch { /* ignore */ }
+                try { Console.Clear(); } catch { }
             }
 
-            List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst, out int encryptedCount, out int skippedEncryptedCount);
-            DateTime endTime = DateTime.Now;
-            TimeSpan saveTime = endTime - startTime;
-            double transferTime = saveTime.TotalMilliseconds;
+            var activeSw = Stopwatch.StartNew();
 
-                _viewModel.model.AddLogInJSONFile();
+            List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst, activeSw,
+                out int encryptedCount, out int skippedEncryptedCount);
 
-                bool stopped = _viewModel.model.IsStopRequested();
+            activeSw.Stop();
+            double transferTime = activeSw.Elapsed.TotalMilliseconds;
 
-                // Notifications console (only when running in console mode)
+            _viewModel.model.AddLogInJSONFile();
+
+            bool stopped = _viewModel.model.IsStopRequested();
+
+            if (_viewModel.guiView is null)
+            {
+                _viewModel.view.DisplayMessage(3);
+            }
+
+            foreach (string failedFile in failedFiles)
+            {
                 if (_viewModel.guiView is null)
                 {
-                    _viewModel.view.DisplayMessage(3);
+                    _viewModel.view.DisplayFiledError(failedFile);
                 }
+                _viewModel.guiView?.OnFileError(failedFile);
+            }
 
-                foreach (string failedFile in failedFiles)
-                {
-                    if (_viewModel.guiView is null)
-                    {
-                        _viewModel.view.DisplayFiledError(failedFile);
-                    }
-                    _viewModel.guiView?.OnFileError(failedFile);
-                }
+            if (_viewModel.guiView is null)
+            {
+                _viewModel.view.DisplayBackupRecap(_save.name, transferTime);
+            }
 
-                if (_viewModel.guiView is null)
-                {
-                    _viewModel.view.DisplayBackupRecap(_save.name, transferTime);
-                }
-
-                // If the job was stopped/blocked, do not report "complete" to the GUI.
-                if (!stopped)
-                {
-                    _viewModel.guiView?.OnBackupComplete(_save.name, transferTime);
-                    _viewModel.guiView?.OnEncryptionSummary(_save.name, encryptedCount, skippedEncryptedCount);
-                }
+            if (!stopped)
+            {
+                _viewModel.guiView?.OnBackupComplete(_save.name, transferTime);
+                _viewModel.guiView?.OnEncryptionSummary(_save.name, encryptedCount, skippedEncryptedCount);
+            }
 
             return stopped ? 216 : (failedFiles.Count == 0 ? 104 : 216);
         }
 
-        private List<string> CopyFiles(Save _save, FileInfo[] _files, long _totalSize, string _dst, out int encryptedCount, out int skippedAlreadyEncryptedCount)
+        private static string FormatEta(double ms)
+        {
+            if (double.IsNaN(ms) || double.IsInfinity(ms) || ms <= 0) return "Calcul...";
+
+            var ts = TimeSpan.FromMilliseconds(ms);
+            if (ts.TotalHours >= 1) return $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2}";
+            return $"{ts.Minutes:D2}:{ts.Seconds:D2}";
+        }
+
+        private List<string> CopyFiles(
+            Save _save,
+            FileInfo[] _files,
+            long _totalSize,
+            string _dst,
+            Stopwatch activeSw,
+            out int encryptedCount,
+            out int skippedAlreadyEncryptedCount)
         {
             long leftSize = _totalSize;
             int totalFile = _files.Length;
+
             List<string> failedFiles = new List<string>();
             encryptedCount = 0;
             skippedAlreadyEncryptedCount = 0;
 
+            double emaSpeedBytesPerMs = 0.0;
+            const double alpha = 0.20;
+            long bytesCopiedSuccess = 0;
+
             for (int i = 0; i < _files.Length; i++)
             {
-                // Pause requested: wait between files (stop overrides pause).
-                while (_viewModel.model.IsPauseRequested() && !_viewModel.model.IsStopRequested())
+                if (_viewModel.model.IsPauseRequested() && !_viewModel.model.IsStopRequested())
                 {
-                    // If business software appears while paused, stop immediately (no next file should start).
-                    if (_viewModel.model.IsBusinessSoftwareRunning())
+                    activeSw.Stop();
+
+                    while (_viewModel.model.IsPauseRequested() && !_viewModel.model.IsStopRequested())
                     {
-                        _viewModel.model.RequestStop(BackupStopReason.BusinessSoftwareDetected, _viewModel.model.GetBusinessSoftwareSpec());
-                        break;
+                        if (_viewModel.model.IsBusinessSoftwareRunning())
+                        {
+                            _viewModel.model.RequestStop(BackupStopReason.BusinessSoftwareDetected, _viewModel.model.GetBusinessSoftwareSpec());
+                            break;
+                        }
+
+                        Thread.Sleep(200);
                     }
 
-                    Thread.Sleep(200);
+                    if (!_viewModel.model.IsStopRequested())
+                    {
+                        activeSw.Start();
+                    }
                 }
 
-                // Manual stop requested: stop between files (finish current file is already done).
                 if (_viewModel.model.IsStopRequested())
                 {
                     var reason = _viewModel.model.PeekStopReason();
                     if (reason == BackupStopReason.None) reason = BackupStopReason.UserRequested;
+
                     var detail = _viewModel.model.PeekStopDetail();
 
-                    // Log the last completed/in-progress file (state was set before the copy).
                     _viewModel.model.WriteBackupStopLog(_save.name, reason, _save.state?.currentPathSrc);
 
-                    // User stop: remove the partially exported backup folder (requested behavior).
                     if (reason == BackupStopReason.UserRequested &&
                         string.Equals(detail, "cleanup", StringComparison.OrdinalIgnoreCase))
                     {
@@ -479,6 +498,7 @@ namespace easySave_BMT.ViewModel_.Backup
                         }
                         catch { }
                     }
+
                     break;
                 }
 
@@ -486,35 +506,43 @@ namespace easySave_BMT.ViewModel_.Backup
                 long curSize = _files[i].Length;
                 leftSize -= curSize;
 
-                if (_viewModel.model.TryCopyFile(_save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent, out string? error, out EncryptionAction encryptionAction))
+                DateTime fileStartUtc = DateTime.UtcNow;
+
+                bool ok = _viewModel.model.TryCopyFile(
+                    _save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent,
+                    out string? error, out EncryptionAction encryptionAction);
+
+                double fileMs = (DateTime.UtcNow - fileStartUtc).TotalMilliseconds;
+                if (fileMs < 1) fileMs = 1;
+
+                string eta = "Calcul...";
+
+                if (ok)
                 {
                     if (encryptionAction == EncryptionAction.Encrypted) encryptedCount++;
                     else if (encryptionAction == EncryptionAction.SkippedAlreadyEncrypted) skippedAlreadyEncryptedCount++;
 
-                    Thread.Sleep((int)(curSize / 1000000));
-                    // Mise à jour de la progression en console (only when running in console mode)
-                    if (_viewModel.guiView is null)
-                    {
-                        _viewModel.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
-                    }
+                    bytesCopiedSuccess += curSize;
 
-                    // Mise à jour de la progression en GUI (barre de progression / texte)
-                    _viewModel.guiView?.OnProgressUpdate(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
+                    double speedThisFile = curSize / fileMs;
+                    emaSpeedBytesPerMs = (emaSpeedBytesPerMs <= 0.0)
+                        ? speedThisFile
+                        : (alpha * speedThisFile + (1.0 - alpha) * emaSpeedBytesPerMs);
+
+                    Thread.Sleep((int)(curSize / 1000000));
                 }
                 else
                 {
-                    // Still publish progress so the UI doesn't look stuck on failures.
-                    _viewModel.guiView?.OnProgressUpdate(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
+                    string detail = string.IsNullOrWhiteSpace(error) ? "Copy error." : error;
 
-                    string detail = string.IsNullOrWhiteSpace(error) ? "Erreur de copie." : error;
                     _viewModel.guiView?.OnFileError($"{_files[i].FullName}: {detail}");
                     failedFiles.Add($"{_files[i].FullName}: {detail}");
 
-                    // If the user requested a stop (e.g. during encryption), stop immediately after the current file.
                     if (_viewModel.model.IsStopRequested())
                     {
                         var reason = _viewModel.model.PeekStopReason();
                         if (reason == BackupStopReason.None) reason = BackupStopReason.UserRequested;
+
                         var stopDetail = _viewModel.model.PeekStopDetail();
 
                         _viewModel.model.WriteBackupStopLog(_save.name, reason, _save.state?.currentPathSrc);
@@ -529,11 +557,24 @@ namespace easySave_BMT.ViewModel_.Backup
                             }
                             catch { }
                         }
+
                         break;
                     }
                 }
 
-                // Business software detection: finish this file then stop before the next one.
+                if (emaSpeedBytesPerMs > 0.0 && i >= 2 && bytesCopiedSuccess > 0 && activeSw.ElapsedMilliseconds > 500)
+                {
+                    double remainingMs = leftSize / emaSpeedBytesPerMs;
+                    eta = FormatEta(remainingMs);
+                }
+
+                if (_viewModel.guiView is null)
+                {
+                    _viewModel.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
+                }
+
+                _viewModel.guiView?.OnProgressUpdate($"{_save.name} | ETA {eta}", totalFile - i - 1, leftSize, curSize, pourcent);
+
                 if (_viewModel.model.IsBusinessSoftwareRunning())
                 {
                     _viewModel.model.RequestStop(BackupStopReason.BusinessSoftwareDetected, _viewModel.model.GetBusinessSoftwareSpec());
@@ -541,6 +582,7 @@ namespace easySave_BMT.ViewModel_.Backup
                     break;
                 }
             }
+
             return failedFiles;
         }
     }
