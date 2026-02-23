@@ -1,6 +1,7 @@
 using easySave_BMT.Model_;
 using ReactiveUI;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -57,6 +58,11 @@ namespace easySave_BMT.Avalonia.ViewModels
                 RefreshBackupTypeOptions();
                 this.RaisePropertyChanged(nameof(PauseButtonText));
                 ClearAreaMessage(MessageArea.Config);
+
+                if (!string.IsNullOrWhiteSpace(SelectedLogFile))
+                {
+                    ViewSelectedLog();
+                }
             }
             catch (Exception ex)
             {
@@ -114,6 +120,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             try
             {
                 LogFiles.Clear();
+                ResetLogViewer();
 
                 if (Directory.Exists(ConfigLogDirectory))
                 {
@@ -124,69 +131,115 @@ namespace easySave_BMT.Avalonia.ViewModels
 
                 if (LogFiles.Count == 0)
                 {
+                    LogSummaryText = Loc["UiNoLogsFound"];
                     SelectedLogContent = Loc["UiNoLogsFound"];
+                    IsStructuredLogVisible = false;
+                    IsRawLogVisible = true;
+                    return;
                 }
+
+                LogSummaryText = Loc["UiSelectLogFile"];
+                SelectedLogContent = Loc["UiSelectLogFile"];
+                IsStructuredLogVisible = false;
+                IsRawLogVisible = true;
             }
             catch (Exception ex)
             {
+                ResetLogViewer();
                 SelectedLogContent = string.Format(Loc["UiLogsLoadError"], ex.Message);
+                LogSummaryText = Loc["UiLogs"];
+                IsStructuredLogVisible = false;
+                IsRawLogVisible = true;
             }
+        }
+
+        private void ResetLogViewer()
+        {
+            ParsedLogEntries.Clear();
+            SelectedParsedLogEntry = null;
+            IsStructuredLogVisible = false;
+            IsRawLogVisible = true;
+            LogSummaryText = "";
         }
 
         private void ViewSelectedLog()
         {
-            if (string.IsNullOrEmpty(SelectedLogFile))
+            ResetLogViewer();
+
+            if (string.IsNullOrWhiteSpace(SelectedLogFile))
             {
                 SelectedLogContent = Loc["UiSelectLogFile"];
+                LogSummaryText = Loc["UiSelectLogFile"];
+                IsRawLogVisible = true;
                 return;
             }
 
             string path = Path.Combine(ConfigLogDirectory, SelectedLogFile);
-            if (File.Exists(path))
-                SelectedLogContent = FormatLogForDisplay(path, File.ReadAllText(path));
-            else
+            if (!File.Exists(path))
+            {
                 SelectedLogContent = Loc["UiLogFileMissing"];
+                LogSummaryText = Loc["UiLogFileMissing"];
+                IsRawLogVisible = true;
+                return;
+            }
+
+            string raw = File.ReadAllText(path);
+
+            if (TryParseStructuredLog(path, raw, out var entries))
+            {
+                foreach (var entry in entries)
+                    ParsedLogEntries.Add(entry);
+
+                LogSummaryText = string.Format(Loc["UiLogEntriesCount"], ParsedLogEntries.Count, SelectedLogFile);
+                IsStructuredLogVisible = true;
+                IsRawLogVisible = false;
+                SelectedLogContent = Loc["UiSelectLogEntry"];
+                SelectedParsedLogEntry = ParsedLogEntries.FirstOrDefault();
+                return;
+            }
+
+            LogSummaryText = string.Format(Loc["UiLogRawPreview"], SelectedLogFile);
+            SelectedLogContent = PrettyPrintRaw(path, raw);
+            IsStructuredLogVisible = false;
+            IsRawLogVisible = true;
         }
 
-        private static string FormatLogForDisplay(string path, string raw)
+        private void UpdateSelectedLogEntryDetails()
         {
+            if (SelectedParsedLogEntry is null)
+            {
+                SelectedLogContent = Loc["UiSelectLogEntry"];
+                return;
+            }
+
+            SelectedLogContent = BuildLogEntryDetails(SelectedParsedLogEntry);
+        }
+
+        private bool TryParseStructuredLog(string path, string raw, out List<LogEntryViewItem> entries)
+        {
+            entries = new List<LogEntryViewItem>();
             if (string.IsNullOrWhiteSpace(raw))
-                return string.Empty;
+                return false;
 
             string trimmed = raw.TrimStart();
             string ext = (Path.GetExtension(path) ?? "").Trim().ToLowerInvariant();
 
             if (ext == ".json" || trimmed.StartsWith("[") || trimmed.StartsWith("{"))
             {
-                return TryBuildReadableJsonLog(path, raw, out string formattedJson)
-                    ? formattedJson
-                    : PrettyPrintJson(raw);
+                return TryParseJsonLogEntries(raw, out entries);
             }
 
             if (ext == ".xml" || trimmed.StartsWith("<"))
             {
-                return TryBuildReadableXmlLog(path, raw, out string formattedXml)
-                    ? formattedXml
-                    : PrettyPrintXml(raw);
+                return TryParseXmlLogEntries(raw, out entries);
             }
 
-            return raw;
+            return false;
         }
 
-        private static string[] ParseBusinessSoftwareEntries(string? raw)
+        private static bool TryParseJsonLogEntries(string raw, out List<LogEntryViewItem> entries)
         {
-            if (string.IsNullOrWhiteSpace(raw)) return Array.Empty<string>();
-
-            return raw
-                .Split(new[] { ';', ',', '|', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(NormalizeBusinessSoftwareEntry)
-                .Where(e => !string.IsNullOrWhiteSpace(e))
-                .ToArray();
-        }
-
-        private static bool TryBuildReadableJsonLog(string path, string raw, out string output)
-        {
-            output = string.Empty;
+            entries = new List<LogEntryViewItem>();
 
             try
             {
@@ -194,35 +247,23 @@ namespace easySave_BMT.Avalonia.ViewModels
                 if (doc.RootElement.ValueKind != JsonValueKind.Array)
                     return false;
 
-                var entries = doc.RootElement.EnumerateArray().ToList();
-                var sb = new StringBuilder();
-                sb.AppendLine($"File: {Path.GetFileName(path)}");
-                sb.AppendLine($"Entries: {entries.Count}");
-                sb.AppendLine(new string('-', 64));
-
-                for (int i = 0; i < entries.Count; i++)
+                foreach (var element in doc.RootElement.EnumerateArray())
                 {
-                    var e = entries[i];
-                    if (e.ValueKind != JsonValueKind.Object) continue;
+                    if (element.ValueKind != JsonValueKind.Object) continue;
 
-                    string name = TryGetJsonString(e, "Name");
-                    string time = TryGetJsonString(e, "time");
-                    string source = TryGetJsonString(e, "FileSource");
-                    string target = TryGetJsonString(e, "FileTarget");
-                    long size = TryGetJsonLong(e, "FileSize");
-                    long transfer = TryGetJsonLong(e, "FileTransferTime");
-                    long encryption = TryGetJsonLong(e, "EncryptionTime");
-
-                    sb.AppendLine($"[{i + 1}] {time} | Backup: {name}");
-                    sb.AppendLine($"Source : {source}");
-                    sb.AppendLine($"Target : {target}");
-                    sb.AppendLine($"Size   : {size} bytes");
-                    sb.AppendLine($"Times  : copy={transfer} ms, encrypt={encryption} ms");
-                    sb.AppendLine();
+                    entries.Add(new LogEntryViewItem
+                    {
+                        BackupName = TryGetJsonString(element, "Name"),
+                        SourcePath = TryGetJsonString(element, "FileSource"),
+                        TargetPath = TryGetJsonString(element, "FileTarget"),
+                        FileSizeBytes = TryGetJsonLong(element, "FileSize"),
+                        TransferTimeMs = TryGetJsonLong(element, "FileTransferTime"),
+                        EncryptionTimeMs = TryGetJsonLong(element, "EncryptionTime"),
+                        Time = TryGetJsonString(element, "time")
+                    });
                 }
 
-                output = sb.ToString().TrimEnd();
-                return true;
+                return entries.Count > 0;
             }
             catch
             {
@@ -230,48 +271,64 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
         }
 
-        private static bool TryBuildReadableXmlLog(string path, string raw, out string output)
+        private static bool TryParseXmlLogEntries(string raw, out List<LogEntryViewItem> entries)
         {
-            output = string.Empty;
+            entries = new List<LogEntryViewItem>();
 
             try
             {
                 var doc = XDocument.Parse(raw, LoadOptions.PreserveWhitespace);
-                var logs = doc.Root?.Elements("Log").ToList();
-                if (logs is null || logs.Count == 0)
-                    return false;
+                var logs = doc.Root?.Elements("Log");
+                if (logs is null) return false;
 
-                var sb = new StringBuilder();
-                sb.AppendLine($"File: {Path.GetFileName(path)}");
-                sb.AppendLine($"Entries: {logs.Count}");
-                sb.AppendLine(new string('-', 64));
-
-                for (int i = 0; i < logs.Count; i++)
+                foreach (var log in logs)
                 {
-                    var e = logs[i];
-                    string name = (e.Element("Name")?.Value ?? "").Trim();
-                    string time = (e.Element("Time")?.Value ?? "").Trim();
-                    string source = (e.Element("FileSource")?.Value ?? "").Trim();
-                    string target = (e.Element("FileTarget")?.Value ?? "").Trim();
-                    string size = (e.Element("FileSize")?.Value ?? "0").Trim();
-                    string transfer = (e.Element("FileTransferTime")?.Value ?? "0").Trim();
-                    string encryption = (e.Element("EncryptionTime")?.Value ?? "0").Trim();
-
-                    sb.AppendLine($"[{i + 1}] {time} | Backup: {name}");
-                    sb.AppendLine($"Source : {source}");
-                    sb.AppendLine($"Target : {target}");
-                    sb.AppendLine($"Size   : {size} bytes");
-                    sb.AppendLine($"Times  : copy={transfer} ms, encrypt={encryption} ms");
-                    sb.AppendLine();
+                    entries.Add(new LogEntryViewItem
+                    {
+                        BackupName = (log.Element("Name")?.Value ?? "").Trim(),
+                        SourcePath = (log.Element("FileSource")?.Value ?? "").Trim(),
+                        TargetPath = (log.Element("FileTarget")?.Value ?? "").Trim(),
+                        FileSizeBytes = TryGetXmlLong(log, "FileSize"),
+                        TransferTimeMs = TryGetXmlLong(log, "FileTransferTime"),
+                        EncryptionTimeMs = TryGetXmlLong(log, "EncryptionTime"),
+                        Time = (log.Element("Time")?.Value ?? "").Trim()
+                    });
                 }
 
-                output = sb.ToString().TrimEnd();
-                return true;
+                return entries.Count > 0;
             }
             catch
             {
                 return false;
             }
+        }
+
+        private string BuildLogEntryDetails(LogEntryViewItem entry)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"{Loc["UiLogTime"]}: {entry.Time}");
+            sb.AppendLine($"{Loc["Name"]}: {entry.BackupName}");
+            sb.AppendLine($"{Loc["Source"]}: {entry.SourcePath}");
+            sb.AppendLine($"{Loc["Destination"]}: {entry.TargetPath}");
+            sb.AppendLine($"{Loc["UiLogFileSize"]}: {entry.FileSizeBytes} B");
+            sb.AppendLine($"{Loc["UiLogTransferTime"]}: {entry.TransferTimeMs} ms");
+            sb.AppendLine($"{Loc["UiLogEncryptionTime"]}: {entry.EncryptionTimeMs} ms");
+            return sb.ToString().TrimEnd();
+        }
+
+        private static string PrettyPrintRaw(string path, string? raw)
+        {
+            string safeRaw = raw ?? string.Empty;
+            string trimmed = safeRaw.TrimStart();
+            string ext = (Path.GetExtension(path) ?? "").Trim().ToLowerInvariant();
+
+            if (ext == ".json" || trimmed.StartsWith("[") || trimmed.StartsWith("{"))
+                return PrettyPrintJson(safeRaw);
+
+            if (ext == ".xml" || trimmed.StartsWith("<"))
+                return PrettyPrintXml(safeRaw);
+
+            return safeRaw;
         }
 
         private static string PrettyPrintJson(string raw)
@@ -306,6 +363,17 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
         }
 
+        private static string[] ParseBusinessSoftwareEntries(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return Array.Empty<string>();
+
+            return raw
+                .Split(new[] { ';', ',', '|', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(NormalizeBusinessSoftwareEntry)
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .ToArray();
+        }
+
         private static string TryGetJsonString(JsonElement obj, string name)
         {
             if (!obj.TryGetProperty(name, out var prop))
@@ -333,6 +401,12 @@ namespace easySave_BMT.Avalonia.ViewModels
                 return parsed;
 
             return 0;
+        }
+
+        private static long TryGetXmlLong(XElement node, string elementName)
+        {
+            if (node.Element(elementName) is null) return 0;
+            return long.TryParse(node.Element(elementName)!.Value, out var val) ? val : 0;
         }
 
         private void RefreshBackupTypeOptions()

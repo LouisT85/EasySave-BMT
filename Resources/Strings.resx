@@ -454,4 +454,34 @@
   <data name="UiInvalidBusinessSoftwareEntry" xml:space="preserve">
     <value>Invalid entry. Add one process name/pattern at a time.</value>
   </data>
+  <data name="UiLogEntriesTitle" xml:space="preserve">
+    <value>Log entries</value>
+  </data>
+  <data name="UiLogDetailsTitle" xml:space="preserve">
+    <value>Entry details</value>
+  </data>
+  <data name="UiLogRawTitle" xml:space="preserve">
+    <value>Raw log content</value>
+  </data>
+  <data name="UiLogEntriesCount" xml:space="preserve">
+    <value>{0} entry(ies) in {1}</value>
+  </data>
+  <data name="UiSelectLogEntry" xml:space="preserve">
+    <value>Select an entry to view details.</value>
+  </data>
+  <data name="UiLogRawPreview" xml:space="preserve">
+    <value>Raw preview: {0}</value>
+  </data>
+  <data name="UiLogTime" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="UiLogFileSize" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="UiLogTransferTime" xml:space="preserve">
+    <value>Transfer time</value>
+  </data>
+  <data name="UiLogEncryptionTime" xml:space="preserve">
+    <value>Encryption time</value>
+  </data>
 </root>

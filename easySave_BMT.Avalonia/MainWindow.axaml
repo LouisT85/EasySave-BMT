@@ -181,7 +181,7 @@
 										<Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
 									</Style>
 									<Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-										<Setter Property="Background" Value="#23344A"/>
+										<Setter Property="Background" Value="{DynamicResource BrushLogItemHover}"/>
 										<Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
 									</Style>
 								</ListBox.Styles>
@@ -191,11 +191,65 @@
 					</Border>
 
 					<Border Grid.Column="1" Classes="card" Padding="16">
-						<ScrollViewer>
-							<Border Background="{DynamicResource BrushBackground}" CornerRadius="8" Padding="12">
-								<TextBlock Text="{Binding SelectedLogContent}" FontFamily="Cascadia Mono, Consolas, Monospace" Foreground="{DynamicResource BrushText}" TextWrapping="Wrap"/>
-							</Border>
-						</ScrollViewer>
+						<Grid>
+							<Grid IsVisible="{Binding IsStructuredLogVisible}" RowDefinitions="Auto,2*,Auto,*">
+								<StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,10">
+									<TextBlock Text="{Binding Loc[UiLogEntriesTitle]}" FontWeight="Bold"/>
+									<TextBlock Text="{Binding LogSummaryText}" FontSize="12" Foreground="{DynamicResource BrushMuted}"/>
+								</StackPanel>
+
+								<Border Grid.Row="1" Background="{DynamicResource BrushBackground}" CornerRadius="8" Padding="10" Margin="0,0,0,10">
+									<ListBox ItemsSource="{Binding ParsedLogEntries}" SelectedItem="{Binding SelectedParsedLogEntry}" BorderThickness="0" Background="Transparent">
+										<ListBox.Styles>
+											<Style Selector="ListBoxItem">
+												<Setter Property="Padding" Value="0"/>
+												<Setter Property="Margin" Value="0,0,0,8"/>
+											</Style>
+										</ListBox.Styles>
+										<ListBox.ItemTemplate>
+											<DataTemplate>
+												<Border Background="{DynamicResource BrushSurface}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="10">
+													<StackPanel Spacing="4">
+														<Grid ColumnDefinitions="*,Auto">
+															<TextBlock Grid.Column="0" Text="{Binding BackupName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+															<TextBlock Grid.Column="1" Text="{Binding Time}" FontSize="11" Foreground="{DynamicResource BrushMuted}" Margin="10,0,0,0"/>
+														</Grid>
+														<TextBlock Text="{Binding SourcePath}" FontSize="12" Foreground="{DynamicResource BrushMuted}" TextTrimming="CharacterEllipsis"/>
+														<TextBlock Text="{Binding TargetPath}" FontSize="12" Foreground="{DynamicResource BrushMuted}" TextTrimming="CharacterEllipsis"/>
+														<StackPanel Orientation="Horizontal" Spacing="10">
+															<TextBlock Text="{Binding FileSizeBytes, StringFormat='{}{0} B'}" FontSize="11" Foreground="{DynamicResource BrushMuted}"/>
+															<TextBlock Text="{Binding TransferTimeMs, StringFormat='{}{0} ms'}" FontSize="11" Foreground="{DynamicResource BrushMuted}"/>
+															<TextBlock Text="{Binding EncryptionTimeMs, StringFormat='{}{0} ms'}" FontSize="11" Foreground="{DynamicResource BrushMuted}"/>
+														</StackPanel>
+													</StackPanel>
+												</Border>
+											</DataTemplate>
+										</ListBox.ItemTemplate>
+									</ListBox>
+								</Border>
+
+								<TextBlock Grid.Row="2" Text="{Binding Loc[UiLogDetailsTitle]}" FontWeight="Bold" Margin="0,0,0,10"/>
+
+								<ScrollViewer Grid.Row="3">
+									<Border Background="{DynamicResource BrushBackground}" CornerRadius="8" Padding="12">
+										<TextBlock Text="{Binding SelectedLogContent}" FontFamily="Cascadia Mono, Consolas, Monospace" Foreground="{DynamicResource BrushText}" TextWrapping="Wrap"/>
+									</Border>
+								</ScrollViewer>
+							</Grid>
+
+							<Grid IsVisible="{Binding IsRawLogVisible}" RowDefinitions="Auto,*">
+								<StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,10">
+									<TextBlock Text="{Binding Loc[UiLogRawTitle]}" FontWeight="Bold"/>
+									<TextBlock Text="{Binding LogSummaryText}" FontSize="12" Foreground="{DynamicResource BrushMuted}"/>
+								</StackPanel>
+
+								<ScrollViewer Grid.Row="1">
+									<Border Background="{DynamicResource BrushBackground}" CornerRadius="8" Padding="12">
+										<TextBlock Text="{Binding SelectedLogContent}" FontFamily="Cascadia Mono, Consolas, Monospace" Foreground="{DynamicResource BrushText}" TextWrapping="Wrap"/>
+									</Border>
+								</ScrollViewer>
+							</Grid>
+						</Grid>
 					</Border>
 				</Grid>
 			</TabItem>

@@ -135,6 +135,40 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
         }
 
+        public ObservableCollection<LogEntryViewItem> ParsedLogEntries { get; } = new();
+
+        private LogEntryViewItem? _selectedParsedLogEntry;
+        public LogEntryViewItem? SelectedParsedLogEntry
+        {
+            get => _selectedParsedLogEntry;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _selectedParsedLogEntry, value);
+                UpdateSelectedLogEntryDetails();
+            }
+        }
+
+        private string _logSummaryText = string.Empty;
+        public string LogSummaryText
+        {
+            get => _logSummaryText;
+            set => this.RaiseAndSetIfChanged(ref _logSummaryText, value);
+        }
+
+        private bool _isStructuredLogVisible;
+        public bool IsStructuredLogVisible
+        {
+            get => _isStructuredLogVisible;
+            set => this.RaiseAndSetIfChanged(ref _isStructuredLogVisible, value);
+        }
+
+        private bool _isRawLogVisible = true;
+        public bool IsRawLogVisible
+        {
+            get => _isRawLogVisible;
+            set => this.RaiseAndSetIfChanged(ref _isRawLogVisible, value);
+        }
+
         private string _selectedLogContent = "";
         public string SelectedLogContent { get => _selectedLogContent; set => this.RaiseAndSetIfChanged(ref _selectedLogContent, value); }
 
@@ -233,6 +267,17 @@ namespace easySave_BMT.Avalonia.ViewModels
         private void SelectedSaves_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             UpdateHasSelection();
+        }
+
+        public sealed class LogEntryViewItem
+        {
+            public string Time { get; init; } = "";
+            public string BackupName { get; init; } = "";
+            public string SourcePath { get; init; } = "";
+            public string TargetPath { get; init; } = "";
+            public long FileSizeBytes { get; init; }
+            public long TransferTimeMs { get; init; }
+            public long EncryptionTimeMs { get; init; }
         }
     }
 }

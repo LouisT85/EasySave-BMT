@@ -2,23 +2,66 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="using:easySave_BMT.Avalonia.Converters"
              x:Class="easySave_BMT.Avalonia.App"
-             RequestedThemeVariant="Dark">
+             RequestedThemeVariant="Default">
 
   <Application.Resources>
-    <LinearGradientBrush x:Key="BrushBackground" StartPoint="0,0" EndPoint="1,1">
-      <GradientStop Color="#0B1221" Offset="0"/>
-      <GradientStop Color="#111A2E" Offset="0.5"/>
-      <GradientStop Color="#16243A" Offset="1"/>
-    </LinearGradientBrush>
-    <SolidColorBrush x:Key="BrushSurface" Color="#1A2638"/>
-    <SolidColorBrush x:Key="BrushBorder" Color="#2F415C"/>
-    <SolidColorBrush x:Key="BrushText" Color="#F8FAFC"/>
-    <SolidColorBrush x:Key="BrushMuted" Color="#A5B4C8"/>
-    <SolidColorBrush x:Key="BrushAccent" Color="#0EA5A8"/>
-    <SolidColorBrush x:Key="BrushAccentSoft" Color="#3314B8A6"/>
-    <SolidColorBrush x:Key="BrushDanger" Color="#DC2626"/> 
-    <SolidColorBrush x:Key="BrushSuccess" Color="#16A34A"/>
-    <conv:BackupTypeToLocalizedStringConverter x:Key="BackupTypeToLocalizedStringConverter" />
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <LinearGradientBrush x:Key="BrushBackground" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#F6FAFF" Offset="0"/>
+            <GradientStop Color="#EEF3FB" Offset="0.5"/>
+            <GradientStop Color="#E4ECF7" Offset="1"/>
+          </LinearGradientBrush>
+          <SolidColorBrush x:Key="BrushSurface" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="BrushBorder" Color="#D1DEEE"/>
+          <SolidColorBrush x:Key="BrushText" Color="#0F172A"/>
+          <SolidColorBrush x:Key="BrushMuted" Color="#475569"/>
+          <SolidColorBrush x:Key="BrushAccent" Color="#0E7490"/>
+          <SolidColorBrush x:Key="BrushAccentSoft" Color="#2618A0B8"/>
+          <SolidColorBrush x:Key="BrushDanger" Color="#DC2626"/>
+          <SolidColorBrush x:Key="BrushSuccess" Color="#16A34A"/>
+
+          <SolidColorBrush x:Key="BrushButtonHover" Color="#EBF1FA"/>
+          <SolidColorBrush x:Key="BrushButtonPressed" Color="#DEE8F6"/>
+          <SolidColorBrush x:Key="BrushGhostHover" Color="#E7EFF9"/>
+          <SolidColorBrush x:Key="BrushTabHover" Color="#E7EEF8"/>
+          <SolidColorBrush x:Key="BrushSaveItemHover" Color="#ECF2FA"/>
+          <SolidColorBrush x:Key="BrushSaveItemSelected" Color="#DCEAFB"/>
+          <SolidColorBrush x:Key="BrushSaveItemSelectedBorder" Color="#75A2D3"/>
+          <SolidColorBrush x:Key="BrushProgressBackground" Color="#C7D3E1"/>
+          <SolidColorBrush x:Key="BrushLogItemHover" Color="#DDE8F8"/>
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="Dark">
+          <LinearGradientBrush x:Key="BrushBackground" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#0B1221" Offset="0"/>
+            <GradientStop Color="#111A2E" Offset="0.5"/>
+            <GradientStop Color="#16243A" Offset="1"/>
+          </LinearGradientBrush>
+          <SolidColorBrush x:Key="BrushSurface" Color="#1A2638"/>
+          <SolidColorBrush x:Key="BrushBorder" Color="#2F415C"/>
+          <SolidColorBrush x:Key="BrushText" Color="#F8FAFC"/>
+          <SolidColorBrush x:Key="BrushMuted" Color="#A5B4C8"/>
+          <SolidColorBrush x:Key="BrushAccent" Color="#0EA5A8"/>
+          <SolidColorBrush x:Key="BrushAccentSoft" Color="#3314B8A6"/>
+          <SolidColorBrush x:Key="BrushDanger" Color="#DC2626"/>
+          <SolidColorBrush x:Key="BrushSuccess" Color="#16A34A"/>
+
+          <SolidColorBrush x:Key="BrushButtonHover" Color="#2B3647"/>
+          <SolidColorBrush x:Key="BrushButtonPressed" Color="#223041"/>
+          <SolidColorBrush x:Key="BrushGhostHover" Color="#1E293B"/>
+          <SolidColorBrush x:Key="BrushTabHover" Color="#1E293B"/>
+          <SolidColorBrush x:Key="BrushSaveItemHover" Color="#223041"/>
+          <SolidColorBrush x:Key="BrushSaveItemSelected" Color="#374151"/>
+          <SolidColorBrush x:Key="BrushSaveItemSelectedBorder" Color="#4B5563"/>
+          <SolidColorBrush x:Key="BrushProgressBackground" Color="#374151"/>
+          <SolidColorBrush x:Key="BrushLogItemHover" Color="#23344A"/>
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+
+      <conv:BackupTypeToLocalizedStringConverter x:Key="BackupTypeToLocalizedStringConverter" />
+    </ResourceDictionary>
   </Application.Resources>
 
   <Application.Styles>
@@ -68,10 +111,10 @@
     </Style>
 
     <Style Selector="Button:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#2B3647"/>
+      <Setter Property="Background" Value="{DynamicResource BrushButtonHover}"/>
     </Style>
     <Style Selector="Button:pressed /template/ ContentPresenter">
-      <Setter Property="Background" Value="#223041"/>
+      <Setter Property="Background" Value="{DynamicResource BrushButtonPressed}"/>
     </Style>
     <Style Selector="Button:disabled /template/ ContentPresenter">
       <Setter Property="Opacity" Value="0.5"/>
@@ -93,7 +136,7 @@
       <Setter Property="Foreground" Value="{DynamicResource BrushMuted}"/>
     </Style>
     <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#1E293B"/>
+      <Setter Property="Background" Value="{DynamicResource BrushGhostHover}"/>
       <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
     </Style>
 
@@ -128,7 +171,7 @@
     <Style Selector="ProgressBar">
       <Setter Property="CornerRadius" Value="6"/>
       <Setter Property="Height" Value="6"/>
-      <Setter Property="Background" Value="#374151"/>
+      <Setter Property="Background" Value="{DynamicResource BrushProgressBackground}"/>
       <Setter Property="Foreground" Value="{DynamicResource BrushSuccess}"/>
     </Style>
 
@@ -147,16 +190,16 @@
       <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}"/>
     </Style>
     <Style Selector="TabItem:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#1E293B"/>
+      <Setter Property="Background" Value="{DynamicResource BrushTabHover}"/>
     </Style>
 
     <Style Selector="ListBoxItem:pointerover Border.saveItem">
-      <Setter Property="Background" Value="#223041"/>
+      <Setter Property="Background" Value="{DynamicResource BrushSaveItemHover}"/>
     </Style>
 
     <Style Selector="ListBoxItem:selected Border.saveItem">
-      <Setter Property="Background" Value="#374151"/>
-      <Setter Property="BorderBrush" Value="#4B5563"/>
+      <Setter Property="Background" Value="{DynamicResource BrushSaveItemSelected}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushSaveItemSelectedBorder}"/>
       <Setter Property="BorderThickness" Value="2"/>
     </Style>
 

@@ -454,4 +454,34 @@
   <data name="UiInvalidBusinessSoftwareEntry" xml:space="preserve">
     <value>Entrée invalide. Ajoutez un seul nom/pattern à la fois.</value>
   </data>
+  <data name="UiLogEntriesTitle" xml:space="preserve">
+    <value>Entrées du journal</value>
+  </data>
+  <data name="UiLogDetailsTitle" xml:space="preserve">
+    <value>Détail de l'entrée</value>
+  </data>
+  <data name="UiLogRawTitle" xml:space="preserve">
+    <value>Contenu brut du journal</value>
+  </data>
+  <data name="UiLogEntriesCount" xml:space="preserve">
+    <value>{0} entrée(s) dans {1}</value>
+  </data>
+  <data name="UiSelectLogEntry" xml:space="preserve">
+    <value>Sélectionnez une entrée pour afficher le détail.</value>
+  </data>
+  <data name="UiLogRawPreview" xml:space="preserve">
+    <value>Aperçu brut : {0}</value>
+  </data>
+  <data name="UiLogTime" xml:space="preserve">
+    <value>Heure</value>
+  </data>
+  <data name="UiLogFileSize" xml:space="preserve">
+    <value>Taille</value>
+  </data>
+  <data name="UiLogTransferTime" xml:space="preserve">
+    <value>Temps de copie</value>
+  </data>
+  <data name="UiLogEncryptionTime" xml:space="preserve">
+    <value>Temps de chiffrement</value>
+  </data>
 </root>

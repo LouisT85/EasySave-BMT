@@ -49,7 +49,6 @@ namespace easySave_BMT.Avalonia.ViewModels
             ListSaves(showUserFeedback: false);
 
             SetMessageFromCode(100, MessageArea.Dashboard);
-            SelectedLogContent = Loc["UiSelectLogFile"];
         }
 
         private void ShutdownApp()
