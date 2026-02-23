@@ -9,6 +9,23 @@ namespace easySave_BMT.Avalonia.ViewModels
 {
     public partial class MainWindowViewModel
     {
+        private const string EtaToken = " | ETA ";
+
+        private static (string BaseName, string? Eta) SplitBackupNameAndEta(string backupName)
+        {
+            if (string.IsNullOrWhiteSpace(backupName))
+                return ("", null);
+
+            int idx = backupName.IndexOf(EtaToken, StringComparison.Ordinal);
+            if (idx <= 0)
+                return (backupName, null);
+
+            string baseName = backupName.Substring(0, idx).Trim();
+            string eta = backupName.Substring(idx + EtaToken.Length).Trim();
+
+            return (baseName, string.IsNullOrWhiteSpace(eta) ? null : eta);
+        }
+
         private void ListSaves(bool showUserFeedback)
         {
             var selectedNames = SelectedSaves.OfType<Model_.Save>().Select(s => s.name).Distinct().ToList();
@@ -29,7 +46,6 @@ namespace easySave_BMT.Avalonia.ViewModels
                     else
                         SetTimedDashboardStatusText(Loc["UiNoBackupsDefined"]);
                 }
-                // On error, SaveListManager already pushed a message via guiView.ShowMessage().
             }
 
             if (selectedNames.Count == 0)
@@ -39,7 +55,6 @@ namespace easySave_BMT.Avalonia.ViewModels
                 return;
             }
 
-            // Re-select items after refresh (ReloadSavesFromFile replaces instances).
             SelectedSaves.Clear();
             foreach (var name in selectedNames)
             {
@@ -74,7 +89,6 @@ namespace easySave_BMT.Avalonia.ViewModels
                 SelectedSave = null;
                 ListSaves(showUserFeedback: false);
 
-                // Reset champs uniquement en cas de succes
                 NewSaveName = "";
                 NewSaveSourcePath = "";
                 NewSaveDestinationPath = "";
@@ -90,7 +104,6 @@ namespace easySave_BMT.Avalonia.ViewModels
                 return;
             }
 
-            // Remove by descending index to avoid shifting.
             var indices = _coreViewModel.model.saves
                 .Select((s, idx) => new { s, idx })
                 .Where(x => names.Contains(x.s.name))
@@ -129,9 +142,9 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             int lastResult = 0;
             bool stoppedOrBlocked = false;
+
             try
             {
-                // Reload from file so a task still runs correctly after closing/reopening the app.
                 ListSaves(showUserFeedback: false);
 
                 var toRun = _coreViewModel.model.saves.Where(s => names.Contains(s.name)).ToList();
@@ -143,13 +156,11 @@ namespace easySave_BMT.Avalonia.ViewModels
 
                 foreach (var save in toRun)
                 {
-                    // Reset per-save progress at the start of each run.
                     SetSaveUiProgress(save.name, 0);
 
                     SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiLaunchingBackup"], save.name), "");
                     lastResult = await Task.Run(() => _coreViewModel.backupLauncher.LaunchBackupType(save));
 
-                    // Stop batch execution if a stop/block was requested (user or business software).
                     if (_coreViewModel.model.TryConsumeStopInfo(out var stopReason, out var stopDetail))
                     {
                         if (stopReason == BackupStopReason.BusinessSoftwareDetected)
@@ -160,8 +171,6 @@ namespace easySave_BMT.Avalonia.ViewModels
                         else if (stopReason == BackupStopReason.UserRequested)
                         {
                             DashboardMessage = string.Format(Loc["UiBackupStoppedByUser"], save.name);
-
-                            // User stop cleans up the destination folder, so reset UI progress for this job.
                             SetSaveUiProgress(save.name, 0);
                         }
 
@@ -192,7 +201,6 @@ namespace easySave_BMT.Avalonia.ViewModels
                 _coreViewModel.model.ClearPauseRequest();
             }
 
-            // Update last backup dates before showing the final result message.
             ListSaves(showUserFeedback: false);
 
             if (!stoppedOrBlocked)
@@ -214,7 +222,6 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
             else if (!stoppedOrBlocked && lastResult == 105)
             {
-                // Differential backup with no changes: avoid confusing status text.
                 SetTimedDashboardStatusText("");
             }
         }
@@ -259,24 +266,33 @@ namespace easySave_BMT.Avalonia.ViewModels
         // --- IProgressObserverGUI Implementation ---
         public void OnProgressUpdate(string backupName, int filesLeft, long sizeLeft, long currentFileSize, int percent)
         {
+            var (baseName, eta) = SplitBackupNameAndEta(backupName);
+
             Dispatcher.UIThread.Post(() =>
             {
                 ProgressPercent = Math.Clamp(percent, 0, 100);
-                ProgressText = $"{backupName}: {percent}% ({Loc["FilesRemaining"]}: {filesLeft})";
+
+                string etaPart = string.IsNullOrWhiteSpace(eta) ? "" : $" | ETA: {eta}";
+                ProgressText = $"{baseName}: {percent}% ({Loc["FilesRemaining"]}: {filesLeft}){etaPart}";
+
                 IsProgressVisible = true;
-                SetSaveUiProgress(backupName, percent);
+                SetSaveUiProgress(baseName, percent);
             });
         }
 
         public void OnBackupComplete(string backupName, double transferTime)
         {
+            var (baseName, _) = SplitBackupNameAndEta(backupName);
+
             Dispatcher.UIThread.Post(() =>
             {
-                SetSaveUiProgress(backupName, 100);
+                SetSaveUiProgress(baseName, 100);
 
                 ProgressPercent = 100;
                 IsProgressVisible = true;
-                SetTimedDashboardStatusText(string.Format(Loc["UiBackupFinished"], backupName, transferTime));
+
+                double seconds = transferTime / 1000.0;
+                SetTimedDashboardStatusText(string.Format(Loc["UiBackupFinished"], baseName, seconds));
             });
         }
 
@@ -291,15 +307,17 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             Dispatcher.UIThread.Post(() =>
             {
+                var (baseName, _) = SplitBackupNameAndEta(backupName);
+
                 string? summary = null;
 
                 if (encryptedCount <= 0 && skippedAlreadyEncryptedCount > 0)
                 {
-                    summary = string.Format(Loc["UiAllFilesAlreadyEncrypted"], backupName);
+                    summary = string.Format(Loc["UiAllFilesAlreadyEncrypted"], baseName);
                 }
                 else if (encryptedCount > 0 && skippedAlreadyEncryptedCount > 0)
                 {
-                    summary = string.Format(Loc["UiEncryptionSummary"], backupName, encryptedCount, skippedAlreadyEncryptedCount);
+                    summary = string.Format(Loc["UiEncryptionSummary"], baseName, encryptedCount, skippedAlreadyEncryptedCount);
                 }
 
                 if (string.IsNullOrWhiteSpace(summary)) return;
@@ -315,7 +333,6 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             Dispatcher.UIThread.Post(() =>
             {
-                // Route generic core messages to the currently visible tab.
                 if (SelectedTabIndex == 1)
                     SetTimedAreaMessage(MessageArea.NewTask, message);
                 else if (SelectedTabIndex == 3)
