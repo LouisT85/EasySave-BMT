@@ -19,7 +19,7 @@
       "preLaunchTask": "build-gui",
       "program": "${workspaceFolder}/easySave_BMT.Avalonia/bin/Debug/net9.0/easySave_BMT.Avalonia.dll",
       "args": [],
-      "cwd": "${workspaceFolder}/easySave_BMT.Avalonia",
+      "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
     }
   ]
