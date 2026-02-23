@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "EasySave Console",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/EasySave-BMT.csproj"
+    },
+    {
+      "name": "EasySave GUI (Avalonia)",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/easySave_BMT.Avalonia/easySave_BMT.Avalonia.csproj"
+    }
+  ]
+}
