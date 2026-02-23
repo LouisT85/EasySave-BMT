@@ -12,13 +12,14 @@
     <SolidColorBrush x:Key="BrushMuted" Color="#9CA3AF"/>       
     <SolidColorBrush x:Key="BrushAccent" Color="#2563EB"/>      
     <SolidColorBrush x:Key="BrushAccentSoft" Color="#332563EB"/>
-    <SolidColorBrush x:Key="BrushDanger" Color="#DC2626"/>
+    <SolidColorBrush x:Key="BrushDanger" Color="#DC2626"/> 
     <SolidColorBrush x:Key="BrushSuccess" Color="#16A34A"/>
     <conv:BackupTypeToLocalizedStringConverter x:Key="BackupTypeToLocalizedStringConverter" />
   </Application.Resources>
 
   <Application.Styles>
     <FluentTheme />
+
     <Style Selector="Window">
       <Setter Property="Background" Value="{DynamicResource BrushBackground}"/>
     </Style>
@@ -133,6 +134,16 @@
     </Style>
     <Style Selector="TabItem:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="#1E293B"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:pointerover Border.saveItem">
+      <Setter Property="Background" Value="#223041"/>
+    </Style>
+
+    <Style Selector="ListBoxItem:selected Border.saveItem">
+      <Setter Property="Background" Value="#374151"/>
+      <Setter Property="BorderBrush" Value="#4B5563"/>
+      <Setter Property="BorderThickness" Value="2"/>
     </Style>
 
   </Application.Styles>
