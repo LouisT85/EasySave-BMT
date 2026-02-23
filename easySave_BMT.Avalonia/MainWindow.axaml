@@ -333,9 +333,8 @@
 					<StackPanel Orientation="Horizontal" Spacing="10">
 						<Button Classes="ghost" Command="{Binding LoadConfigCommand}" Content="{Binding Loc[UiReload]}"/>
 						<Button Classes="primary" Command="{Binding ConfigCommand}" Content="{Binding Loc[UiSave]}"/>
+						<Button Classes="power" Command="{Binding QuitCommand}" Content="⏻" ToolTip.Tip="{Binding Loc[Quit]}"/>
 					</StackPanel>
-
-					<Button Classes="danger" Command="{Binding QuitCommand}" Content="{Binding Loc[Quit]}" Margin="0,28,0,0"/>
 				</StackPanel>
 			</TabItem>
 
