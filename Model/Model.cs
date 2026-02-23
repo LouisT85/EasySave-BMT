@@ -351,7 +351,8 @@ namespace easySave_BMT.Model_
             int fileIndex,
             int pourcent,
             out string? error,
-            out EncryptionAction encryptionAction)
+            out EncryptionAction encryptionAction,
+            bool forceEncryptAllExtensions = false)
         {
             string curDirPath = currentFile.DirectoryName ?? save.src ?? "";
             string dstDirectory = dst;
@@ -389,7 +390,7 @@ namespace easySave_BMT.Model_
                 // (l'observateur GUI est porté par le ViewModel qui consomme ces états)
 
                 // Decide encryption from the source content (avoid XOR "decrypt" if file is already encrypted).
-                bool shouldEncrypt = ShouldEncryptFile(currentFile.FullName);
+                bool shouldEncrypt = ShouldEncryptFile(currentFile.FullName, forceEncryptAllExtensions);
 
                 // Perform file copy (and compute plaintext hash only if we will encrypt).
                 string? plaintextHashHex = null;
@@ -429,10 +430,13 @@ namespace easySave_BMT.Model_
 
                 if (!shouldEncrypt && config.EnableEncryption)
                 {
-                    string ext = NormalizeExtension(Path.GetExtension(currentFile.FullName));
-                    bool configured = (config.EncryptionExtensions ?? new List<string>())
-                        .Any(e => ext == NormalizeExtension(e));
-                    if (configured && (HasEasySaveCryptoHeader(currentFile.FullName) || IsLikelyAlreadyEncryptedTextByHeuristic(currentFile.FullName, ext)))
+                    bool configuredForFile = IsFileEligibleByEncryptionExtensions(
+                        currentFile.FullName,
+                        out string ext,
+                        forceEncryptAllExtensions);
+
+                    if (configuredForFile &&
+                        (HasEasySaveCryptoHeader(currentFile.FullName) || IsLikelyAlreadyEncryptedTextByHeuristic(currentFile.FullName, ext)))
                     {
                         encryptionAction = EncryptionAction.SkippedAlreadyEncrypted;
                     }
@@ -1020,25 +1024,41 @@ namespace easySave_BMT.Model_
             return sb.ToString();
         }
 
-        private bool ShouldEncryptFile(string filePath)
+        private bool IsFileEligibleByEncryptionExtensions(
+            string filePath,
+            out string normalizedExtension,
+            bool forceEncryptAllExtensions = false)
         {
-            if (!config.EnableEncryption) return false;
+            normalizedExtension = NormalizeExtension(Path.GetExtension(filePath));
 
-            string ext = NormalizeExtension(Path.GetExtension(filePath));
-            if (string.IsNullOrWhiteSpace(ext)) return false;
+            if (forceEncryptAllExtensions) return true;
 
-            // Normalize configured extensions once per call (small lists expected).
-            bool extMatch = false;
+            bool hasConfiguredExtensions = false;
             foreach (var configured in config.EncryptionExtensions ?? new List<string>())
             {
-                if (ext == NormalizeExtension(configured))
+                string normalizedConfigured = NormalizeExtension(configured);
+                if (string.IsNullOrWhiteSpace(normalizedConfigured))
+                    continue;
+
+                hasConfiguredExtensions = true;
+
+                if (!string.IsNullOrWhiteSpace(normalizedExtension) &&
+                    string.Equals(normalizedExtension, normalizedConfigured, StringComparison.OrdinalIgnoreCase))
                 {
-                    extMatch = true;
-                    break;
+                    return true;
                 }
             }
 
-            if (!extMatch) return false;
+            // No configured extension means "encrypt all files".
+            return !hasConfiguredExtensions;
+        }
+
+        private bool ShouldEncryptFile(string filePath, bool forceEncryptAllExtensions = false)
+        {
+            if (!config.EnableEncryption) return false;
+
+            if (!IsFileEligibleByEncryptionExtensions(filePath, out string ext, forceEncryptAllExtensions))
+                return false;
 
             // Already encrypted by EasySave => do not re-encrypt (prevents XOR "decrypt on second pass").
             if (HasEasySaveCryptoHeader(filePath)) return false;

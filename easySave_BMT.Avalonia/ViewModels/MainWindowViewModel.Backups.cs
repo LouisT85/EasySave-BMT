@@ -145,6 +145,7 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             try
             {
+                ApplyEncryptionDraftToModelForLaunch();
                 ListSaves(showUserFeedback: false);
 
                 var toRun = _coreViewModel.model.saves.Where(s => names.Contains(s.name)).ToList();

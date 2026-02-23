@@ -430,6 +430,39 @@ namespace easySave_BMT.ViewModel_.Backup
             return $"{ts.Minutes:D2}:{ts.Seconds:D2}";
         }
 
+        private static string NormalizeExtension(string ext)
+        {
+            ext = (ext ?? string.Empty).Trim();
+            if (ext.Length == 0) return string.Empty;
+            if (!ext.StartsWith(".")) ext = "." + ext;
+            return ext.ToLowerInvariant();
+        }
+
+        private bool ShouldForceEncryptAllExtensions(FileInfo[] files)
+        {
+            var cfg = _viewModel.model.GetConfig();
+            if (!cfg.EnableEncryption) return false;
+
+            var normalizedConfiguredExtensions = (cfg.EncryptionExtensions ?? new List<string>())
+                .Select(NormalizeExtension)
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (normalizedConfiguredExtensions.Count == 0) return false;
+
+            foreach (var file in files)
+            {
+                string fileExt = NormalizeExtension(Path.GetExtension(file.FullName));
+                if (string.IsNullOrWhiteSpace(fileExt)) continue;
+
+                if (normalizedConfiguredExtensions.Any(e => string.Equals(e, fileExt, StringComparison.OrdinalIgnoreCase)))
+                    return false;
+            }
+
+            return true;
+        }
+
         private List<string> CopyFiles(
             Save _save,
             FileInfo[] _files,
@@ -451,6 +484,12 @@ namespace easySave_BMT.ViewModel_.Backup
             long bytesCopiedSuccess = 0;
             bool businessPauseActive = false;
             string pausedBusinessProcess = "";
+            bool forceEncryptAllExtensions = ShouldForceEncryptAllExtensions(_files);
+
+            if (forceEncryptAllExtensions)
+            {
+                _viewModel.guiView?.ShowMessage(ResourceManager.GetString("UiEncryptionFallbackAllFiles"));
+            }
 
             for (int i = 0; i < _files.Length; i++)
             {
@@ -529,7 +568,7 @@ namespace easySave_BMT.ViewModel_.Backup
 
                 bool ok = _viewModel.model.TryCopyFile(
                     _save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent,
-                    out string? error, out EncryptionAction encryptionAction);
+                    out string? error, out EncryptionAction encryptionAction, forceEncryptAllExtensions);
 
                 double fileMs = (DateTime.UtcNow - fileStartUtc).TotalMilliseconds;
                 if (fileMs < 1) fileMs = 1;
