@@ -6,6 +6,7 @@ using System;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace easySave_BMT.Avalonia.ViewModels
@@ -24,6 +25,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> BrowseStateFilePathCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> LoadConfigCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> ConfigCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> GenerateEncryptionKeyCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> AddEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> RemoveEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> AddBusinessSoftwareEntryCommand { get; private set; } = null!;
@@ -120,6 +122,7 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             LoadConfigCommand = ReactiveCommand.Create(LoadConfigValuesFromModel);
             ConfigCommand = ReactiveCommand.Create(SaveConfigFromViewModel);
+            GenerateEncryptionKeyCommand = ReactiveCommand.Create(GenerateEncryptionKey);
 
             AddEncryptionExtensionCommand = ReactiveCommand.Create(AddEncryptionExtension);
             RemoveEncryptionExtensionCommand = ReactiveCommand.Create(RemoveEncryptionExtension);
@@ -158,6 +161,28 @@ namespace easySave_BMT.Avalonia.ViewModels
             });
 
             QuitCommand = ReactiveCommand.Create(ShutdownApp);
+        }
+
+        private void GenerateEncryptionKey()
+        {
+            byte[] keyBytes = RandomNumberGenerator.GetBytes(32);
+            string generatedKey = "0x" + Convert.ToHexString(keyBytes);
+
+            ConfigCryptoSoftKeyDraft = generatedKey;
+
+            string fingerprint = generatedKey.Length >= 8 ? generatedKey[^8..] : generatedKey;
+            string traceEntry = string.Format(
+                Loc["UiEncryptionKeyTraceEntry"],
+                DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                fingerprint);
+
+            EncryptionKeyCreationTraceDraft.Insert(0, traceEntry);
+            while (EncryptionKeyCreationTraceDraft.Count > 100)
+            {
+                EncryptionKeyCreationTraceDraft.RemoveAt(EncryptionKeyCreationTraceDraft.Count - 1);
+            }
+
+            SetTimedAreaMessage(MessageArea.Config, Loc["UiEncryptionKeyGenerated"]);
         }
 
         private void AddEncryptionExtension()

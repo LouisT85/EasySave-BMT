@@ -354,6 +354,16 @@
 									<TextBlock Text="{Binding Loc[UiEncryptionTitle]}" FontWeight="SemiBold"/>
 									<CheckBox Content="{Binding Loc[UiEnableEncryption]}" IsChecked="{Binding ConfigEnableEncryptionDraft}"/>
 
+									<TextBlock Text="{Binding Loc[UiEncryptionKey]}" FontWeight="SemiBold"/>
+									<TextBlock Text="{Binding Loc[UiEncryptionKeyHelp]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
+									<Grid ColumnDefinitions="*,120">
+										<TextBox Grid.Column="0" Text="{Binding ConfigCryptoSoftKeyDraft}" Watermark="{Binding Loc[UiEncryptionKeyHint]}"/>
+										<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiGenerateKey]}" Command="{Binding GenerateEncryptionKeyCommand}"/>
+									</Grid>
+
+									<TextBlock Text="{Binding Loc[UiEncryptionKeyTrace]}" FontWeight="SemiBold"/>
+									<ListBox ItemsSource="{Binding EncryptionKeyCreationTraceDraft}" Height="90"/>
+
 									<TextBlock Text="{Binding Loc[UiEncryptExtensions]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
 
 									<Grid ColumnDefinitions="*,120" Margin="0,2,0,0">

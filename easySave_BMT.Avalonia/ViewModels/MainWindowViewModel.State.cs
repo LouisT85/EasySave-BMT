@@ -119,6 +119,13 @@ namespace easySave_BMT.Avalonia.ViewModels
             set => this.RaiseAndSetIfChanged(ref _configEnableEncryptionDraft, value);
         }
 
+        private string _configCryptoSoftKeyDraft = "";
+        public string ConfigCryptoSoftKeyDraft
+        {
+            get => _configCryptoSoftKeyDraft;
+            set => this.RaiseAndSetIfChanged(ref _configCryptoSoftKeyDraft, value);
+        }
+
         private string _configBusinessSoftwareDraft = "";
         public string ConfigBusinessSoftwareDraft
         {
@@ -127,6 +134,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         }
 
         public ObservableCollection<string> ConfigBusinessSoftwareEntriesDraft { get; } = new();
+        public ObservableCollection<string> EncryptionKeyCreationTraceDraft { get; } = new();
 
         private string _newBusinessSoftwareEntry = "";
         public string NewBusinessSoftwareEntry

@@ -304,24 +304,14 @@ namespace easySave_BMT.Avalonia.ViewModels
             );
         }
 
-        public void OnEncryptionSummary(string backupName, int encryptedCount, int skippedAlreadyEncryptedCount)
+        public void OnEncryptionSummary(string backupName, int encryptedCount)
         {
             Dispatcher.UIThread.Post(() =>
             {
+                if (encryptedCount <= 0) return;
+
                 var (baseName, _) = SplitBackupNameAndEta(backupName);
-
-                string? summary = null;
-
-                if (encryptedCount <= 0 && skippedAlreadyEncryptedCount > 0)
-                {
-                    summary = string.Format(Loc["UiAllFilesAlreadyEncrypted"], baseName);
-                }
-                else if (encryptedCount > 0 && skippedAlreadyEncryptedCount > 0)
-                {
-                    summary = string.Format(Loc["UiEncryptionSummary"], baseName, encryptedCount, skippedAlreadyEncryptedCount);
-                }
-
-                if (string.IsNullOrWhiteSpace(summary)) return;
+                string summary = string.Format(Loc["UiEncryptionSummarySimple"], baseName, encryptedCount);
 
                 if (string.IsNullOrWhiteSpace(DashboardStatusText))
                     DashboardStatusText = summary;
