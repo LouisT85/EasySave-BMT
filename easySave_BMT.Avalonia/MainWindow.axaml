@@ -173,11 +173,16 @@
 									<Style Selector="ListBoxItem">
 										<Setter Property="Padding" Value="8"/>
 									</Style>
+									<Style Selector="ListBoxItem /template/ ContentPresenter">
+										<Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+									</Style>
 									<Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-										<Setter Property="Background" Value="#EEF2FF"/>
+										<Setter Property="Background" Value="{DynamicResource BrushAccentSoft}"/>
+										<Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
 									</Style>
 									<Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-										<Setter Property="Background" Value="{DynamicResource BrushBackground}"/>
+										<Setter Property="Background" Value="#23344A"/>
+										<Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
 									</Style>
 								</ListBox.Styles>
 							</ListBox>
@@ -229,8 +234,15 @@
 
 							<StackPanel Spacing="6">
 								<TextBlock Text="{Binding Loc[UiBusinessSoftware]}" FontWeight="SemiBold"/>
-								<TextBox Text="{Binding ConfigBusinessSoftwareDraft}" Watermark="{Binding Loc[UiBusinessSoftwareHint]}"/>
 								<TextBlock Text="{Binding Loc[UiBusinessSoftwareHelp]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
+								<Grid ColumnDefinitions="*,120" Margin="0,2,0,0">
+									<TextBox Grid.Column="0" Text="{Binding NewBusinessSoftwareEntry}" Watermark="{Binding Loc[UiBusinessSoftwareHint]}"/>
+									<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiAdd]}" Command="{Binding AddBusinessSoftwareEntryCommand}"/>
+								</Grid>
+								<Grid ColumnDefinitions="*,120">
+									<ListBox Grid.Column="0" ItemsSource="{Binding ConfigBusinessSoftwareEntriesDraft}" SelectedItem="{Binding SelectedBusinessSoftwareEntry}" Height="90"/>
+									<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiRemove]}" Command="{Binding RemoveBusinessSoftwareEntryCommand}"/>
+								</Grid>
 							</StackPanel>
 
 							<Border Background="{DynamicResource BrushBackground}" CornerRadius="8" Padding="12" Margin="0,6,0,0">

@@ -450,11 +450,11 @@ namespace easySave_BMT.ViewModel_.Backup
             const double alpha = 0.20;
             long bytesCopiedSuccess = 0;
             bool businessPauseActive = false;
-            string businessSpec = _viewModel.model.GetBusinessSoftwareSpec();
+            string pausedBusinessProcess = "";
 
             for (int i = 0; i < _files.Length; i++)
             {
-                bool businessRunning = _viewModel.model.IsBusinessSoftwareRunning();
+                bool businessRunning = _viewModel.model.TryGetRunningBusinessSoftware(out string runningBusinessProcess);
 
                 if ((_viewModel.model.IsPauseRequested() || businessRunning) && !_viewModel.model.IsStopRequested())
                 {
@@ -462,28 +462,36 @@ namespace easySave_BMT.ViewModel_.Backup
 
                     if (businessRunning && !businessPauseActive)
                     {
-                        string spec = string.IsNullOrWhiteSpace(businessSpec) ? "business software" : businessSpec;
+                        string spec = string.IsNullOrWhiteSpace(runningBusinessProcess)
+                            ? _viewModel.model.GetBusinessSoftwareSpec()
+                            : runningBusinessProcess;
+                        if (string.IsNullOrWhiteSpace(spec)) spec = "business software";
                         string pausedText = string.Format(ResourceManager.GetString("UiPausedByBusinessDetected"), spec);
                         _viewModel.guiView?.ShowMessage(pausedText);
+                        pausedBusinessProcess = spec;
                         businessPauseActive = true;
                     }
 
                     while (!_viewModel.model.IsStopRequested())
                     {
                         bool stillManualPause = _viewModel.model.IsPauseRequested();
-                        bool stillBusinessPause = _viewModel.model.IsBusinessSoftwareRunning();
+                        bool stillBusinessPause = _viewModel.model.TryGetRunningBusinessSoftware(out _);
                         if (!stillManualPause && !stillBusinessPause) break;
                         Thread.Sleep(200);
                     }
 
                     if (!_viewModel.model.IsStopRequested())
                     {
-                        if (businessPauseActive && !_viewModel.model.IsBusinessSoftwareRunning())
+                        if (businessPauseActive && !_viewModel.model.TryGetRunningBusinessSoftware(out _))
                         {
-                            string spec = string.IsNullOrWhiteSpace(businessSpec) ? "business software" : businessSpec;
+                            string spec = string.IsNullOrWhiteSpace(pausedBusinessProcess)
+                                ? _viewModel.model.GetBusinessSoftwareSpec()
+                                : pausedBusinessProcess;
+                            if (string.IsNullOrWhiteSpace(spec)) spec = "business software";
                             string resumedText = string.Format(ResourceManager.GetString("UiResumedAfterBusiness"), spec);
                             _viewModel.guiView?.ShowMessage(resumedText);
                             businessPauseActive = false;
+                            pausedBusinessProcess = "";
                         }
 
                         activeSw.Start();

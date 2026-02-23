@@ -149,16 +149,16 @@
     <value>Appuyer sur la touche Entrée pour en voir plus . . .</value>
   </data>
   <data name="FileAddedSuccess" xml:space="preserve">
-    <value>Le fichier a été ajouté avec succès !!!</value>
+    <value>Le fichier a été ajouté avec succès !</value>
   </data>
   <data name="FileSavedSuccess" xml:space="preserve">
     <value>Le fichier a été sauvegardé avec succès !</value>
   </data>
   <data name="FileDeletedSuccess" xml:space="preserve">
-    <value>Le fichier a été supprimé avec succès !!!</value>
+    <value>Le fichier a été supprimé avec succès !</value>
   </data>
   <data name="BackupSuccess" xml:space="preserve">
-    <value>Backup réussi !</value>
+    <value>Backup réussie !</value>
   </data>
   <data name="NoChanges" xml:space="preserve">
     <value>Aucune modification depuis la dernière sauvegarde complète !</value>
@@ -380,10 +380,10 @@
     <value>Tout sélectionner</value>
   </data>
   <data name="UiEncryptionTitle" xml:space="preserve">
-    <value>Cryptage (CryptoSoft)</value>
+    <value>Chiffrement (CryptoSoft)</value>
   </data>
   <data name="UiEnableEncryption" xml:space="preserve">
-    <value>Activer le cryptage</value>
+    <value>Activer le chiffrement</value>
   </data>
   <data name="UiEncryptExtensions" xml:space="preserve">
     <value>Crypter uniquement ces extensions (exemple : .txt)</value>
@@ -404,10 +404,10 @@
     <value>Extension invalide.</value>
   </data>
   <data name="UiAllFilesAlreadyEncrypted" xml:space="preserve">
-    <value>{0} : tous les fichiers correspondants sont déjà cryptés. Aucun cryptage effectué.</value>
+    <value>{0} : tous les fichiers correspondants sont déjà chiffrés. Aucun chiffrement effectué.</value>
   </data>
   <data name="UiEncryptionSummary" xml:space="preserve">
-    <value>{0} : cryptage effectué sur {1} fichier(s), {2} fichier(s) déjà crypté(s) ignoré(s).</value>
+    <value>{0} : chiffrement effectué sur {1} fichier(s), {2} fichier(s) déjà chiffré(s) ignoré(s).</value>
   </data>
   <data name="UiStop" xml:space="preserve">
     <value>Arrêter</value>
@@ -437,15 +437,21 @@
     <value>Logiciel métier</value>
   </data>
   <data name="UiBusinessSoftwareHint" xml:space="preserve">
-    <value>calc (ou C:\Chemin\Vers\App.exe)</value>
+    <value>Ex: calc; notepad; excel* (nom, chemin .exe ou joker)</value>
   </data>
   <data name="UiBusinessSoftwareHelp" xml:space="preserve">
-    <value>Si détecté, EasySave met les sauvegardes en pause automatiquement puis reprend quand le logiciel métier est fermé.</value>
+    <value>Vous pouvez mettre des applications comme calc, notepad etc. En détection, EasySave met en pause puis reprend automatiquement.</value>
   </data>
   <data name="UiPausedByBusinessDetected" xml:space="preserve">
     <value>Pause automatique : logiciel métier détecté ({0}).</value>
   </data>
   <data name="UiResumedAfterBusiness" xml:space="preserve">
     <value>Reprise automatique : logiciel métier fermé ({0}).</value>
+  </data>
+  <data name="UiEnterBusinessSoftwareEntry" xml:space="preserve">
+    <value>Veuillez saisir un logiciel métier à ajouter.</value>
+  </data>
+  <data name="UiInvalidBusinessSoftwareEntry" xml:space="preserve">
+    <value>Entrée invalide. Ajoutez un seul nom/pattern à la fois.</value>
   </data>
 </root>

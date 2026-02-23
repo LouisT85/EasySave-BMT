@@ -95,6 +95,22 @@ namespace easySave_BMT.Avalonia.ViewModels
             set => this.RaiseAndSetIfChanged(ref _configBusinessSoftwareDraft, value);
         }
 
+        public ObservableCollection<string> ConfigBusinessSoftwareEntriesDraft { get; } = new();
+
+        private string _newBusinessSoftwareEntry = "";
+        public string NewBusinessSoftwareEntry
+        {
+            get => _newBusinessSoftwareEntry;
+            set => this.RaiseAndSetIfChanged(ref _newBusinessSoftwareEntry, value);
+        }
+
+        private string? _selectedBusinessSoftwareEntry;
+        public string? SelectedBusinessSoftwareEntry
+        {
+            get => _selectedBusinessSoftwareEntry;
+            set => this.RaiseAndSetIfChanged(ref _selectedBusinessSoftwareEntry, value);
+        }
+
         public ObservableCollection<string> ConfigEncryptionExtensionsDraft { get; } = new();
 
         private string _newEncryptionExtension = "";
