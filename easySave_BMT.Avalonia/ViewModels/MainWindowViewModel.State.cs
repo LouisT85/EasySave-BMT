@@ -11,7 +11,10 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ObservableCollection<Model_.Save> Saves { get; } = new();
         public ObservableCollection<BackupTypeItem> BackupTypeOptions { get; } = new();
         public ObservableCollection<string> LanguageOptions { get; } = new() { "fr", "en" };
+        public ObservableCollection<ThemeOptionItem> ThemeOptions { get; } = new();
         public ObservableCollection<string> LogFiles { get; } = new();
+        public ObservableCollection<LogSortOptionItem> LogSortOptions { get; } = new();
+        public ObservableCollection<LogSortOptionItem> LogEntrySortOptions { get; } = new();
 
         // --- Sélection & Inputs ---
         private Model_.Save? _selectedSave;
@@ -81,6 +84,34 @@ namespace easySave_BMT.Avalonia.ViewModels
         private string _configLanguageDraft = "fr";
         public string ConfigLanguageDraft { get => _configLanguageDraft; set => this.RaiseAndSetIfChanged(ref _configLanguageDraft, value); }
 
+        private string _configTheme = "auto";
+        public string ConfigTheme { get => _configTheme; set => this.RaiseAndSetIfChanged(ref _configTheme, value); }
+
+        private string _configThemeDraft = "auto";
+        public string ConfigThemeDraft
+        {
+            get => _configThemeDraft;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _configThemeDraft, value);
+                ApplyThemePreference(value);
+            }
+        }
+
+        private ThemeOptionItem? _selectedThemeOption;
+        public ThemeOptionItem? SelectedThemeOption
+        {
+            get => _selectedThemeOption;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _selectedThemeOption, value);
+                if (value is not null)
+                {
+                    ConfigThemeDraft = value.Key;
+                }
+            }
+        }
+
         private bool _configEnableEncryptionDraft;
         public bool ConfigEnableEncryptionDraft
         {
@@ -135,6 +166,35 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
         }
 
+        private string _logFilesSummaryText = string.Empty;
+        public string LogFilesSummaryText
+        {
+            get => _logFilesSummaryText;
+            set => this.RaiseAndSetIfChanged(ref _logFilesSummaryText, value);
+        }
+
+        private string _logFileSearchText = string.Empty;
+        public string LogFileSearchText
+        {
+            get => _logFileSearchText;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _logFileSearchText, value);
+                ApplyLogFileFilterAndSort();
+            }
+        }
+
+        private LogSortOptionItem? _selectedLogSortOption;
+        public LogSortOptionItem? SelectedLogSortOption
+        {
+            get => _selectedLogSortOption;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _selectedLogSortOption, value);
+                ApplyLogFileFilterAndSort();
+            }
+        }
+
         public ObservableCollection<LogEntryViewItem> ParsedLogEntries { get; } = new();
 
         private LogEntryViewItem? _selectedParsedLogEntry;
@@ -146,6 +206,46 @@ namespace easySave_BMT.Avalonia.ViewModels
                 this.RaiseAndSetIfChanged(ref _selectedParsedLogEntry, value);
                 UpdateSelectedLogEntryDetails();
             }
+        }
+
+        private string _logEntrySearchText = string.Empty;
+        public string LogEntrySearchText
+        {
+            get => _logEntrySearchText;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _logEntrySearchText, value);
+                ApplyParsedLogEntryFilterAndSort();
+            }
+        }
+
+        private LogSortOptionItem? _selectedLogEntrySortOption;
+        public LogSortOptionItem? SelectedLogEntrySortOption
+        {
+            get => _selectedLogEntrySortOption;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _selectedLogEntrySortOption, value);
+                ApplyParsedLogEntryFilterAndSort();
+            }
+        }
+
+        private bool _showOnlyFailedLogEntries;
+        public bool ShowOnlyFailedLogEntries
+        {
+            get => _showOnlyFailedLogEntries;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _showOnlyFailedLogEntries, value);
+                ApplyParsedLogEntryFilterAndSort();
+            }
+        }
+
+        private string _logEntriesFilterSummary = string.Empty;
+        public string LogEntriesFilterSummary
+        {
+            get => _logEntriesFilterSummary;
+            set => this.RaiseAndSetIfChanged(ref _logEntriesFilterSummary, value);
         }
 
         private string _logSummaryText = string.Empty;
@@ -267,6 +367,30 @@ namespace easySave_BMT.Avalonia.ViewModels
         private void SelectedSaves_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             UpdateHasSelection();
+        }
+
+        public sealed class ThemeOptionItem
+        {
+            public ThemeOptionItem(string key, string display)
+            {
+                Key = key;
+                Display = display;
+            }
+
+            public string Key { get; }
+            public string Display { get; }
+        }
+
+        public sealed class LogSortOptionItem
+        {
+            public LogSortOptionItem(string key, string display)
+            {
+                Key = key;
+                Display = display;
+            }
+
+            public string Key { get; }
+            public string Display { get; }
         }
 
         public sealed class LogEntryViewItem

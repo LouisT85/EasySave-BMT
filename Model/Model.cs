@@ -605,9 +605,18 @@ namespace easySave_BMT.Model_
             bool? enableEncryption = null,
             List<string>? encryptionExtensions = null,
             string? cryptoSoftPath = null,
-            string? businessSoftware = null)
+            string? businessSoftware = null,
+            string? themePreference = null)
         {
-            config.UpdateFromUserInput(logDir, statePath, language, enableEncryption, encryptionExtensions, cryptoSoftPath, businessSoftware);
+            config.UpdateFromUserInput(
+                logDir,
+                statePath,
+                language,
+                enableEncryption,
+                encryptionExtensions,
+                cryptoSoftPath,
+                businessSoftware,
+                themePreference);
 
             if (!string.IsNullOrWhiteSpace(language))
             {

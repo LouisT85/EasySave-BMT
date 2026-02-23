@@ -42,6 +42,11 @@ namespace easySave_BMT.Model_
         /// </summary>
         public string BusinessSoftware { get; set; } = "";
 
+        /// <summary>
+        /// Preferred UI theme: "auto" (system), "light", or "dark".
+        /// </summary>
+        public string ThemePreference { get; set; } = "auto";
+
         /// <summary>The relative path to the configuration file itself.</summary>
         private static readonly string ConfigPath = "./config.json";
 
@@ -111,7 +116,8 @@ namespace easySave_BMT.Model_
             bool? enableEncryption = null,
             System.Collections.Generic.List<string>? encryptionExtensions = null,
             string? cryptoSoftPath = null,
-            string? businessSoftware = null)
+            string? businessSoftware = null,
+            string? themePreference = null)
         {
             if (!string.IsNullOrWhiteSpace(logDir))
                 LogDirectory = logDir;
@@ -133,6 +139,17 @@ namespace easySave_BMT.Model_
 
             if (businessSoftware is not null)
                 BusinessSoftware = businessSoftware;
+
+            if (themePreference is not null)
+            {
+                string normalizedTheme = (themePreference ?? "").Trim().ToLowerInvariant();
+                ThemePreference = normalizedTheme switch
+                {
+                    "light" => "light",
+                    "dark" => "dark",
+                    _ => "auto"
+                };
+            }
 
             Save();
         }

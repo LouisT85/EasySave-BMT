@@ -487,4 +487,52 @@
   <data name="UiLogEncryptionTime" xml:space="preserve">
     <value>Encryption time</value>
   </data>
+  <data name="UiTheme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="UiThemeHint" xml:space="preserve">
+    <value>Choose Auto to follow the system appearance.</value>
+  </data>
+  <data name="UiThemeAuto" xml:space="preserve">
+    <value>Auto (System)</value>
+  </data>
+  <data name="UiThemeLight" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="UiThemeDark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="UiSearchLogs" xml:space="preserve">
+    <value>Search log files...</value>
+  </data>
+  <data name="UiSearchEntries" xml:space="preserve">
+    <value>Search entries...</value>
+  </data>
+  <data name="UiSortNewest" xml:space="preserve">
+    <value>Newest</value>
+  </data>
+  <data name="UiSortOldest" xml:space="preserve">
+    <value>Oldest</value>
+  </data>
+  <data name="UiSortName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="UiLogFilterErrorsOnly" xml:space="preserve">
+    <value>Show failed entries only</value>
+  </data>
+  <data name="UiNoMatchingLogEntries" xml:space="preserve">
+    <value>No log entry matches the current filters.</value>
+  </data>
+  <data name="UiLogFilesCount" xml:space="preserve">
+    <value>{0} file(s)</value>
+  </data>
+  <data name="UiLogFilesFilteredCount" xml:space="preserve">
+    <value>{0} / {1} file(s)</value>
+  </data>
+  <data name="UiLogEntriesShownCount" xml:space="preserve">
+    <value>{0} entry(ies) shown</value>
+  </data>
+  <data name="UiLogEntriesFilteredCount" xml:space="preserve">
+    <value>{0} / {1} entry(ies) shown</value>
+  </data>
 </root>

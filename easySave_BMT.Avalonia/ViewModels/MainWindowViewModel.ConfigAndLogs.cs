@@ -1,7 +1,10 @@
 using easySave_BMT.Model_;
+using Avalonia;
+using Avalonia.Styling;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -13,6 +16,17 @@ namespace easySave_BMT.Avalonia.ViewModels
 {
     public partial class MainWindowViewModel
     {
+        private const string ThemeAuto = "auto";
+        private const string ThemeLight = "light";
+        private const string ThemeDark = "dark";
+
+        private const string SortNewest = "newest";
+        private const string SortOldest = "oldest";
+        private const string SortName = "name";
+
+        private readonly List<string> _allLogFiles = new();
+        private readonly List<LogEntryViewItem> _allParsedLogEntries = new();
+
         private System.Collections.Generic.List<string> BuildNormalizedEncryptionExtensionsDraft()
         {
             return ConfigEncryptionExtensionsDraft
@@ -46,6 +60,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ConfigStateFilePath = cfg.StateFilePath;
                 ConfigLanguage = cfg.Language;
                 ConfigLanguageDraft = cfg.Language;
+                ConfigTheme = NormalizeThemePreference(cfg.ThemePreference);
+                ConfigThemeDraft = ConfigTheme;
 
                 ConfigEnableEncryptionDraft = cfg.EnableEncryption;
                 ConfigBusinessSoftwareDraft = (cfg.BusinessSoftware ?? "").Trim();
@@ -79,6 +95,11 @@ namespace easySave_BMT.Avalonia.ViewModels
 
                 Loc.SetLanguage(cfg.Language);
                 RefreshBackupTypeOptions();
+                RefreshThemeOptions();
+                RefreshLogSortOptions();
+                ApplyThemePreference(ConfigThemeDraft);
+                RefreshLogFilesSummary();
+                RefreshLogEntriesSummary();
                 this.RaisePropertyChanged(nameof(PauseButtonText));
                 ClearAreaMessage(MessageArea.Config);
 
@@ -107,6 +128,7 @@ namespace easySave_BMT.Avalonia.ViewModels
 
                 string businessSoftware = string.Join("; ", businessEntries);
                 ConfigBusinessSoftwareDraft = businessSoftware;
+                string themePreference = NormalizeThemePreference(ConfigThemeDraft);
 
                 _coreViewModel.model.UpdateConfig(
                     ConfigLogDirectory,
@@ -114,12 +136,18 @@ namespace easySave_BMT.Avalonia.ViewModels
                     ConfigLanguageDraft,
                     enableEncryption: ConfigEnableEncryptionDraft,
                     encryptionExtensions: exts,
-                    businessSoftware: businessSoftware);
+                    businessSoftware: businessSoftware,
+                    themePreference: themePreference);
 
                 // Apply language to the current UI only after Save.
                 ConfigLanguage = ConfigLanguageDraft;
+                ConfigTheme = themePreference;
+                ConfigThemeDraft = themePreference;
                 Loc.SetLanguage(ConfigLanguageDraft);
                 RefreshBackupTypeOptions();
+                RefreshThemeOptions();
+                RefreshLogSortOptions();
+                ApplyThemePreference(themePreference);
 
                 LoadConfigValuesFromModel();
                 LoadLogs();
@@ -137,15 +165,18 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             try
             {
-                LogFiles.Clear();
                 ResetLogViewer();
+                _allLogFiles.Clear();
+                string previousSelection = SelectedLogFile;
 
                 if (Directory.Exists(ConfigLogDirectory))
                 {
-                    var files = Directory.GetFiles(ConfigLogDirectory).OrderByDescending(f => f);
+                    var files = Directory.GetFiles(ConfigLogDirectory);
                     foreach (var f in files)
-                        LogFiles.Add(Path.GetFileName(f));
+                        _allLogFiles.Add(Path.GetFileName(f));
                 }
+
+                ApplyLogFileFilterAndSort();
 
                 if (LogFiles.Count == 0)
                 {
@@ -160,10 +191,20 @@ namespace easySave_BMT.Avalonia.ViewModels
                 SelectedLogContent = Loc["UiSelectLogFile"];
                 IsStructuredLogVisible = false;
                 IsRawLogVisible = true;
+
+                if (!string.IsNullOrWhiteSpace(previousSelection) &&
+                    LogFiles.Any(f => string.Equals(f, previousSelection, StringComparison.Ordinal)))
+                {
+                    if (!string.Equals(SelectedLogFile, previousSelection, StringComparison.Ordinal))
+                        SelectedLogFile = previousSelection;
+                }
             }
             catch (Exception ex)
             {
                 ResetLogViewer();
+                _allLogFiles.Clear();
+                LogFiles.Clear();
+                RefreshLogFilesSummary();
                 SelectedLogContent = string.Format(Loc["UiLogsLoadError"], ex.Message);
                 LogSummaryText = Loc["UiLogs"];
                 IsStructuredLogVisible = false;
@@ -173,8 +214,10 @@ namespace easySave_BMT.Avalonia.ViewModels
 
         private void ResetLogViewer()
         {
+            _allParsedLogEntries.Clear();
             ParsedLogEntries.Clear();
             SelectedParsedLogEntry = null;
+            LogEntriesFilterSummary = string.Empty;
             IsStructuredLogVisible = false;
             IsRawLogVisible = true;
             LogSummaryText = "";
@@ -205,14 +248,14 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             if (TryParseStructuredLog(path, raw, out var entries))
             {
-                foreach (var entry in entries)
-                    ParsedLogEntries.Add(entry);
+                _allParsedLogEntries.Clear();
+                _allParsedLogEntries.AddRange(entries);
 
-                LogSummaryText = string.Format(Loc["UiLogEntriesCount"], ParsedLogEntries.Count, SelectedLogFile);
+                LogSummaryText = string.Format(Loc["UiLogEntriesCount"], _allParsedLogEntries.Count, SelectedLogFile);
                 IsStructuredLogVisible = true;
                 IsRawLogVisible = false;
                 SelectedLogContent = Loc["UiSelectLogEntry"];
-                SelectedParsedLogEntry = ParsedLogEntries.FirstOrDefault();
+                ApplyParsedLogEntryFilterAndSort(preserveSelection: false);
                 return;
             }
 
@@ -231,6 +274,224 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
 
             SelectedLogContent = BuildLogEntryDetails(SelectedParsedLogEntry);
+        }
+
+        private static string NormalizeThemePreference(string? value)
+        {
+            string normalized = (value ?? "").Trim().ToLowerInvariant();
+            return normalized switch
+            {
+                ThemeLight => ThemeLight,
+                ThemeDark => ThemeDark,
+                _ => ThemeAuto
+            };
+        }
+
+        private void ApplyThemePreference(string? value)
+        {
+            if (Application.Current is null) return;
+
+            string pref = NormalizeThemePreference(value);
+            Application.Current.RequestedThemeVariant = pref switch
+            {
+                ThemeLight => ThemeVariant.Light,
+                ThemeDark => ThemeVariant.Dark,
+                _ => ThemeVariant.Default
+            };
+        }
+
+        private void RefreshThemeOptions()
+        {
+            string selectedKey = NormalizeThemePreference(ConfigThemeDraft);
+
+            ThemeOptions.Clear();
+            ThemeOptions.Add(new ThemeOptionItem(ThemeAuto, Loc["UiThemeAuto"]));
+            ThemeOptions.Add(new ThemeOptionItem(ThemeLight, Loc["UiThemeLight"]));
+            ThemeOptions.Add(new ThemeOptionItem(ThemeDark, Loc["UiThemeDark"]));
+
+            SelectedThemeOption = ThemeOptions.FirstOrDefault(o => string.Equals(o.Key, selectedKey, StringComparison.OrdinalIgnoreCase))
+                ?? ThemeOptions.FirstOrDefault();
+        }
+
+        private void RefreshLogSortOptions()
+        {
+            string fileSortKey = SelectedLogSortOption?.Key ?? SortNewest;
+            string entrySortKey = SelectedLogEntrySortOption?.Key ?? SortNewest;
+
+            LogSortOptions.Clear();
+            LogSortOptions.Add(new LogSortOptionItem(SortNewest, Loc["UiSortNewest"]));
+            LogSortOptions.Add(new LogSortOptionItem(SortOldest, Loc["UiSortOldest"]));
+            LogSortOptions.Add(new LogSortOptionItem(SortName, Loc["UiSortName"]));
+
+            LogEntrySortOptions.Clear();
+            LogEntrySortOptions.Add(new LogSortOptionItem(SortNewest, Loc["UiSortNewest"]));
+            LogEntrySortOptions.Add(new LogSortOptionItem(SortOldest, Loc["UiSortOldest"]));
+            LogEntrySortOptions.Add(new LogSortOptionItem(SortName, Loc["UiSortName"]));
+
+            SelectedLogSortOption =
+                LogSortOptions.FirstOrDefault(o => string.Equals(o.Key, fileSortKey, StringComparison.OrdinalIgnoreCase))
+                ?? LogSortOptions.FirstOrDefault();
+
+            SelectedLogEntrySortOption =
+                LogEntrySortOptions.FirstOrDefault(o => string.Equals(o.Key, entrySortKey, StringComparison.OrdinalIgnoreCase))
+                ?? LogEntrySortOptions.FirstOrDefault();
+        }
+
+        private void ApplyLogFileFilterAndSort(bool preserveSelection = true)
+        {
+            string previousSelection = preserveSelection ? (SelectedLogFile ?? "") : "";
+            IEnumerable<string> query = _allLogFiles;
+
+            string search = (LogFileSearchText ?? "").Trim();
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(f => f.Contains(search, StringComparison.OrdinalIgnoreCase));
+            }
+
+            string sortKey = SelectedLogSortOption?.Key ?? SortNewest;
+            query = sortKey switch
+            {
+                SortOldest => query.OrderBy(f => f, StringComparer.OrdinalIgnoreCase),
+                SortName => query.OrderBy(f => Path.GetFileNameWithoutExtension(f), StringComparer.OrdinalIgnoreCase)
+                                .ThenBy(f => f, StringComparer.OrdinalIgnoreCase),
+                _ => query.OrderByDescending(f => f, StringComparer.OrdinalIgnoreCase)
+            };
+
+            var filtered = query.ToList();
+            LogFiles.Clear();
+            foreach (string file in filtered)
+                LogFiles.Add(file);
+
+            RefreshLogFilesSummary();
+
+            if (!preserveSelection) return;
+
+            if (!string.IsNullOrWhiteSpace(previousSelection) &&
+                filtered.Any(f => string.Equals(f, previousSelection, StringComparison.Ordinal)))
+            {
+                if (!string.Equals(SelectedLogFile, previousSelection, StringComparison.Ordinal))
+                    SelectedLogFile = previousSelection;
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(SelectedLogFile) &&
+                !filtered.Any(f => string.Equals(f, SelectedLogFile, StringComparison.Ordinal)))
+            {
+                SelectedLogFile = string.Empty;
+            }
+        }
+
+        private void RefreshLogFilesSummary()
+        {
+            if (_allLogFiles.Count == 0)
+            {
+                LogFilesSummaryText = Loc["UiNoLogsFound"];
+                return;
+            }
+
+            if (LogFiles.Count == _allLogFiles.Count)
+            {
+                LogFilesSummaryText = string.Format(Loc["UiLogFilesCount"], LogFiles.Count);
+                return;
+            }
+
+            LogFilesSummaryText = string.Format(Loc["UiLogFilesFilteredCount"], LogFiles.Count, _allLogFiles.Count);
+        }
+
+        private void ApplyParsedLogEntryFilterAndSort(bool preserveSelection = true)
+        {
+            var previousSelection = preserveSelection ? SelectedParsedLogEntry : null;
+            IEnumerable<LogEntryViewItem> query = _allParsedLogEntries;
+
+            string search = (LogEntrySearchText ?? "").Trim();
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(entry => MatchesLogSearch(entry, search));
+            }
+
+            if (ShowOnlyFailedLogEntries)
+            {
+                query = query.Where(entry => entry.TransferTimeMs < 0);
+            }
+
+            string sortKey = SelectedLogEntrySortOption?.Key ?? SortNewest;
+            query = sortKey switch
+            {
+                SortOldest => query.OrderBy(entry => ParseLogTimeOrMin(entry.Time))
+                                   .ThenBy(entry => entry.BackupName, StringComparer.OrdinalIgnoreCase),
+                SortName => query.OrderBy(entry => entry.BackupName, StringComparer.OrdinalIgnoreCase)
+                                 .ThenByDescending(entry => ParseLogTimeOrMin(entry.Time)),
+                _ => query.OrderByDescending(entry => ParseLogTimeOrMin(entry.Time))
+                          .ThenBy(entry => entry.BackupName, StringComparer.OrdinalIgnoreCase)
+            };
+
+            var filtered = query.ToList();
+
+            ParsedLogEntries.Clear();
+            foreach (var entry in filtered)
+                ParsedLogEntries.Add(entry);
+
+            RefreshLogEntriesSummary();
+
+            if (!IsStructuredLogVisible) return;
+
+            if (ParsedLogEntries.Count == 0)
+            {
+                SelectedParsedLogEntry = null;
+                SelectedLogContent = Loc["UiNoMatchingLogEntries"];
+                return;
+            }
+
+            if (previousSelection is not null && ParsedLogEntries.Contains(previousSelection))
+            {
+                if (!ReferenceEquals(SelectedParsedLogEntry, previousSelection))
+                    SelectedParsedLogEntry = previousSelection;
+                return;
+            }
+
+            if (SelectedParsedLogEntry is null || !ParsedLogEntries.Contains(SelectedParsedLogEntry))
+                SelectedParsedLogEntry = ParsedLogEntries.FirstOrDefault();
+        }
+
+        private void RefreshLogEntriesSummary()
+        {
+            if (_allParsedLogEntries.Count == 0)
+            {
+                LogEntriesFilterSummary = string.Empty;
+                return;
+            }
+
+            if (ParsedLogEntries.Count == _allParsedLogEntries.Count)
+            {
+                LogEntriesFilterSummary = string.Format(Loc["UiLogEntriesShownCount"], ParsedLogEntries.Count);
+                return;
+            }
+
+            LogEntriesFilterSummary = string.Format(Loc["UiLogEntriesFilteredCount"], ParsedLogEntries.Count, _allParsedLogEntries.Count);
+        }
+
+        private static bool MatchesLogSearch(LogEntryViewItem entry, string search)
+        {
+            if (string.IsNullOrWhiteSpace(search)) return true;
+
+            return (entry.BackupName ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (entry.Time ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (entry.SourcePath ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (entry.TargetPath ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
+                || entry.FileSizeBytes.ToString(CultureInfo.InvariantCulture).Contains(search, StringComparison.OrdinalIgnoreCase)
+                || entry.TransferTimeMs.ToString(CultureInfo.InvariantCulture).Contains(search, StringComparison.OrdinalIgnoreCase)
+                || entry.EncryptionTimeMs.ToString(CultureInfo.InvariantCulture).Contains(search, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static DateTime ParseLogTimeOrMin(string rawTime)
+        {
+            if (DateTime.TryParse(rawTime, out var parsed))
+                return parsed;
+
+            if (DateTime.TryParse(rawTime, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out parsed))
+                return parsed;
+
+            return DateTime.MinValue;
         }
 
         private bool TryParseStructuredLog(string path, string raw, out List<LogEntryViewItem> entries)

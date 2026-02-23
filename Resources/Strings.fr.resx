@@ -487,4 +487,52 @@
   <data name="UiLogEncryptionTime" xml:space="preserve">
     <value>Temps de chiffrement</value>
   </data>
+  <data name="UiTheme" xml:space="preserve">
+    <value>Thème</value>
+  </data>
+  <data name="UiThemeHint" xml:space="preserve">
+    <value>Choisissez Auto pour suivre l'apparence du système.</value>
+  </data>
+  <data name="UiThemeAuto" xml:space="preserve">
+    <value>Auto (Système)</value>
+  </data>
+  <data name="UiThemeLight" xml:space="preserve">
+    <value>Clair</value>
+  </data>
+  <data name="UiThemeDark" xml:space="preserve">
+    <value>Sombre</value>
+  </data>
+  <data name="UiSearchLogs" xml:space="preserve">
+    <value>Rechercher des fichiers de log...</value>
+  </data>
+  <data name="UiSearchEntries" xml:space="preserve">
+    <value>Rechercher dans les entrées...</value>
+  </data>
+  <data name="UiSortNewest" xml:space="preserve">
+    <value>Plus récent</value>
+  </data>
+  <data name="UiSortOldest" xml:space="preserve">
+    <value>Plus ancien</value>
+  </data>
+  <data name="UiSortName" xml:space="preserve">
+    <value>Nom</value>
+  </data>
+  <data name="UiLogFilterErrorsOnly" xml:space="preserve">
+    <value>Afficher uniquement les entrées en erreur</value>
+  </data>
+  <data name="UiNoMatchingLogEntries" xml:space="preserve">
+    <value>Aucune entrée de journal ne correspond aux filtres actuels.</value>
+  </data>
+  <data name="UiLogFilesCount" xml:space="preserve">
+    <value>{0} fichier(s)</value>
+  </data>
+  <data name="UiLogFilesFilteredCount" xml:space="preserve">
+    <value>{0} / {1} fichier(s)</value>
+  </data>
+  <data name="UiLogEntriesShownCount" xml:space="preserve">
+    <value>{0} entrée(s) affichée(s)</value>
+  </data>
+  <data name="UiLogEntriesFilteredCount" xml:space="preserve">
+    <value>{0} / {1} entrée(s) affichée(s)</value>
+  </data>
 </root>
