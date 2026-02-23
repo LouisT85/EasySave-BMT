@@ -431,7 +431,7 @@
     <value>{0}: backup stopped by user.</value>
   </data>
   <data name="UiBackupStoppedByBusiness" xml:space="preserve">
-    <value>{0}: backup blocked/stopped because business software is running ({1}).</value>
+    <value>{0}: backup paused because business software is running ({1}).</value>
   </data>
   <data name="UiBusinessSoftware" xml:space="preserve">
     <value>Business software</value>
@@ -440,6 +440,12 @@
     <value>calc (or C:\Path\To\App.exe)</value>
   </data>
   <data name="UiBusinessSoftwareHelp" xml:space="preserve">
-    <value>If detected running, EasySave blocks new backups and stops ongoing backups after the current file.</value>
+    <value>If detected running, EasySave automatically pauses backups and resumes when the business software is closed.</value>
+  </data>
+  <data name="UiPausedByBusinessDetected" xml:space="preserve">
+    <value>Automatic pause: business software detected ({0}).</value>
+  </data>
+  <data name="UiResumedAfterBusiness" xml:space="preserve">
+    <value>Automatic resume: business software closed ({0}).</value>
   </data>
 </root>

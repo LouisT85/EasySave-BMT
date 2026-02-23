@@ -431,7 +431,7 @@
     <value>{0} : sauvegarde arrêtée par l'utilisateur.</value>
   </data>
   <data name="UiBackupStoppedByBusiness" xml:space="preserve">
-    <value>{0} : sauvegarde bloquée/arrêtée car le logiciel métier est en cours ({1}).</value>
+    <value>{0} : sauvegarde mise en pause car le logiciel métier est en cours ({1}).</value>
   </data>
   <data name="UiBusinessSoftware" xml:space="preserve">
     <value>Logiciel métier</value>
@@ -440,6 +440,12 @@
     <value>calc (ou C:\Chemin\Vers\App.exe)</value>
   </data>
   <data name="UiBusinessSoftwareHelp" xml:space="preserve">
-    <value>Si détecté, EasySave bloque les nouvelles sauvegardes et arrête une sauvegarde en cours après le fichier en cours.</value>
+    <value>Si détecté, EasySave met les sauvegardes en pause automatiquement puis reprend quand le logiciel métier est fermé.</value>
+  </data>
+  <data name="UiPausedByBusinessDetected" xml:space="preserve">
+    <value>Pause automatique : logiciel métier détecté ({0}).</value>
+  </data>
+  <data name="UiResumedAfterBusiness" xml:space="preserve">
+    <value>Reprise automatique : logiciel métier fermé ({0}).</value>
   </data>
 </root>
