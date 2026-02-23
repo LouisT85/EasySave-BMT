@@ -386,7 +386,7 @@
     <value>Activer le chiffrement</value>
   </data>
   <data name="UiEncryptExtensions" xml:space="preserve">
-    <value>Crypter uniquement ces extensions (exemple : .txt)</value>
+    <value>Crypter uniquement ces extensions (exemple : .txt). Laisser vide pour crypter tous les fichiers.</value>
   </data>
   <data name="UiExtensionHint" xml:space="preserve">
     <value>.txt</value>
@@ -408,6 +408,9 @@
   </data>
   <data name="UiEncryptionSummary" xml:space="preserve">
     <value>{0} : chiffrement effectué sur {1} fichier(s), {2} fichier(s) déjà chiffré(s) ignoré(s).</value>
+  </data>
+  <data name="UiEncryptionFallbackAllFiles" xml:space="preserve">
+    <value>Aucune extension de chiffrement configurée ne correspond à cette sauvegarde. Tous les fichiers seront chiffrés pour cette exécution.</value>
   </data>
   <data name="UiStop" xml:space="preserve">
     <value>Arrêter</value>

@@ -13,6 +13,29 @@ namespace easySave_BMT.Avalonia.ViewModels
 {
     public partial class MainWindowViewModel
     {
+        private System.Collections.Generic.List<string> BuildNormalizedEncryptionExtensionsDraft()
+        {
+            return ConfigEncryptionExtensionsDraft
+                .Select(e => (e ?? "").Trim())
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Select(e => e.StartsWith(".") ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private void ApplyEncryptionDraftToModelForLaunch()
+        {
+            var cfg = _coreViewModel.model.GetConfig();
+            var exts = BuildNormalizedEncryptionExtensionsDraft();
+
+            _coreViewModel.model.UpdateConfig(
+                cfg.LogDirectory,
+                cfg.StateFilePath,
+                cfg.Language,
+                enableEncryption: ConfigEnableEncryptionDraft,
+                encryptionExtensions: exts);
+        }
+
         private void LoadConfigValuesFromModel()
         {
             try
@@ -74,12 +97,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             try
             {
-                var exts = ConfigEncryptionExtensionsDraft
-                    .Select(e => (e ?? "").Trim())
-                    .Where(e => !string.IsNullOrWhiteSpace(e))
-                    .Select(e => e.StartsWith(".") ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
+                var exts = BuildNormalizedEncryptionExtensionsDraft();
 
                 var businessEntries = ConfigBusinessSoftwareEntriesDraft
                     .Select(e => NormalizeBusinessSoftwareEntry(e))
