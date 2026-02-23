@@ -9,7 +9,8 @@
       "program": "${workspaceFolder}/bin/Debug/net9.0/EasySave-BMT.dll",
       "args": [],
       "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal"
+      "console": "externalTerminal",
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "name": "EasySave GUI (Avalonia)",
