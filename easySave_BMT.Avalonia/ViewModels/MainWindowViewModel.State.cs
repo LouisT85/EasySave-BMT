@@ -143,6 +143,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             {
                 this.RaiseAndSetIfChanged(ref _isBackupRunning, value);
                 this.RaisePropertyChanged(nameof(PauseButtonText));
+                this.RaisePropertyChanged(nameof(PauseButtonSymbol));
             }
         }
 
@@ -154,10 +155,13 @@ namespace easySave_BMT.Avalonia.ViewModels
             {
                 this.RaiseAndSetIfChanged(ref _isBackupPaused, value);
                 this.RaisePropertyChanged(nameof(PauseButtonText));
+                this.RaisePropertyChanged(nameof(PauseButtonSymbol));
             }
         }
 
         public string PauseButtonText => IsBackupPaused ? Loc["UiResume"] : Loc["UiPause"];
+        public string PauseButtonSymbol => IsBackupPaused ? "▶" : "⏸";
+        public string StopButtonSymbol => "⏹";
 
         private string _dashboardMessage = string.Empty;
         public string DashboardMessage { get => _dashboardMessage; set => this.RaiseAndSetIfChanged(ref _dashboardMessage, value); }

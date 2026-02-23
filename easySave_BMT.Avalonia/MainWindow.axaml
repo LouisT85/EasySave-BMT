@@ -108,8 +108,8 @@
 								<Button Classes="ghost" Command="{Binding ListCommand}" Content="{Binding Loc[UiRefresh]}"/>
 								<Button Classes="ghost" Command="{Binding SelectAllCommand}" Content="{Binding Loc[UiSelectAll]}"/>
 								<Button Classes="danger" Command="{Binding RemoveCommand}" Content="{Binding Loc[UiDelete]}"/>
-								<Button Classes="ghost" Command="{Binding PauseCommand}" Content="{Binding PauseButtonText}" IsEnabled="{Binding IsBackupRunning}"/>
-								<Button Classes="danger" Command="{Binding StopCommand}" Content="{Binding Loc[UiStop]}" IsEnabled="{Binding IsBackupRunning}"/>
+								<Button Classes="ghost icon" Command="{Binding PauseCommand}" Content="{Binding PauseButtonSymbol}" IsEnabled="{Binding IsBackupRunning}" ToolTip.Tip="{Binding PauseButtonText}"/>
+								<Button Classes="danger icon" Command="{Binding StopCommand}" Content="{Binding StopButtonSymbol}" IsEnabled="{Binding IsBackupRunning}" ToolTip.Tip="{Binding Loc[UiStop]}"/>
 								<Button Classes="primary" Command="{Binding LaunchCommand}" Content="{Binding Loc[UiRun]}"/>
 							</StackPanel>
 						</Grid>

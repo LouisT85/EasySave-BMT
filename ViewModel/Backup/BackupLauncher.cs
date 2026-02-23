@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using easySave_BMT.Model_;
+using easySave_BMT.Resources_;
 
 namespace easySave_BMT.ViewModel_.Backup
 {
@@ -55,13 +56,6 @@ namespace easySave_BMT.ViewModel_.Backup
 
         public int LaunchBackupType(Save _save)
         {
-            if (_viewModel.model.IsBusinessSoftwareRunning())
-            {
-                _viewModel.model.RequestStop(BackupStopReason.BusinessSoftwareDetected, _viewModel.model.GetBusinessSoftwareSpec());
-                _viewModel.model.WriteBackupStopLog(_save.name, BackupStopReason.BusinessSoftwareDetected);
-                return 216;
-            }
-
             DirectoryInfo dir = new DirectoryInfo(_save.src);
 
             if (!dir.Exists || !Directory.Exists(_save.dst))
@@ -455,26 +449,43 @@ namespace easySave_BMT.ViewModel_.Backup
             double emaSpeedBytesPerMs = 0.0;
             const double alpha = 0.20;
             long bytesCopiedSuccess = 0;
+            bool businessPauseActive = false;
+            string businessSpec = _viewModel.model.GetBusinessSoftwareSpec();
 
             for (int i = 0; i < _files.Length; i++)
             {
-                if (_viewModel.model.IsPauseRequested() && !_viewModel.model.IsStopRequested())
+                bool businessRunning = _viewModel.model.IsBusinessSoftwareRunning();
+
+                if ((_viewModel.model.IsPauseRequested() || businessRunning) && !_viewModel.model.IsStopRequested())
                 {
                     activeSw.Stop();
 
-                    while (_viewModel.model.IsPauseRequested() && !_viewModel.model.IsStopRequested())
+                    if (businessRunning && !businessPauseActive)
                     {
-                        if (_viewModel.model.IsBusinessSoftwareRunning())
-                        {
-                            _viewModel.model.RequestStop(BackupStopReason.BusinessSoftwareDetected, _viewModel.model.GetBusinessSoftwareSpec());
-                            break;
-                        }
+                        string spec = string.IsNullOrWhiteSpace(businessSpec) ? "business software" : businessSpec;
+                        string pausedText = string.Format(ResourceManager.GetString("UiPausedByBusinessDetected"), spec);
+                        _viewModel.guiView?.ShowMessage(pausedText);
+                        businessPauseActive = true;
+                    }
 
+                    while (!_viewModel.model.IsStopRequested())
+                    {
+                        bool stillManualPause = _viewModel.model.IsPauseRequested();
+                        bool stillBusinessPause = _viewModel.model.IsBusinessSoftwareRunning();
+                        if (!stillManualPause && !stillBusinessPause) break;
                         Thread.Sleep(200);
                     }
 
                     if (!_viewModel.model.IsStopRequested())
                     {
+                        if (businessPauseActive && !_viewModel.model.IsBusinessSoftwareRunning())
+                        {
+                            string spec = string.IsNullOrWhiteSpace(businessSpec) ? "business software" : businessSpec;
+                            string resumedText = string.Format(ResourceManager.GetString("UiResumedAfterBusiness"), spec);
+                            _viewModel.guiView?.ShowMessage(resumedText);
+                            businessPauseActive = false;
+                        }
+
                         activeSw.Start();
                     }
                 }
@@ -575,12 +586,6 @@ namespace easySave_BMT.ViewModel_.Backup
 
                 _viewModel.guiView?.OnProgressUpdate($"{_save.name} | ETA {eta}", totalFile - i - 1, leftSize, curSize, pourcent);
 
-                if (_viewModel.model.IsBusinessSoftwareRunning())
-                {
-                    _viewModel.model.RequestStop(BackupStopReason.BusinessSoftwareDetected, _viewModel.model.GetBusinessSoftwareSpec());
-                    _viewModel.model.WriteBackupStopLog(_save.name, BackupStopReason.BusinessSoftwareDetected, _files[i].FullName);
-                    break;
-                }
             }
 
             return failedFiles;
