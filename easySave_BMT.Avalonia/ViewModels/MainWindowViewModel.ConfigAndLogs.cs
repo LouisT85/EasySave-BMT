@@ -1,4 +1,5 @@
 using easySave_BMT.Model_;
+using ReactiveUI;
 using System;
 using System.IO;
 using System.Linq;
@@ -39,6 +40,7 @@ namespace easySave_BMT.Avalonia.ViewModels
 
                 Loc.SetLanguage(cfg.Language);
                 RefreshBackupTypeOptions();
+                this.RaisePropertyChanged(nameof(PauseButtonText));
                 ClearAreaMessage(MessageArea.Config);
             }
             catch (Exception ex)

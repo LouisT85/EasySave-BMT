@@ -124,6 +124,8 @@ namespace easySave_BMT.Avalonia.ViewModels
             IsProgressVisible = true;
             IsBackupRunning = true;
             _coreViewModel.model.ClearStopRequest();
+            _coreViewModel.model.ClearPauseRequest();
+            IsBackupPaused = false;
 
             int lastResult = 0;
             bool stoppedOrBlocked = false;
@@ -158,9 +160,15 @@ namespace easySave_BMT.Avalonia.ViewModels
                         else if (stopReason == BackupStopReason.UserRequested)
                         {
                             DashboardMessage = string.Format(Loc["UiBackupStoppedByUser"], save.name);
+
+                            // User stop cleans up the destination folder, so reset UI progress for this job.
+                            SetSaveUiProgress(save.name, 0);
                         }
 
                         _coreViewModel.model.FinishBackup(save);
+                        ProgressText = "";
+                        ProgressPercent = 0;
+                        IsProgressVisible = false;
                         stoppedOrBlocked = true;
                         break;
                     }
@@ -180,6 +188,8 @@ namespace easySave_BMT.Avalonia.ViewModels
             finally
             {
                 IsBackupRunning = false;
+                IsBackupPaused = false;
+                _coreViewModel.model.ClearPauseRequest();
             }
 
             // Update last backup dates before showing the final result message.

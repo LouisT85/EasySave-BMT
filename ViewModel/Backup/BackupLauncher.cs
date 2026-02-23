@@ -84,8 +84,14 @@ namespace easySave_BMT.ViewModel_.Backup
                 // If path normalization fails, proceed and let the copy layer report errors.
             }
 
-            var activeState = new State(0, 0, _save.src, _save.dst);
-            _save.state = activeState;
+            // Keep any existing unfinished state so we can reuse the same destination folder
+            // after a pause/app restart (overwrite existing files in-place).
+            if (_save.state is null || _save.state.progress >= 100)
+            {
+                var activeState = new State(0, 0, _save.src, _save.dst);
+                _save.state = activeState;
+            }
+
             _viewModel.model.UpdateSaveState(_save);
 
             return ExecuteBackupStrategy(_save, dir);
@@ -309,11 +315,68 @@ namespace easySave_BMT.ViewModel_.Backup
             }
         }
 
+        private static string? TryGetExistingBackupRootFromState(Save save)
+        {
+            try
+            {
+                if (save.state is null) return null;
+
+                // Only try to resume if there was an unfinished run.
+                if (save.state.progress <= 0 || save.state.progress >= 100) return null;
+
+                string currentDest = save.state.currentPathDest ?? "";
+                if (string.IsNullOrWhiteSpace(currentDest)) return null;
+
+                string dstBase = Path.GetFullPath(save.dst)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+                // If currentPathDest is a file, start from its directory.
+                string dir = Directory.Exists(currentDest)
+                    ? currentDest
+                    : (Path.GetDirectoryName(currentDest) ?? "");
+
+                if (string.IsNullOrWhiteSpace(dir)) return null;
+
+                var di = new DirectoryInfo(dir);
+                for (int i = 0; i < 20 && di is not null; i++)
+                {
+                    var parent = di.Parent;
+                    if (parent is null) break;
+
+                    string parentFull = parent.FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                    if (string.Equals(parentFull, dstBase, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // The backup root folder is the first child under the destination base.
+                        return di.FullName;
+                    }
+
+                    di = parent;
+                }
+            }
+            catch
+            {
+                // Ignore resume detection failures.
+            }
+
+            return null;
+        }
+
         private int DoBackup(Save _save, FileInfo[] _files, long _totalSize)
         {
             DateTime startTime = DateTime.Now;
-            string backupDirName = _save.name + "_" + startTime.ToString("yyyy-MM-dd_HH-mm-ss");
-            string dst = Path.Combine(_save.dst, backupDirName) + Path.DirectorySeparatorChar;
+            string? resumeRoot = TryGetExistingBackupRootFromState(_save);
+            string dst;
+
+            if (!string.IsNullOrWhiteSpace(resumeRoot) && Directory.Exists(resumeRoot))
+            {
+                // Resume in the same folder and overwrite files.
+                dst = resumeRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            }
+            else
+            {
+                string backupDirName = _save.name + "_" + startTime.ToString("yyyy-MM-dd_HH-mm-ss");
+                dst = Path.Combine(_save.dst, backupDirName) + Path.DirectorySeparatorChar;
+            }
 
             _save.state = new State(_files.Length, _totalSize, _save.src, dst);
             _save.lastBackupDate = startTime.ToString("yyyy/MM/dd_HH:mm:ss");
@@ -340,6 +403,8 @@ namespace easySave_BMT.ViewModel_.Backup
 
                 _viewModel.model.AddLogInJSONFile();
 
+                bool stopped = _viewModel.model.IsStopRequested();
+
                 // Notifications console (only when running in console mode)
                 if (_viewModel.guiView is null)
                 {
@@ -359,10 +424,15 @@ namespace easySave_BMT.ViewModel_.Backup
                 {
                     _viewModel.view.DisplayBackupRecap(_save.name, transferTime);
                 }
-                _viewModel.guiView?.OnBackupComplete(_save.name, transferTime);
-                _viewModel.guiView?.OnEncryptionSummary(_save.name, encryptedCount, skippedEncryptedCount);
 
-            return failedFiles.Count == 0 ? 104 : 216;
+                // If the job was stopped/blocked, do not report "complete" to the GUI.
+                if (!stopped)
+                {
+                    _viewModel.guiView?.OnBackupComplete(_save.name, transferTime);
+                    _viewModel.guiView?.OnEncryptionSummary(_save.name, encryptedCount, skippedEncryptedCount);
+                }
+
+            return stopped ? 216 : (failedFiles.Count == 0 ? 104 : 216);
         }
 
         private List<string> CopyFiles(Save _save, FileInfo[] _files, long _totalSize, string _dst, out int encryptedCount, out int skippedAlreadyEncryptedCount)
@@ -375,14 +445,40 @@ namespace easySave_BMT.ViewModel_.Backup
 
             for (int i = 0; i < _files.Length; i++)
             {
+                // Pause requested: wait between files (stop overrides pause).
+                while (_viewModel.model.IsPauseRequested() && !_viewModel.model.IsStopRequested())
+                {
+                    // If business software appears while paused, stop immediately (no next file should start).
+                    if (_viewModel.model.IsBusinessSoftwareRunning())
+                    {
+                        _viewModel.model.RequestStop(BackupStopReason.BusinessSoftwareDetected, _viewModel.model.GetBusinessSoftwareSpec());
+                        break;
+                    }
+
+                    Thread.Sleep(200);
+                }
+
                 // Manual stop requested: stop between files (finish current file is already done).
                 if (_viewModel.model.IsStopRequested())
                 {
                     var reason = _viewModel.model.PeekStopReason();
                     if (reason == BackupStopReason.None) reason = BackupStopReason.UserRequested;
+                    var detail = _viewModel.model.PeekStopDetail();
 
                     // Log the last completed/in-progress file (state was set before the copy).
                     _viewModel.model.WriteBackupStopLog(_save.name, reason, _save.state?.currentPathSrc);
+
+                    // User stop: remove the partially exported backup folder (requested behavior).
+                    if (reason == BackupStopReason.UserRequested &&
+                        string.Equals(detail, "cleanup", StringComparison.OrdinalIgnoreCase))
+                    {
+                        try
+                        {
+                            if (Directory.Exists(_dst))
+                                Directory.Delete(_dst, recursive: true);
+                        }
+                        catch { }
+                    }
                     break;
                 }
 
@@ -413,6 +509,28 @@ namespace easySave_BMT.ViewModel_.Backup
                     string detail = string.IsNullOrWhiteSpace(error) ? "Erreur de copie." : error;
                     _viewModel.guiView?.OnFileError($"{_files[i].FullName}: {detail}");
                     failedFiles.Add($"{_files[i].FullName}: {detail}");
+
+                    // If the user requested a stop (e.g. during encryption), stop immediately after the current file.
+                    if (_viewModel.model.IsStopRequested())
+                    {
+                        var reason = _viewModel.model.PeekStopReason();
+                        if (reason == BackupStopReason.None) reason = BackupStopReason.UserRequested;
+                        var stopDetail = _viewModel.model.PeekStopDetail();
+
+                        _viewModel.model.WriteBackupStopLog(_save.name, reason, _save.state?.currentPathSrc);
+
+                        if (reason == BackupStopReason.UserRequested &&
+                            string.Equals(stopDetail, "cleanup", StringComparison.OrdinalIgnoreCase))
+                        {
+                            try
+                            {
+                                if (Directory.Exists(_dst))
+                                    Directory.Delete(_dst, recursive: true);
+                            }
+                            catch { }
+                        }
+                        break;
+                    }
                 }
 
                 // Business software detection: finish this file then stop before the next one.

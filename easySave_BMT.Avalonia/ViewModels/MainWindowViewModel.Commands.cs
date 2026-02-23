@@ -1,5 +1,6 @@
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
+using easySave_BMT.Model_;
 using ReactiveUI;
 using System;
 using System.Linq;
@@ -26,6 +27,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> AddEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> RemoveEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> LoadLogsCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> PauseCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> StopCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> QuitCommand { get; private set; } = null!;
 
@@ -122,9 +124,32 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             LoadLogsCommand = ReactiveCommand.Create(LoadLogs);
 
+            PauseCommand = ReactiveCommand.Create(() =>
+            {
+                if (!IsBackupRunning) return;
+
+                if (!IsBackupPaused)
+                {
+                    _coreViewModel.model.RequestPause();
+                    // Persist current state so if the app is closed while paused, we can resume/overwrite in-place.
+                    _coreViewModel.model.AddLogInJSONFile();
+                    IsBackupPaused = true;
+                    DashboardStatusText = Loc["UiPaused"];
+                    ProgressText = Loc["UiPaused"];
+                }
+                else
+                {
+                    _coreViewModel.model.ClearPauseRequest();
+                    IsBackupPaused = false;
+                    DashboardStatusText = Loc["UiResumed"];
+                }
+            });
+
             StopCommand = ReactiveCommand.Create(() =>
             {
-                _coreViewModel.model.RequestStop(easySave_BMT.Model_.BackupStopReason.UserRequested);
+                _coreViewModel.model.RequestStop(BackupStopReason.UserRequested, detail: "cleanup");
+                _coreViewModel.model.ClearPauseRequest();
+                IsBackupPaused = false;
                 DashboardStatusText = Loc["UiStopRequested"];
             });
 

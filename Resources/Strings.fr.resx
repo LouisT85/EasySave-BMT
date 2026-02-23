@@ -415,6 +415,18 @@
   <data name="UiStopRequested" xml:space="preserve">
     <value>Arrêt demandé. La sauvegarde s'arrêtera après le fichier en cours.</value>
   </data>
+  <data name="UiPause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="UiResume" xml:space="preserve">
+    <value>Reprendre</value>
+  </data>
+  <data name="UiPaused" xml:space="preserve">
+    <value>En pause.</value>
+  </data>
+  <data name="UiResumed" xml:space="preserve">
+    <value>Reprise.</value>
+  </data>
   <data name="UiBackupStoppedByUser" xml:space="preserve">
     <value>{0} : sauvegarde arrêtée par l'utilisateur.</value>
   </data>

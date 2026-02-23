@@ -415,6 +415,18 @@
   <data name="UiStopRequested" xml:space="preserve">
     <value>Stop requested. The backup will stop after the current file.</value>
   </data>
+  <data name="UiPause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="UiResume" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="UiPaused" xml:space="preserve">
+    <value>Paused.</value>
+  </data>
+  <data name="UiResumed" xml:space="preserve">
+    <value>Resumed.</value>
+  </data>
   <data name="UiBackupStoppedByUser" xml:space="preserve">
     <value>{0}: backup stopped by user.</value>
   </data>

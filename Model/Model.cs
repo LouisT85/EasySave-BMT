@@ -23,11 +23,13 @@ namespace easySave_BMT.Model_
         private EasyLogger jsonLogger;
         private Config config;
         private string backupsaveSavePath = "./BackupSave.json";
+        private readonly object _backupSaveFileLock = new();
 
         private volatile bool _stopRequested;
         private volatile BackupStopReason _stopReason = BackupStopReason.None;
         private string? _stopDetail;
         private readonly object _stopLock = new();
+        private volatile bool _pauseRequested;
 
         /// <summary>List of all configured backup jobs.</summary>
         public List<Save> saves { get; private set; }
@@ -169,7 +171,11 @@ namespace easySave_BMT.Model_
             {
                 try
                 {
-                    string jsonContent = File.ReadAllText(this.backupsaveSavePath);
+                    string jsonContent;
+                    lock (_backupSaveFileLock)
+                    {
+                        jsonContent = File.ReadAllText(this.backupsaveSavePath);
+                    }
                     if (!string.IsNullOrEmpty(jsonContent))
                     {
                         this.saves = JsonSerializer.Deserialize<List<Save>>(jsonContent) ?? new List<Save>();
@@ -207,7 +213,10 @@ namespace easySave_BMT.Model_
             try
             {
                 string json = JsonSerializer.Serialize(this.saves, this.jsonOptions);
-                File.WriteAllText(this.backupsaveSavePath, json);
+                lock (_backupSaveFileLock)
+                {
+                    File.WriteAllText(this.backupsaveSavePath, json);
+                }
             }
             catch (Exception ex)
             {
@@ -360,9 +369,36 @@ namespace easySave_BMT.Model_
                 // Notification de progression éventuelle pour la GUI
                 // (l'observateur GUI est porté par le ViewModel qui consomme ces états)
 
-                // Perform file copy
+                // Decide encryption from the source content (avoid XOR "decrypt" if file is already encrypted).
+                bool shouldEncrypt = ShouldEncryptFile(currentFile.FullName);
+
+                // Perform file copy (and compute plaintext hash only if we will encrypt).
+                string? plaintextHashHex = null;
                 var copySw = Stopwatch.StartNew();
-                currentFile.CopyTo(dstFile, true);
+                if (shouldEncrypt)
+                {
+                    using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                    byte[] buffer = new byte[81920];
+
+                    using (var inFs = new FileStream(currentFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    using (var outFs = new FileStream(dstFile, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        int read;
+                        while ((read = inFs.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            outFs.Write(buffer, 0, read);
+                            hasher.AppendData(buffer, 0, read);
+                        }
+
+                        outFs.Flush(true);
+                    }
+
+                    plaintextHashHex = Convert.ToHexString(hasher.GetHashAndReset()).ToLowerInvariant();
+                }
+                else
+                {
+                    currentFile.CopyTo(dstFile, true);
+                }
                 copySw.Stop();
 
                 long transferTime = copySw.ElapsedMilliseconds;
@@ -372,8 +408,6 @@ namespace easySave_BMT.Model_
                 bool encryptionOk = true;
                 string? encryptionError = null;
 
-                // Decide encryption from the source content (avoid XOR "decrypt" if file is already encrypted).
-                bool shouldEncrypt = ShouldEncryptFile(currentFile.FullName);
                 if (!shouldEncrypt && config.EnableEncryption)
                 {
                     string ext = NormalizeExtension(Path.GetExtension(currentFile.FullName));
@@ -388,7 +422,7 @@ namespace easySave_BMT.Model_
                 if (shouldEncrypt)
                 {
                     encryptionAction = EncryptionAction.Encrypted;
-                    encryptionOk = TryEncryptInPlaceWithCryptoSoft(dstFile, out encryptionTimeMs, out encryptionError);
+                    encryptionOk = TryEncryptInPlaceWithCryptoSoft(dstFile, plaintextHashHex, out encryptionTimeMs, out encryptionError);
                 }
 
                 // Log success
@@ -475,11 +509,29 @@ namespace easySave_BMT.Model_
                 _stopReason = reason;
                 _stopDetail = detail;
             }
+
+            // Stop overrides pause.
+            _pauseRequested = false;
         }
 
         public bool IsStopRequested()
         {
             return _stopRequested;
+        }
+
+        public void RequestPause()
+        {
+            _pauseRequested = true;
+        }
+
+        public void ClearPauseRequest()
+        {
+            _pauseRequested = false;
+        }
+
+        public bool IsPauseRequested()
+        {
+            return _pauseRequested;
         }
 
         public BackupStopReason PeekStopReason()
@@ -942,7 +994,7 @@ namespace easySave_BMT.Model_
             return null;
         }
 
-        private bool TryEncryptInPlaceWithCryptoSoft(string targetFilePath, out long encryptionTimeMs, out string? error)
+        private bool TryEncryptInPlaceWithCryptoSoft(string targetFilePath, string? plaintextHashHex, out long encryptionTimeMs, out string? error)
         {
             encryptionTimeMs = 0;
             error = null;
@@ -967,8 +1019,8 @@ namespace easySave_BMT.Model_
 
             try
             {
-                // Compute plaintext hash before encryption (no decrypting needed later for differential comparisons).
-                string plaintextHashHex = ComputeSha256Hex(targetFilePath);
+                // If the hash is missing, compute it from the plaintext file (rare; normally computed during copy).
+                plaintextHashHex ??= ComputeSha256Hex(targetFilePath);
 
                 var psi = new ProcessStartInfo
                 {
@@ -989,7 +1041,23 @@ namespace easySave_BMT.Model_
                     return false;
                 }
 
-                proc.WaitForExit();
+                // Wait with polling so the UI "Stop" can cancel encryption immediately if needed.
+                while (true)
+                {
+                    if (proc.WaitForExit(200))
+                        break;
+
+                    // Only the user stop cancels immediately; business-software stop finishes current file.
+                    if (IsStopRequested() && PeekStopReason() == BackupStopReason.UserRequested)
+                    {
+                        try { proc.Kill(entireProcessTree: true); } catch { }
+                        encryptionTimeMs = -98;
+                        error = "Encryption cancelled by user.";
+                        try { if (File.Exists(tempOut)) File.Delete(tempOut); } catch { }
+                        try { if (File.Exists(tempFinal)) File.Delete(tempFinal); } catch { }
+                        return false;
+                    }
+                }
                 sw.Stop();
 
                 int exitCode = proc.ExitCode;

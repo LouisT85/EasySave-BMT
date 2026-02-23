@@ -136,7 +136,28 @@ namespace easySave_BMT.Avalonia.ViewModels
         public int SelectedTabIndex { get => _selectedTabIndex; set => this.RaiseAndSetIfChanged(ref _selectedTabIndex, value); }
 
         private bool _isBackupRunning;
-        public bool IsBackupRunning { get => _isBackupRunning; private set => this.RaiseAndSetIfChanged(ref _isBackupRunning, value); }
+        public bool IsBackupRunning
+        {
+            get => _isBackupRunning;
+            private set
+            {
+                this.RaiseAndSetIfChanged(ref _isBackupRunning, value);
+                this.RaisePropertyChanged(nameof(PauseButtonText));
+            }
+        }
+
+        private bool _isBackupPaused;
+        public bool IsBackupPaused
+        {
+            get => _isBackupPaused;
+            private set
+            {
+                this.RaiseAndSetIfChanged(ref _isBackupPaused, value);
+                this.RaisePropertyChanged(nameof(PauseButtonText));
+            }
+        }
+
+        public string PauseButtonText => IsBackupPaused ? Loc["UiResume"] : Loc["UiPause"];
 
         private string _dashboardMessage = string.Empty;
         public string DashboardMessage { get => _dashboardMessage; set => this.RaiseAndSetIfChanged(ref _dashboardMessage, value); }
