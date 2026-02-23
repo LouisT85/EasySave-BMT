@@ -20,6 +20,24 @@ namespace easySave_BMT.Model_
     /// </summary>
     public class Model
     {
+        private static readonly IReadOnlyDictionary<string, string> ProcessAliasMap =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["word"] = "winword",
+                ["microsoftword"] = "winword",
+                ["excel"] = "excel",
+                ["microsoftexcel"] = "excel",
+                ["powerpoint"] = "powerpnt",
+                ["microsoftpowerpoint"] = "powerpnt",
+                ["ppt"] = "powerpnt",
+                ["outlook"] = "outlook",
+                ["microsoftoutlook"] = "outlook",
+                ["notepad"] = "notepad",
+                ["calc"] = "calculatorapp",
+                ["calculator"] = "calculatorapp",
+                ["calculatrice"] = "calculatorapp"
+            };
+
         private EasyLogger xmlLogger;
         private EasyLogger jsonLogger;
         private Config config;
@@ -664,6 +682,15 @@ namespace easySave_BMT.Model_
 
             if (spec.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
                 spec = spec[..^4];
+
+            if (!HasWildcard(spec))
+            {
+                string aliasKey = spec.Replace(" ", "", StringComparison.Ordinal).Trim();
+                if (ProcessAliasMap.TryGetValue(aliasKey, out var mapped))
+                {
+                    spec = mapped;
+                }
+            }
 
             return spec.Trim();
         }
