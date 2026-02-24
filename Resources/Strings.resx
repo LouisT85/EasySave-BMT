@@ -523,6 +523,69 @@
   <data name="UiLogEncryptionTime" xml:space="preserve">
     <value>Encryption time</value>
   </data>
+  <data name="LogDestinationMode" xml:space="preserve">
+    <value>Log destination mode</value>
+  </data>
+  <data name="CentralizedLogEndpoint" xml:space="preserve">
+    <value>Centralized log endpoint</value>
+  </data>
+  <data name="NotConfigured" xml:space="preserve">
+    <value>Not configured</value>
+  </data>
+  <data name="ModifyLogMode" xml:space="preserve">
+    <value>Modify log destination mode</value>
+  </data>
+  <data name="CurrentLogMode" xml:space="preserve">
+    <value>Current log mode</value>
+  </data>
+  <data name="LogModeLocalOnly" xml:space="preserve">
+    <value>Local only</value>
+  </data>
+  <data name="LogModeCentralizedOnly" xml:space="preserve">
+    <value>Centralized only</value>
+  </data>
+  <data name="LogModeLocalAndCentralized" xml:space="preserve">
+    <value>Local + centralized</value>
+  </data>
+  <data name="ModifyCentralizedEndpoint" xml:space="preserve">
+    <value>Modify centralized endpoint</value>
+  </data>
+  <data name="CurrentCentralizedEndpoint" xml:space="preserve">
+    <value>Current centralized endpoint</value>
+  </data>
+  <data name="CentralizedEndpointHint" xml:space="preserve">
+    <value>Use a full HTTP URL (example: http://localhost:8080/logs).</value>
+  </data>
+  <data name="EnterClearToRemove" xml:space="preserve">
+    <value>Type 'clear' to remove the current endpoint.</value>
+  </data>
+  <data name="CentralizedEndpointRequired" xml:space="preserve">
+    <value>A centralized endpoint is required for this mode.</value>
+  </data>
+  <data name="InvalidCentralizedEndpoint" xml:space="preserve">
+    <value>Invalid centralized endpoint. Please enter a valid HTTP/HTTPS URL.</value>
+  </data>
+  <data name="UiLogDestinationMode" xml:space="preserve">
+    <value>Log destination mode</value>
+  </data>
+  <data name="UiCentralizedEndpoint" xml:space="preserve">
+    <value>Centralized endpoint</value>
+  </data>
+  <data name="UiLogModeHelp" xml:space="preserve">
+    <value>Choose where each log entry is written: local files, centralized service, or both.</value>
+  </data>
+  <data name="UiCentralizedEndpointRequired" xml:space="preserve">
+    <value>Centralized mode requires an endpoint URL.</value>
+  </data>
+  <data name="UiCentralizedEndpointInvalid" xml:space="preserve">
+    <value>Invalid endpoint URL. Expected http:// or https://</value>
+  </data>
+  <data name="UiLogMachine" xml:space="preserve">
+    <value>Machine</value>
+  </data>
+  <data name="UiLogUser" xml:space="preserve">
+    <value>User</value>
+  </data>
   <data name="UiTheme" xml:space="preserve">
     <value>Theme</value>
   </data>

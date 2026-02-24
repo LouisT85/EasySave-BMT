@@ -38,8 +38,10 @@ namespace easySave_BMT.Model_
                 ["calculatrice"] = "calculatorapp"
             };
 
-        private EasyLogger xmlLogger;
-        private EasyLogger jsonLogger;
+        private EasyLogger? xmlLogger;
+        private EasyLogger? jsonLogger;
+        private EasyLogger? centralizedLogger;
+        private bool _centralizedLoggerInitFailed;
         private Config config;
         private string backupsaveSavePath = "./BackupSave.json";
         private readonly object _backupSaveFileLock = new();
@@ -70,10 +72,10 @@ namespace easySave_BMT.Model_
             // Initialize global resources based on config
             ResourceManager.SetLanguage(config.Language);
             RealTimeState.SetFilePath(config.StateFilePath);
-            Directory.CreateDirectory(config.LogDirectory);
-            // Always produce both XML and JSON logs in parallel.
-            xmlLogger = new EasyLogger(config.LogDirectory, EasyLogger.LogFormat.XML);
-            jsonLogger = new EasyLogger(config.LogDirectory, EasyLogger.LogFormat.JSON);
+            config.Normalize();
+
+            // Build local and/or centralized loggers based on config.
+            InitializeLoggers();
 
             Console.WriteLine($"Logs directory: {config.LogDirectory}");
             Console.WriteLine($"State file: {config.StateFilePath}");
@@ -585,9 +587,9 @@ namespace easySave_BMT.Model_
         /// Updates application settings, including language, log directory, and state file path.
         /// </summary>
         public void UpdateConfig(
-            string logDir,
-            string statePath,
-            string language,
+            string? logDir,
+            string? statePath,
+            string? language,
             bool? enableEncryption = null,
             List<string>? encryptionExtensions = null,
             List<string>? priorityExtensions = null,
@@ -595,7 +597,9 @@ namespace easySave_BMT.Model_
             string? cryptoSoftKey = null,
             List<string>? encryptionKeyCreationTrace = null,
             string? businessSoftware = null,
-            string? themePreference = null)
+            string? themePreference = null,
+            string? logDestinationMode = null,
+            string? centralizedLogEndpoint = null)
         {
             config.UpdateFromUserInput(
                 logDir,
@@ -608,7 +612,9 @@ namespace easySave_BMT.Model_
                 cryptoSoftKey,
                 encryptionKeyCreationTrace,
                 businessSoftware,
-                themePreference);
+                themePreference,
+                logDestinationMode,
+                centralizedLogEndpoint);
 
             if (!string.IsNullOrWhiteSpace(language))
             {
@@ -624,24 +630,79 @@ namespace easySave_BMT.Model_
                 Console.WriteLine($"Error setting state file path: {ex.Message}");
             }
 
-            // Refresh logger with new directory and configured format
+            InitializeLoggers();
+        }
+
+        private void InitializeLoggers()
+        {
             try
             {
-                Directory.CreateDirectory(config.LogDirectory);
+                xmlLogger?.Dispose();
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error creating logs directory: {ex.Message}");
-            }
+            catch { }
 
             try
             {
-                xmlLogger = new EasyLogger(config.LogDirectory, EasyLogger.LogFormat.XML);
-                jsonLogger = new EasyLogger(config.LogDirectory, EasyLogger.LogFormat.JSON);
+                jsonLogger?.Dispose();
             }
-            catch (Exception ex)
+            catch { }
+
+            try
             {
-                Console.WriteLine($"Error initializing logger: {ex.Message}");
+                centralizedLogger?.Dispose();
+            }
+            catch { }
+
+            xmlLogger = null;
+            jsonLogger = null;
+            centralizedLogger = null;
+            _centralizedLoggerInitFailed = false;
+
+            if (config.IsLocalLoggingEnabled())
+            {
+                try
+                {
+                    Directory.CreateDirectory(config.LogDirectory);
+                    xmlLogger = new EasyLogger(
+                        config.LogDirectory,
+                        EasyLogger.LogFormat.XML,
+                        EasyLogger.DestinationMode.LocalOnly,
+                        centralizedEndpoint: null);
+                    jsonLogger = new EasyLogger(
+                        config.LogDirectory,
+                        EasyLogger.LogFormat.JSON,
+                        EasyLogger.DestinationMode.LocalOnly,
+                        centralizedEndpoint: null);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error initializing local loggers: {ex.Message}");
+                }
+            }
+
+            if (config.IsCentralizedLoggingEnabled())
+            {
+                if (string.IsNullOrWhiteSpace(config.CentralizedLogEndpoint))
+                {
+                    _centralizedLoggerInitFailed = true;
+                    Console.WriteLine(
+                        "Centralized logging is enabled but no endpoint is configured (CentralizedLogEndpoint).");
+                    return;
+                }
+
+                try
+                {
+                    centralizedLogger = new EasyLogger(
+                        config.LogDirectory,
+                        EasyLogger.LogFormat.JSON,
+                        EasyLogger.DestinationMode.CentralizedOnly,
+                        config.CentralizedLogEndpoint);
+                }
+                catch (Exception ex)
+                {
+                    _centralizedLoggerInitFailed = true;
+                    Console.WriteLine($"Error initializing centralized logger: {ex.Message}");
+                }
             }
         }
 
@@ -1034,22 +1095,48 @@ namespace easySave_BMT.Model_
 
         private void WriteLogEntry(LogEntry entry)
         {
-            try
+            if (config.IsLocalLoggingEnabled())
             {
-                xmlLogger?.Write(entry);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error writing XML log: {ex.Message}");
+                try
+                {
+                    xmlLogger?.Write(entry);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error writing XML log: {ex.Message}");
+                }
+
+                try
+                {
+                    jsonLogger?.Write(entry);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error writing JSON log: {ex.Message}");
+                }
             }
 
-            try
+            if (config.IsCentralizedLoggingEnabled())
             {
-                jsonLogger?.Write(entry);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error writing JSON log: {ex.Message}");
+                if (centralizedLogger is null)
+                {
+                    if (!_centralizedLoggerInitFailed)
+                    {
+                        _centralizedLoggerInitFailed = true;
+                        Console.WriteLine(
+                            "Centralized logging is enabled but logger initialization failed. Entry was not sent.");
+                    }
+                    return;
+                }
+
+                try
+                {
+                    centralizedLogger.Write(entry);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error sending centralized log entry: {ex.Message}");
+                }
             }
         }
     }

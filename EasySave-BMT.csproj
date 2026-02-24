@@ -21,6 +21,7 @@
     <!-- Exclure les sources des projets externes (référencés via ProjectReference) -->
     <Compile Remove="EasyLog\**\*.cs" />
     <Compile Remove="CryptoSoft\**\*.cs" />
+    <Compile Remove="CentralLogService\**\*.cs" />
   </ItemGroup>
 
   <!-- Build CryptoSoft alongside EasySave (used as an external encryption tool). -->

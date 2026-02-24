@@ -54,6 +54,16 @@ namespace easySave_BMT.View_
             return configurationInputService.AskForLanguage();
         }
 
+        public string AskForLogDestinationMode()
+        {
+            return configurationInputService.AskForLogDestinationMode(viewModel.model.GetConfig().LogDestinationMode);
+        }
+
+        public string AskForCentralizedLogEndpoint()
+        {
+            return configurationInputService.AskForCentralizedLogEndpoint(viewModel.model.GetConfig().CentralizedLogEndpoint);
+        }
+
         public void DisplayMessage(int id)
         {
             messageDisplay.Display(id);

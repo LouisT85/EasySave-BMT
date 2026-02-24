@@ -290,6 +290,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ConfigStateFilePath = cfg.StateFilePath;
                 ConfigLanguage = cfg.Language;
                 ConfigLanguageDraft = cfg.Language;
+                ConfigLogDestinationModeDraft = Config.NormalizeLogDestinationMode(cfg.LogDestinationMode);
+                ConfigCentralizedLogEndpoint = cfg.CentralizedLogEndpoint ?? string.Empty;
                 ConfigTheme = NormalizeThemePreference(cfg.ThemePreference);
                 ConfigThemeDraft = ConfigTheme;
 
@@ -401,6 +403,25 @@ namespace easySave_BMT.Avalonia.ViewModels
                     .Where(e => !string.IsNullOrWhiteSpace(e))
                     .ToList();
 
+                string normalizedMode = Config.NormalizeLogDestinationMode(ConfigLogDestinationModeDraft);
+                ConfigLogDestinationModeDraft = normalizedMode;
+
+                string endpoint = (ConfigCentralizedLogEndpoint ?? string.Empty).Trim();
+                if (Config.RequiresCentralizedEndpoint(normalizedMode))
+                {
+                    if (string.IsNullOrWhiteSpace(endpoint))
+                    {
+                        throw new InvalidOperationException(Loc["UiCentralizedEndpointRequired"]);
+                    }
+
+                    if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) ||
+                        (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                    {
+                        throw new InvalidOperationException(Loc["UiCentralizedEndpointInvalid"]);
+                    }
+                }
+                ConfigCentralizedLogEndpoint = endpoint;
+
                 _coreViewModel.model.UpdateConfig(
                     ConfigLogDirectory,
                     ConfigStateFilePath,
@@ -411,7 +432,9 @@ namespace easySave_BMT.Avalonia.ViewModels
                     cryptoSoftKey: cryptoSoftKey,
                     encryptionKeyCreationTrace: keyTrace,
                     businessSoftware: businessSoftware,
-                    themePreference: themePreference);
+                    themePreference: themePreference,
+                    logDestinationMode: normalizedMode,
+                    centralizedLogEndpoint: endpoint);
 
                 // Apply language to the current UI only after Save.
                 ConfigLanguage = ConfigLanguageDraft;
@@ -806,13 +829,23 @@ namespace easySave_BMT.Avalonia.ViewModels
 
                     entries.Add(new LogEntryViewItem
                     {
-                        BackupName = TryGetJsonString(element, "Name"),
-                        SourcePath = TryGetJsonString(element, "FileSource"),
-                        TargetPath = TryGetJsonString(element, "FileTarget"),
-                        FileSizeBytes = TryGetJsonLong(element, "FileSize"),
-                        TransferTimeMs = TryGetJsonLong(element, "FileTransferTime"),
-                        EncryptionTimeMs = TryGetJsonLong(element, "EncryptionTime"),
-                        Time = TryGetJsonString(element, "time")
+                        BackupName = FirstNonEmpty(
+                            TryGetJsonString(element, "Name"),
+                            TryGetJsonString(element, "BackupName")),
+                        SourcePath = FirstNonEmpty(
+                            TryGetJsonString(element, "FileSource"),
+                            TryGetJsonString(element, "SourcePath")),
+                        TargetPath = FirstNonEmpty(
+                            TryGetJsonString(element, "FileTarget"),
+                            TryGetJsonString(element, "DestinationPath")),
+                        MachineName = TryGetJsonString(element, "MachineName"),
+                        UserName = TryGetJsonString(element, "UserName"),
+                        FileSizeBytes = TryGetJsonLongAny(element, "FileSize"),
+                        TransferTimeMs = TryGetJsonLongAny(element, "FileTransferTime", "TransferTimeMs"),
+                        EncryptionTimeMs = TryGetJsonLongAny(element, "EncryptionTime", "EncryptionTimeMs"),
+                        Time = FirstNonEmpty(
+                            TryGetJsonString(element, "time"),
+                            TryGetJsonString(element, "Timestamp"))
                     });
                 }
 
@@ -841,6 +874,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                         BackupName = (log.Element("Name")?.Value ?? "").Trim(),
                         SourcePath = (log.Element("FileSource")?.Value ?? "").Trim(),
                         TargetPath = (log.Element("FileTarget")?.Value ?? "").Trim(),
+                        MachineName = (log.Element("MachineName")?.Value ?? "").Trim(),
+                        UserName = (log.Element("UserName")?.Value ?? "").Trim(),
                         FileSizeBytes = TryGetXmlLong(log, "FileSize"),
                         TransferTimeMs = TryGetXmlLong(log, "FileTransferTime"),
                         EncryptionTimeMs = TryGetXmlLong(log, "EncryptionTime"),
@@ -863,6 +898,8 @@ namespace easySave_BMT.Avalonia.ViewModels
             sb.AppendLine($"{Loc["Name"]}: {entry.BackupName}");
             sb.AppendLine($"{Loc["Source"]}: {entry.SourcePath}");
             sb.AppendLine($"{Loc["Destination"]}: {entry.TargetPath}");
+            sb.AppendLine($"{Loc["UiLogMachine"]}: {entry.MachineName}");
+            sb.AppendLine($"{Loc["UiLogUser"]}: {entry.UserName}");
             sb.AppendLine($"{Loc["UiLogFileSize"]}: {entry.FileSizeBytes} B");
             sb.AppendLine($"{Loc["UiLogTransferTime"]}: {entry.TransferTimeMs} ms");
             sb.AppendLine($"{Loc["UiLogEncryptionTime"]}: {entry.EncryptionTimeMs} ms");
@@ -954,6 +991,36 @@ namespace easySave_BMT.Avalonia.ViewModels
                 return parsed;
 
             return 0;
+        }
+
+        private static long TryGetJsonLongAny(JsonElement obj, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (!obj.TryGetProperty(name, out var prop))
+                    continue;
+
+                if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt64(out long val))
+                    return val;
+
+                if (prop.ValueKind == JsonValueKind.String && long.TryParse(prop.GetString(), out long parsed))
+                    return parsed;
+            }
+
+            return 0;
+        }
+
+        private static string FirstNonEmpty(params string[] values)
+        {
+            foreach (var value in values)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
+            }
+
+            return string.Empty;
         }
 
         private static long TryGetXmlLong(XElement node, string elementName)
