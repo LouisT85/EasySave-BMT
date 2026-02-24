@@ -10,6 +10,10 @@ namespace easySave_BMT.Model_
     /// </summary>
     public class Config
     {
+        public const string LogDestinationModeLocalOnly = "LocalOnly";
+        public const string LogDestinationModeCentralizedOnly = "CentralizedOnly";
+        public const string LogDestinationModeLocalAndCentralized = "LocalAndCentralized";
+
         /// <summary>The directory where backup log files are stored.</summary>
         public string LogDirectory { get; set; }
 
@@ -21,6 +25,16 @@ namespace easySave_BMT.Model_
 
         /// <summary>Preferred log file format: "XML" or "JSON". Defaults to XML to satisfy client requirement.</summary>
         public string LogFormat { get; set; } = "XML";
+
+        /// <summary>
+        /// Log routing mode: LocalOnly, CentralizedOnly, or LocalAndCentralized.
+        /// </summary>
+        public string LogDestinationMode { get; set; } = LogDestinationModeLocalOnly;
+
+        /// <summary>
+        /// Centralized logging HTTP endpoint (example: http://localhost:8080/logs).
+        /// </summary>
+        public string CentralizedLogEndpoint { get; set; } = string.Empty;
 
         /// <summary>Enable file encryption using CryptoSoft after copy.</summary>
         public bool EnableEncryption { get; set; } = false;
@@ -70,7 +84,9 @@ namespace easySave_BMT.Model_
                 try
                 {
                     string json = File.ReadAllText(ConfigPath);
-                    return JsonSerializer.Deserialize<Config>(json) ?? new Config();
+                    Config loaded = JsonSerializer.Deserialize<Config>(json) ?? new Config();
+                    loaded.Normalize();
+                    return loaded;
                 }
                 catch
                 {
@@ -81,6 +97,67 @@ namespace easySave_BMT.Model_
             return new Config();
         }
 
+        public void Normalize()
+        {
+            LogDestinationMode = NormalizeLogDestinationMode(LogDestinationMode);
+            CentralizedLogEndpoint = (CentralizedLogEndpoint ?? string.Empty).Trim();
+        }
+
+        public static string NormalizeLogDestinationMode(string? mode)
+        {
+            string normalized = (mode ?? string.Empty).Trim();
+
+            if (string.Equals(normalized, LogDestinationModeLocalOnly, StringComparison.OrdinalIgnoreCase))
+            {
+                return LogDestinationModeLocalOnly;
+            }
+
+            if (string.Equals(normalized, LogDestinationModeCentralizedOnly, StringComparison.OrdinalIgnoreCase))
+            {
+                return LogDestinationModeCentralizedOnly;
+            }
+
+            if (string.Equals(normalized, LogDestinationModeLocalAndCentralized, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, "Both", StringComparison.OrdinalIgnoreCase))
+            {
+                return LogDestinationModeLocalAndCentralized;
+            }
+
+            if (string.Equals(normalized, "Local", StringComparison.OrdinalIgnoreCase))
+            {
+                return LogDestinationModeLocalOnly;
+            }
+
+            if (string.Equals(normalized, "Centralized", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, "RemoteOnly", StringComparison.OrdinalIgnoreCase))
+            {
+                return LogDestinationModeCentralizedOnly;
+            }
+
+            return LogDestinationModeLocalOnly;
+        }
+
+        public static bool RequiresCentralizedEndpoint(string? mode)
+        {
+            string normalized = NormalizeLogDestinationMode(mode);
+            return string.Equals(normalized, LogDestinationModeCentralizedOnly, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(normalized, LogDestinationModeLocalAndCentralized, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public bool IsLocalLoggingEnabled()
+        {
+            string mode = NormalizeLogDestinationMode(LogDestinationMode);
+            return string.Equals(mode, LogDestinationModeLocalOnly, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(mode, LogDestinationModeLocalAndCentralized, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public bool IsCentralizedLoggingEnabled()
+        {
+            string mode = NormalizeLogDestinationMode(LogDestinationMode);
+            return string.Equals(mode, LogDestinationModeCentralizedOnly, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(mode, LogDestinationModeLocalAndCentralized, StringComparison.OrdinalIgnoreCase);
+        }
+
         /// <summary>
         /// Persists the current configuration settings to the config.json file.
         /// </summary>
@@ -88,6 +165,7 @@ namespace easySave_BMT.Model_
         {
             try
             {
+                Normalize();
                 var options = new JsonSerializerOptions { WriteIndented = true };
                 string json = JsonSerializer.Serialize(this, options);
                 File.WriteAllText(ConfigPath, json);
@@ -105,13 +183,15 @@ namespace easySave_BMT.Model_
         /// <param name="statePath">New path for the state file (ignored if empty).</param>
         /// <param name="lang">New language code (ignored if empty).</param>
         public void UpdateFromUserInput(
-            string logDir,
-            string statePath,
-            string lang,
+            string? logDir,
+            string? statePath,
+            string? lang,
             bool? enableEncryption = null,
             System.Collections.Generic.List<string>? encryptionExtensions = null,
             string? cryptoSoftPath = null,
-            string? businessSoftware = null)
+            string? businessSoftware = null,
+            string? logDestinationMode = null,
+            string? centralizedLogEndpoint = null)
         {
             if (!string.IsNullOrWhiteSpace(logDir))
                 LogDirectory = logDir;
@@ -133,6 +213,14 @@ namespace easySave_BMT.Model_
 
             if (businessSoftware is not null)
                 BusinessSoftware = businessSoftware;
+
+            if (logDestinationMode is not null)
+                LogDestinationMode = NormalizeLogDestinationMode(logDestinationMode);
+
+            if (centralizedLogEndpoint is not null)
+                CentralizedLogEndpoint = centralizedLogEndpoint.Trim();
+
+            Normalize();
 
             Save();
         }

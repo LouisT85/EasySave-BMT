@@ -1,4 +1,5 @@
 using easySave_BMT.View_;
+using easySave_BMT.Model_;
 
 namespace easySave_BMT.ViewModel_.Configuration
 {
@@ -55,6 +56,57 @@ namespace easySave_BMT.ViewModel_.Configuration
 
                     case 0:
                         inConfigMenu = false;
+                        break;
+
+                    case 5:
+                        string newMode = _viewModel.view.AskForLogDestinationMode();
+                        if (!string.IsNullOrWhiteSpace(newMode))
+                        {
+                            string endpointToApply = _viewModel.model.GetConfig().CentralizedLogEndpoint;
+
+                            if (Config.RequiresCentralizedEndpoint(newMode) &&
+                                string.IsNullOrWhiteSpace(endpointToApply))
+                            {
+                                string endpoint = _viewModel.view.AskForCentralizedLogEndpoint();
+                                if (string.IsNullOrWhiteSpace(endpoint))
+                                {
+                                    _viewModel.view.DisplayMessage(206);
+                                    break;
+                                }
+
+                                endpointToApply = endpoint;
+                            }
+
+                            _viewModel.model.UpdateConfig(
+                                null,
+                                null,
+                                null,
+                                logDestinationMode: newMode,
+                                centralizedLogEndpoint: endpointToApply);
+
+                            _viewModel.view.DisplayMessage(218);
+                        }
+                        break;
+
+                    case 6:
+                        string newEndpoint = _viewModel.view.AskForCentralizedLogEndpoint();
+                        if (newEndpoint is not null)
+                        {
+                            string currentMode = _viewModel.model.GetConfig().LogDestinationMode;
+                            if (Config.RequiresCentralizedEndpoint(currentMode) &&
+                                string.IsNullOrWhiteSpace(newEndpoint))
+                            {
+                                _viewModel.view.DisplayMessage(206);
+                                break;
+                            }
+
+                            _viewModel.model.UpdateConfig(
+                                null,
+                                null,
+                                null,
+                                centralizedLogEndpoint: newEndpoint);
+                            _viewModel.view.DisplayMessage(218);
+                        }
                         break;
 
                     default:

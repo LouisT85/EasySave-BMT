@@ -81,6 +81,35 @@ namespace easySave_BMT.Avalonia.ViewModels
         private string _configLanguageDraft = "fr";
         public string ConfigLanguageDraft { get => _configLanguageDraft; set => this.RaiseAndSetIfChanged(ref _configLanguageDraft, value); }
 
+        public ObservableCollection<string> LogDestinationModeOptions { get; } = new()
+        {
+            Model_.Config.LogDestinationModeLocalOnly,
+            Model_.Config.LogDestinationModeCentralizedOnly,
+            Model_.Config.LogDestinationModeLocalAndCentralized
+        };
+
+        private string _configLogDestinationModeDraft = Model_.Config.LogDestinationModeLocalOnly;
+        public string ConfigLogDestinationModeDraft
+        {
+            get => _configLogDestinationModeDraft;
+            set
+            {
+                string normalized = Model_.Config.NormalizeLogDestinationMode(value);
+                this.RaiseAndSetIfChanged(ref _configLogDestinationModeDraft, normalized);
+                this.RaisePropertyChanged(nameof(IsCentralizedLoggingModeSelected));
+            }
+        }
+
+        private string _configCentralizedLogEndpoint = string.Empty;
+        public string ConfigCentralizedLogEndpoint
+        {
+            get => _configCentralizedLogEndpoint;
+            set => this.RaiseAndSetIfChanged(ref _configCentralizedLogEndpoint, value);
+        }
+
+        public bool IsCentralizedLoggingModeSelected =>
+            Model_.Config.RequiresCentralizedEndpoint(ConfigLogDestinationModeDraft);
+
         private bool _configEnableEncryptionDraft;
         public bool ConfigEnableEncryptionDraft
         {
@@ -275,6 +304,8 @@ namespace easySave_BMT.Avalonia.ViewModels
             public string BackupName { get; init; } = "";
             public string SourcePath { get; init; } = "";
             public string TargetPath { get; init; } = "";
+            public string MachineName { get; init; } = "";
+            public string UserName { get; init; } = "";
             public long FileSizeBytes { get; init; }
             public long TransferTimeMs { get; init; }
             public long EncryptionTimeMs { get; init; }

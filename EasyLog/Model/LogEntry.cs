@@ -16,17 +16,27 @@ namespace EasyLog.Models
         /// <summary>
         /// The name of the backup job associated with this entry.
         /// </summary>
-        public string BackupName { get; set; }
+        public string BackupName { get; set; } = string.Empty;
 
         /// <summary>
         /// The full source path of the file that was copied.
         /// </summary>
-        public string SourcePath { get; set; }
+        public string SourcePath { get; set; } = string.Empty;
 
         /// <summary>
         /// The full destination path where the file was stored.
         /// </summary>
-        public string DestinationPath { get; set; }
+        public string DestinationPath { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The machine name where the backup operation happened.
+        /// </summary>
+        public string MachineName { get; set; } = Environment.MachineName;
+
+        /// <summary>
+        /// The user name that executed the backup operation.
+        /// </summary>
+        public string UserName { get; set; } = Environment.UserName;
 
         /// <summary>
         /// The size of the file in bytes.

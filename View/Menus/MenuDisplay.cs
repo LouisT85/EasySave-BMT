@@ -148,7 +148,9 @@ namespace easySave_BMT.View_
                 "1 - " + ResourceManager.GetString("DisplayConfig"),
                 "2 - " + ResourceManager.GetString("ModifyLogDir"),
                 "3 - " + ResourceManager.GetString("ModifyStateFile"),
-                "4 - " + ResourceManager.GetString("ChangeLanguage")
+                "4 - " + ResourceManager.GetString("ChangeLanguage"),
+                "5 - " + ResourceManager.GetString("ModifyLogMode"),
+                "6 - " + ResourceManager.GetString("ModifyCentralizedEndpoint")
             };
 
             return ShowInteractiveMenu(ResourceManager.GetString("Configuration"), configItems);

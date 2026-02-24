@@ -146,6 +146,37 @@ namespace easySave_BMT.View_
             return false;
         }
 
+        public bool ValidateCentralizedLogEndpoint(string endpoint)
+        {
+            endpoint = (endpoint ?? string.Empty).Trim();
+            if (endpoint.Length == 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ResourceManager.GetString("CentralizedEndpointRequired"));
+                Console.ResetColor();
+                return false;
+            }
+
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri? uri))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ResourceManager.GetString("InvalidCentralizedEndpoint"));
+                Console.ResetColor();
+                return false;
+            }
+
+            if (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ResourceManager.GetString("InvalidCentralizedEndpoint"));
+                Console.ResetColor();
+                return false;
+            }
+
+            return true;
+        }
+
         public bool ValidateDestinationPath(string src, string dst)
         {
             if (dst == "0")

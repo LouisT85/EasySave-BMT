@@ -111,6 +111,36 @@ L’architecture suit un schéma proche MVVM, adapté à une application console
 - **Fichiers de log** dans le dossier de logs configuré: une entrée par fichier copié, avec horodatage et temps de transfert.
 - **Fichier d’état JSON** (chemin configurable): permet de suivre en temps réel l’avancement des sauvegardes.
 
+### Centralisation des logs (service Docker)
+
+EasySave supporte trois modes de destination des logs (dans `config.json`) :
+
+- `LocalOnly`
+- `CentralizedOnly`
+- `LocalAndCentralized`
+
+Nouvelles clés de configuration :
+
+```json
+{
+  "LogDestinationMode": "LocalAndCentralized",
+  "CentralizedLogEndpoint": "http://localhost:8080/logs"
+}
+```
+
+Chaque entrée de log inclut maintenant :
+
+- `MachineName`
+- `UserName`
+
+Un service maquette est fourni dans `CentralLogService/` pour la centralisation :
+
+- `CentralLogService/Program.cs` : API HTTP (`POST /logs`)
+- `CentralLogService/Dockerfile` : image conteneurisée
+- `CentralLogService/README.md` : commandes de lancement
+
+Le service central écrit un unique fichier journalier (`yyyy-MM-dd.json`) qui agrège les logs de toutes les machines/utilisateurs.
+
 ### Conventions de commit de l’équipe
 
 Pour garder un historique de commits lisible, le projet utilise des **conventional commits**.
