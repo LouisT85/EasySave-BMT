@@ -6,6 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using easySave_BMT.Model_;
 using easySave_BMT.Resources_;
 
@@ -34,6 +35,18 @@ namespace easySave_BMT.ViewModel_.Backup
                 TotalFiles = totalFiles;
                 PriorityFiles = priorityFiles;
                 NonPriorityFiles = nonPriorityFiles;
+            }
+        }
+
+        public readonly struct BackupBatchItemResult
+        {
+            public Save Save { get; }
+            public int ResultCode { get; }
+
+            public BackupBatchItemResult(Save save, int resultCode)
+            {
+                Save = save;
+                ResultCode = resultCode;
             }
         }
 
@@ -157,65 +170,114 @@ namespace easySave_BMT.ViewModel_.Backup
             return new FilePriorityCounts(candidates.Length, priority, nonPriority);
         }
 
+        public IReadOnlyList<BackupBatchItemResult> LaunchBackupsInParallel(IReadOnlyList<Save> saves)
+        {
+            var orderedSaves = (saves ?? Array.Empty<Save>())
+                .Where(s => s is not null)
+                .Distinct()
+                .ToList();
+
+            if (orderedSaves.Count == 0)
+                return Array.Empty<BackupBatchItemResult>();
+
+            if (!HasPriorityExtensionsConfigured() || orderedSaves.Count == 1)
+            {
+                return ExecutePhaseInParallel(orderedSaves, save => LaunchBackupType(save));
+            }
+
+            var workloadBySave = orderedSaves.ToDictionary(s => s, s => GetFilePriorityCounts(s));
+            var resultBySave = new Dictionary<Save, int>();
+
+            var priorityPhaseSaves = orderedSaves
+                .Where(s => workloadBySave[s].PriorityFiles > 0)
+                .ToList();
+
+            var priorityPhaseResults = ExecutePhaseInParallel(
+                priorityPhaseSaves,
+                save => LaunchBackupType(save, FileSelectionMode.PriorityOnly));
+
+            foreach (var result in priorityPhaseResults)
+            {
+                resultBySave[result.Save] = result.ResultCode;
+            }
+
+            if (priorityPhaseResults.Any(r => !IsValidBackupResult(r.ResultCode)))
+            {
+                return orderedSaves
+                    .Where(resultBySave.ContainsKey)
+                    .Select(s => new BackupBatchItemResult(s, resultBySave[s]))
+                    .ToList();
+            }
+
+            var nonPriorityPhaseResults = ExecutePhaseInParallel(
+                orderedSaves,
+                save => LaunchBackupType(
+                    save,
+                    FileSelectionMode.NonPriorityOnly,
+                    allowResumeFromCompletedState: workloadBySave[save].PriorityFiles > 0));
+
+            foreach (var result in nonPriorityPhaseResults)
+            {
+                resultBySave[result.Save] = result.ResultCode;
+            }
+
+            return orderedSaves
+                .Where(resultBySave.ContainsKey)
+                .Select(s => new BackupBatchItemResult(s, resultBySave[s]))
+                .ToList();
+        }
+
+        private static IReadOnlyList<BackupBatchItemResult> ExecutePhaseInParallel(
+            IReadOnlyList<Save> saves,
+            Func<Save, int> phaseExecutor)
+        {
+            if (saves.Count == 0)
+                return Array.Empty<BackupBatchItemResult>();
+
+            Task<BackupBatchItemResult>[] tasks = saves
+                .Select(save => Task.Run(() =>
+                {
+                    try
+                    {
+                        return new BackupBatchItemResult(save, phaseExecutor(save));
+                    }
+                    catch
+                    {
+                        return new BackupBatchItemResult(save, 216);
+                    }
+                }))
+                .ToArray();
+
+            Task.WaitAll(tasks);
+
+            var resultBySave = tasks
+                .Select(t => t.Result)
+                .ToDictionary(r => r.Save, r => r.ResultCode);
+
+            return saves
+                .Where(resultBySave.ContainsKey)
+                .Select(save => new BackupBatchItemResult(save, resultBySave[save]))
+                .ToList();
+        }
+
+        private static bool IsValidBackupResult(int resultCode)
+        {
+            return resultCode == 104 || resultCode == 105 || resultCode == 216;
+        }
+
         private void BackupAllSaves()
         {
             var saves = _viewModel.model.saves.ToList();
             if (saves.Count == 0) return;
 
-            if (!HasPriorityExtensionsConfigured())
+            var results = LaunchBackupsInParallel(saves);
+            foreach (var result in results)
             {
-                foreach (Save save in saves)
+                _viewModel.view.DisplayMessage(result.ResultCode);
+
+                if (IsValidBackupResult(result.ResultCode))
                 {
-                    int result = LaunchBackupType(save);
-                    _viewModel.view.DisplayMessage(result);
-
-                    if (result == 104 || result == 105 || result == 216)
-                    {
-                        _viewModel.model.FinishBackup(save);
-                    }
-
-                    if (_viewModel.model.PeekStopReason() == BackupStopReason.BusinessSoftwareDetected)
-                    {
-                        break;
-                    }
-
-                    _viewModel.view.DisplayMessage(4);
-                }
-
-                return;
-            }
-
-            var workloadBySave = saves.ToDictionary(
-                s => s,
-                s => GetFilePriorityCounts(s));
-
-            foreach (Save save in saves.Where(s => workloadBySave[s].PriorityFiles > 0))
-            {
-                int result = LaunchBackupType(save, FileSelectionMode.PriorityOnly);
-                if (result != 104 && result != 105 && result != 216)
-                {
-                    _viewModel.view.DisplayMessage(result);
-                    return;
-                }
-
-                if (_viewModel.model.PeekStopReason() == BackupStopReason.BusinessSoftwareDetected)
-                {
-                    return;
-                }
-            }
-
-            foreach (Save save in saves)
-            {
-                int result = LaunchBackupType(
-                    save,
-                    FileSelectionMode.NonPriorityOnly,
-                    allowResumeFromCompletedState: workloadBySave[save].PriorityFiles > 0);
-
-                _viewModel.view.DisplayMessage(result);
-
-                if (result == 104 || result == 105 || result == 216)
-                {
-                    _viewModel.model.FinishBackup(save);
+                    _viewModel.model.FinishBackup(result.Save);
                 }
 
                 if (_viewModel.model.PeekStopReason() == BackupStopReason.BusinessSoftwareDetected)
