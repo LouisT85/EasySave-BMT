@@ -62,6 +62,11 @@ app.MapPost("/logs", (InboundLogEntry entry) =>
         entries.Add(normalized);
         string serialized = JsonSerializer.Serialize(entries, jsonOptions);
         File.WriteAllText(outputFilePath, serialized);
+
+        app.Logger.LogInformation(
+            "Centralized log entry written to {FilePath}. Total entries in file: {Count}.",
+            outputFilePath,
+            entries.Count);
     }
 
     return Results.Accepted($"/logs/{timestamp:yyyy-MM-dd}", new { file = $"{timestamp:yyyy-MM-dd}.json" });

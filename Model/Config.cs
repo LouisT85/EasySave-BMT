@@ -139,7 +139,42 @@ namespace easySave_BMT.Model_
         public void Normalize()
         {
             LogDestinationMode = NormalizeLogDestinationMode(LogDestinationMode);
-            CentralizedLogEndpoint = (CentralizedLogEndpoint ?? string.Empty).Trim();
+            CentralizedLogEndpoint = NormalizeCentralizedLogEndpoint(CentralizedLogEndpoint);
+        }
+
+        public static string NormalizeCentralizedLogEndpoint(string? endpoint)
+        {
+            string normalized = (endpoint ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return string.Empty;
+            }
+
+            if (!Uri.TryCreate(normalized, UriKind.Absolute, out Uri? uri))
+            {
+                return normalized;
+            }
+
+            if (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            {
+                return normalized;
+            }
+
+            var builder = new UriBuilder(uri);
+            string path = builder.Path ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(path) || path == "/")
+            {
+                // If only host:port is provided, target the default centralized logs endpoint.
+                builder.Path = "/logs";
+            }
+            else if (path.Length > 1 && path.EndsWith("/", StringComparison.Ordinal))
+            {
+                builder.Path = path.TrimEnd('/');
+            }
+
+            return builder.Uri.AbsoluteUri;
         }
 
         public static string NormalizeLogDestinationMode(string? mode)
@@ -285,7 +320,7 @@ namespace easySave_BMT.Model_
                 LogDestinationMode = NormalizeLogDestinationMode(logDestinationMode);
 
             if (centralizedLogEndpoint is not null)
-                CentralizedLogEndpoint = centralizedLogEndpoint.Trim();
+                CentralizedLogEndpoint = NormalizeCentralizedLogEndpoint(centralizedLogEndpoint);
 
             Normalize();
 

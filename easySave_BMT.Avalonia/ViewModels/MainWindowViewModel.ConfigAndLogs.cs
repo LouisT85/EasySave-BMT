@@ -545,6 +545,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                         throw new InvalidOperationException(Loc["UiCentralizedEndpointInvalid"]);
                     }
                 }
+
+                endpoint = Config.NormalizeCentralizedLogEndpoint(endpoint);
                 ConfigCentralizedLogEndpoint = endpoint;
 
                 _coreViewModel.model.UpdateConfig(
