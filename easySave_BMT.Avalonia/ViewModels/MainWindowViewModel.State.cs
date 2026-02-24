@@ -373,7 +373,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         }
 
         public string PauseButtonText => IsBackupPaused ? Loc["UiResume"] : Loc["UiPause"];
-        public string PauseButtonSymbol => IsBackupPaused ? "▶" : "⏸";
+        public string PauseButtonSymbol => IsBackupPaused ? "▶" : "❚❚";
         public string StopButtonSymbol => "⏹";
 
         private string _dashboardMessage = string.Empty;
