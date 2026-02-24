@@ -134,13 +134,33 @@ namespace easySave_BMT.Avalonia.ViewModels
         }
 
         public ObservableCollection<string> ConfigBusinessSoftwareEntriesDraft { get; } = new();
+        public ObservableCollection<string> BusinessSoftwareSuggestions { get; } = new();
         public ObservableCollection<string> EncryptionKeyCreationTraceDraft { get; } = new();
+        public ObservableCollection<string> EncryptionExtensionSuggestions { get; } = new();
+
+        private bool _hasBusinessSoftwareSuggestions;
+        public bool HasBusinessSoftwareSuggestions
+        {
+            get => _hasBusinessSoftwareSuggestions;
+            set => this.RaiseAndSetIfChanged(ref _hasBusinessSoftwareSuggestions, value);
+        }
+
+        private bool _hasEncryptionExtensionSuggestions;
+        public bool HasEncryptionExtensionSuggestions
+        {
+            get => _hasEncryptionExtensionSuggestions;
+            set => this.RaiseAndSetIfChanged(ref _hasEncryptionExtensionSuggestions, value);
+        }
 
         private string _newBusinessSoftwareEntry = "";
         public string NewBusinessSoftwareEntry
         {
             get => _newBusinessSoftwareEntry;
-            set => this.RaiseAndSetIfChanged(ref _newBusinessSoftwareEntry, value);
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _newBusinessSoftwareEntry, value);
+                UpdateBusinessSoftwareSuggestions();
+            }
         }
 
         private string? _selectedBusinessSoftwareEntry;
@@ -153,7 +173,15 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ObservableCollection<string> ConfigEncryptionExtensionsDraft { get; } = new();
 
         private string _newEncryptionExtension = "";
-        public string NewEncryptionExtension { get => _newEncryptionExtension; set => this.RaiseAndSetIfChanged(ref _newEncryptionExtension, value); }
+        public string NewEncryptionExtension
+        {
+            get => _newEncryptionExtension;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _newEncryptionExtension, value);
+                UpdateEncryptionExtensionSuggestions();
+            }
+        }
 
         private string? _selectedEncryptionExtension;
         public string? SelectedEncryptionExtension

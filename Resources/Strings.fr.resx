@@ -559,4 +559,13 @@
   <data name="UiLogEntriesFilteredCount" xml:space="preserve">
     <value>{0} / {1} entrée(s) affichée(s)</value>
   </data>
+  <data name="UiSuggestions" xml:space="preserve">
+    <value>Suggestions (cliquer pour ajouter)</value>
+  </data>
+  <data name="UiSelectedBusinessSoftware" xml:space="preserve">
+    <value>Logiciels métier sélectionnés</value>
+  </data>
+  <data name="UiSelectedExtensions" xml:space="preserve">
+    <value>Extensions sélectionnées</value>
+  </data>
 </root>

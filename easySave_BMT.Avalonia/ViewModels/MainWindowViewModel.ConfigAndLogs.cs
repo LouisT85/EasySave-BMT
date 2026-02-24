@@ -4,6 +4,7 @@ using Avalonia.Styling;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -23,9 +24,50 @@ namespace easySave_BMT.Avalonia.ViewModels
         private const string SortNewest = "newest";
         private const string SortOldest = "oldest";
         private const string SortName = "name";
+        private static readonly TimeSpan BusinessSuggestionCacheDuration = TimeSpan.FromSeconds(5);
+
+        private static readonly string[] BuiltInBusinessSoftwareSuggestions =
+        {
+            "word",
+            "winword",
+            "excel",
+            "powerpnt",
+            "outlook",
+            "notepad",
+            "calc",
+            "calculatorapp",
+            "chrome",
+            "firefox",
+            "explorer",
+            "teams",
+            "devenv",
+            "code",
+            "cmd",
+            "powershell"
+        };
+
+        private static readonly string[] BuiltInExtensionSuggestions =
+        {
+            ".txt",
+            ".docx",
+            ".doc",
+            ".xlsx",
+            ".xls",
+            ".pptx",
+            ".ppt",
+            ".pdf",
+            ".json",
+            ".xml",
+            ".csv",
+            ".zip",
+            ".bak",
+            ".log"
+        };
 
         private readonly List<string> _allLogFiles = new();
         private readonly List<LogEntryViewItem> _allParsedLogEntries = new();
+        private readonly List<string> _cachedBusinessSuggestionPool = new();
+        private DateTime _businessSuggestionCacheTimestampUtc = DateTime.MinValue;
 
         private System.Collections.Generic.List<string> BuildNormalizedEncryptionExtensionsDraft()
         {
@@ -35,6 +77,133 @@ namespace easySave_BMT.Avalonia.ViewModels
                 .Select(e => e.StartsWith(".") ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+        }
+
+        private void UpdateBusinessSoftwareSuggestions()
+        {
+            string query = NormalizeBusinessSoftwareEntry(NewBusinessSoftwareEntry);
+
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                BusinessSoftwareSuggestions.Clear();
+                HasBusinessSoftwareSuggestions = false;
+                return;
+            }
+
+            var selected = new HashSet<string>(
+                ConfigBusinessSoftwareEntriesDraft.Select(NormalizeBusinessSoftwareEntry)
+                    .Where(s => !string.IsNullOrWhiteSpace(s)),
+                StringComparer.OrdinalIgnoreCase);
+
+            var suggestions = GetBusinessSoftwareSuggestionPool()
+                .Where(name => name.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                .Where(name => !selected.Contains(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .Take(18)
+                .ToList();
+
+            BusinessSoftwareSuggestions.Clear();
+            foreach (string suggestion in suggestions)
+                BusinessSoftwareSuggestions.Add(suggestion);
+
+            HasBusinessSoftwareSuggestions = BusinessSoftwareSuggestions.Count > 0;
+        }
+
+        private IEnumerable<string> GetBusinessSoftwareSuggestionPool()
+        {
+            if (_cachedBusinessSuggestionPool.Count > 0 &&
+                DateTime.UtcNow - _businessSuggestionCacheTimestampUtc < BusinessSuggestionCacheDuration)
+            {
+                return _cachedBusinessSuggestionPool;
+            }
+
+            var pool = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string builtIn in BuiltInBusinessSoftwareSuggestions)
+                pool.Add(builtIn);
+
+            foreach (string configured in ConfigBusinessSoftwareEntriesDraft)
+            {
+                string normalized = NormalizeBusinessSoftwareEntry(configured);
+                if (!string.IsNullOrWhiteSpace(normalized))
+                    pool.Add(normalized);
+            }
+
+            try
+            {
+                foreach (var process in Process.GetProcesses())
+                {
+                    try
+                    {
+                        string processName = (process.ProcessName ?? "").Trim();
+                        if (!string.IsNullOrWhiteSpace(processName))
+                            pool.Add(processName);
+                    }
+                    catch { }
+                    finally
+                    {
+                        try { process.Dispose(); } catch { }
+                    }
+                }
+            }
+            catch { }
+
+            _cachedBusinessSuggestionPool.Clear();
+            _cachedBusinessSuggestionPool.AddRange(pool.OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
+            _businessSuggestionCacheTimestampUtc = DateTime.UtcNow;
+
+            return _cachedBusinessSuggestionPool;
+        }
+
+        private void UpdateEncryptionExtensionSuggestions()
+        {
+            string query = NormalizeExtensionSuggestionQuery(NewEncryptionExtension);
+
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                EncryptionExtensionSuggestions.Clear();
+                HasEncryptionExtensionSuggestions = false;
+                return;
+            }
+
+            var selected = new HashSet<string>(
+                ConfigEncryptionExtensionsDraft.Select(NormalizeExtensionSuggestionQuery)
+                    .Where(s => !string.IsNullOrWhiteSpace(s)),
+                StringComparer.OrdinalIgnoreCase);
+
+            var pool = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string builtIn in BuiltInExtensionSuggestions)
+                pool.Add(builtIn);
+
+            foreach (string configured in ConfigEncryptionExtensionsDraft)
+            {
+                string normalized = NormalizeExtensionSuggestionQuery(configured);
+                if (!string.IsNullOrWhiteSpace(normalized))
+                    pool.Add(normalized);
+            }
+
+            var suggestions = pool
+                .Where(ext => ext.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                .Where(ext => !selected.Contains(ext))
+                .OrderBy(ext => ext, StringComparer.OrdinalIgnoreCase)
+                .Take(18)
+                .ToList();
+
+            EncryptionExtensionSuggestions.Clear();
+            foreach (string suggestion in suggestions)
+                EncryptionExtensionSuggestions.Add(suggestion);
+
+            HasEncryptionExtensionSuggestions = EncryptionExtensionSuggestions.Count > 0;
+        }
+
+        private static string NormalizeExtensionSuggestionQuery(string? raw)
+        {
+            string value = (raw ?? "").Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(value)) return "";
+            if (!value.StartsWith(".")) value = "." + value;
+            return value;
         }
 
         private void ApplyEncryptionDraftToModelForLaunch()
@@ -74,6 +243,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ConfigCryptoSoftKeyDraft = (cfg.CryptoSoftKey ?? "").Trim();
                 ConfigBusinessSoftwareDraft = (cfg.BusinessSoftware ?? "").Trim();
                 NewBusinessSoftwareEntry = "";
+                NewEncryptionExtension = "";
                 SelectedBusinessSoftwareEntry = null;
                 ConfigBusinessSoftwareEntriesDraft.Clear();
                 EncryptionKeyCreationTraceDraft.Clear();
@@ -117,6 +287,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                 RefreshThemeOptions();
                 RefreshLogSortOptions();
                 ApplyThemePreference(ConfigThemeDraft);
+                UpdateBusinessSoftwareSuggestions();
+                UpdateEncryptionExtensionSuggestions();
                 RefreshLogFilesSummary();
                 RefreshLogEntriesSummary();
                 this.RaisePropertyChanged(nameof(PauseButtonText));
