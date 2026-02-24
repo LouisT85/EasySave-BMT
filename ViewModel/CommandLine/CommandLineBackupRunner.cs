@@ -30,6 +30,7 @@ namespace easySave_BMT.ViewModel_.CommandLine
             int errorCount = 0;
             List<string> executedBackups = new List<string>();
             List<string> failedBackups = new List<string>();
+            List<(int Index, Save Save)> validRuns = new List<(int Index, Save Save)>();
 
             foreach (int index in backupIndices)
             {
@@ -38,36 +39,7 @@ namespace easySave_BMT.ViewModel_.CommandLine
                 if (arrayIndex >= 0 && arrayIndex < _viewModel.model.saves.Count)
                 {
                     Save save = _viewModel.model.saves[arrayIndex];
-                    Console.WriteLine($"Executing backup {index}: {save.name}");
-
-                    int result = _viewModel.backupLauncher.LaunchBackupType(save);
-
-                    if (result == 104 || result == 105)
-                    {
-                        _viewModel.model.FinishBackup(save);
-                        successCount++;
-                        executedBackups.Add($"{index} - {save.name}");
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine($"✓ Backup {index} completed successfully\n");
-                        Console.ResetColor();
-                    }
-                    else if (result == 216)
-                    {
-                        _viewModel.model.FinishBackup(save);
-                        errorCount++;
-                        failedBackups.Add($"{index} - {save.name} (partial)");
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"⚠ Backup {index} completed with errors\n");
-                        Console.ResetColor();
-                    }
-                    else
-                    {
-                        errorCount++;
-                        failedBackups.Add($"{index} - {save.name}");
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"✗ Backup {index} failed (Error {result})\n");
-                        Console.ResetColor();
-                    }
+                    validRuns.Add((index, save));
                 }
                 else
                 {
@@ -76,6 +48,50 @@ namespace easySave_BMT.ViewModel_.CommandLine
                     Console.ResetColor();
                     errorCount++;
                     failedBackups.Add($"{index} - Not found");
+                }
+            }
+
+            if (validRuns.Count > 0)
+            {
+                Console.WriteLine("Parallel execution started...");
+                foreach (var run in validRuns.OrderBy(r => r.Index))
+                {
+                    Console.WriteLine($"Queued backup {run.Index}: {run.Save.name}");
+                }
+
+                var results = _viewModel.backupLauncher.LaunchBackupsInParallel(validRuns.Select(v => v.Save).ToList());
+                var resultBySaveName = results.ToDictionary(r => r.Save.name, r => r.Result, StringComparer.OrdinalIgnoreCase);
+
+                foreach (var run in validRuns.OrderBy(r => r.Index))
+                {
+                    int result = resultBySaveName.TryGetValue(run.Save.name, out int value) ? value : 216;
+
+                    if (result == 104 || result == 105)
+                    {
+                        _viewModel.model.FinishBackup(run.Save);
+                        successCount++;
+                        executedBackups.Add($"{run.Index} - {run.Save.name}");
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"✓ Backup {run.Index} completed successfully\n");
+                        Console.ResetColor();
+                    }
+                    else if (result == 216)
+                    {
+                        _viewModel.model.FinishBackup(run.Save);
+                        errorCount++;
+                        failedBackups.Add($"{run.Index} - {run.Save.name} (partial)");
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"⚠ Backup {run.Index} completed with errors\n");
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        errorCount++;
+                        failedBackups.Add($"{run.Index} - {run.Save.name}");
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"✗ Backup {run.Index} failed (Error {result})\n");
+                        Console.ResetColor();
+                    }
                 }
             }
 

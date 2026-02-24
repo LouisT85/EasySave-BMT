@@ -43,6 +43,11 @@ namespace easySave_BMT.Model_
         public string CryptoSoftKey { get; set; } = "";
 
         /// <summary>
+        /// Saved encryption keys that can be selected in the UI.
+        /// </summary>
+        public System.Collections.Generic.List<string> CryptoSoftSavedKeys { get; set; } = new System.Collections.Generic.List<string>();
+
+        /// <summary>
         /// GUI trace entries for encryption key generation events.
         /// </summary>
         public System.Collections.Generic.List<string> EncryptionKeyCreationTrace { get; set; } = new System.Collections.Generic.List<string>();
@@ -92,6 +97,7 @@ namespace easySave_BMT.Model_
                     loaded.EncryptionKeyCreationTrace ??= new System.Collections.Generic.List<string>();
                     loaded.CryptoSoftPath ??= "";
                     loaded.CryptoSoftKey ??= "";
+                    loaded.CryptoSoftSavedKeys ??= new System.Collections.Generic.List<string>();
                     loaded.BusinessSoftware ??= "";
                     if (string.IsNullOrWhiteSpace(loaded.LogDirectory)) loaded.LogDirectory = defaults.LogDirectory;
                     if (string.IsNullOrWhiteSpace(loaded.StateFilePath)) loaded.StateFilePath = defaults.StateFilePath;
@@ -136,9 +142,10 @@ namespace easySave_BMT.Model_
             string statePath,
             string lang,
             bool? enableEncryption = null,
-            System.Collections.Generic.List<string>? encryptionExtensions = null,
+            List<string>? encryptionExtensions = null,
             string? cryptoSoftPath = null,
             string? cryptoSoftKey = null,
+            List<string>? cryptoSoftSavedKeys = null,
             System.Collections.Generic.List<string>? encryptionKeyCreationTrace = null,
             string? businessSoftware = null,
             string? themePreference = null)
@@ -163,6 +170,9 @@ namespace easySave_BMT.Model_
 
             if (cryptoSoftKey is not null)
                 CryptoSoftKey = cryptoSoftKey;
+
+            if (cryptoSoftSavedKeys is not null)
+                CryptoSoftSavedKeys = cryptoSoftSavedKeys;
 
             if (encryptionKeyCreationTrace is not null)
                 EncryptionKeyCreationTrace = encryptionKeyCreationTrace;

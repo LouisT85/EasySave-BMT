@@ -6,6 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using easySave_BMT.Model_;
 using easySave_BMT.Resources_;
 
@@ -20,11 +21,15 @@ namespace easySave_BMT.ViewModel_.Backup
         private const string EasySaveCryptoMagicV2 = "EASYSAVECRYPT2";
 
         private readonly ViewModel _viewModel;
+        private int _parallelConsoleExecutionDepth;
 
         public BackupLauncher(ViewModel viewModel)
         {
             _viewModel = viewModel;
         }
+
+        private bool IsParallelConsoleExecution =>
+            _viewModel.guiView is null && Volatile.Read(ref _parallelConsoleExecutionDepth) > 0;
 
         public void LaunchBackupsave()
         {
@@ -93,25 +98,70 @@ namespace easySave_BMT.ViewModel_.Backup
             return ExecuteBackupStrategy(_save, dir);
         }
 
+        public IReadOnlyList<(Save Save, int Result)> LaunchBackupsInParallel(IEnumerable<Save> savesToRun)
+        {
+            var selected = (savesToRun ?? Array.Empty<Save>())
+                .Where(s => s is not null)
+                .Distinct()
+                .ToList();
+
+            if (selected.Count == 0)
+            {
+                return Array.Empty<(Save Save, int Result)>();
+            }
+
+            bool suppressVerboseConsole = _viewModel.guiView is null && selected.Count > 1;
+            if (suppressVerboseConsole)
+            {
+                Interlocked.Increment(ref _parallelConsoleExecutionDepth);
+            }
+
+            try
+            {
+                var tasks = selected
+                    .Select(save => Task.Run(() =>
+                    {
+                        int result;
+                        try
+                        {
+                            result = LaunchBackupType(save);
+                        }
+                        catch
+                        {
+                            result = 216;
+                        }
+
+                        return (Save: save, Result: result);
+                    }))
+                    .ToArray();
+
+                Task.WaitAll(tasks);
+                return tasks.Select(t => t.Result).ToList();
+            }
+            finally
+            {
+                if (suppressVerboseConsole)
+                {
+                    Interlocked.Decrement(ref _parallelConsoleExecutionDepth);
+                }
+            }
+        }
+
         private void BackupAllSaves()
         {
-            foreach (Save save in _viewModel.model.saves)
+            var runs = LaunchBackupsInParallel(_viewModel.model.saves.ToList());
+
+            foreach (var run in runs)
             {
-                int result = LaunchBackupType(save);
-                _viewModel.view.DisplayMessage(result);
+                _viewModel.view.DisplayMessage(run.Result);
 
-                if (result == 104 || result == 105 || result == 216)
+                if (run.Result == 104 || run.Result == 105 || run.Result == 216)
                 {
-                    _viewModel.model.FinishBackup(save);
+                    _viewModel.model.FinishBackup(run.Save);
                 }
-
-                if (_viewModel.model.PeekStopReason() == BackupStopReason.BusinessSoftwareDetected)
-                {
-                    break;
-                }
-
-                _viewModel.view.DisplayMessage(4);
             }
+
+            _viewModel.view.DisplayMessage(4);
         }
 
         private void BackupSingleSave(int userChoice)
@@ -376,7 +426,7 @@ namespace easySave_BMT.ViewModel_.Backup
                 return 210;
             }
 
-            if (_viewModel.guiView is null)
+            if (_viewModel.guiView is null && !IsParallelConsoleExecution)
             {
                 try { Console.Clear(); } catch { }
             }
@@ -392,21 +442,21 @@ namespace easySave_BMT.ViewModel_.Backup
 
             bool stopped = _viewModel.model.IsStopRequested();
 
-            if (_viewModel.guiView is null)
+            if (_viewModel.guiView is null && !IsParallelConsoleExecution)
             {
                 _viewModel.view.DisplayMessage(3);
             }
 
             foreach (string failedFile in failedFiles)
             {
-                if (_viewModel.guiView is null)
+                if (_viewModel.guiView is null && !IsParallelConsoleExecution)
                 {
                     _viewModel.view.DisplayFiledError(failedFile);
                 }
                 _viewModel.guiView?.OnFileError(failedFile);
             }
 
-            if (_viewModel.guiView is null)
+            if (_viewModel.guiView is null && !IsParallelConsoleExecution)
             {
                 _viewModel.view.DisplayBackupRecap(_save.name, transferTime);
             }
@@ -622,7 +672,7 @@ namespace easySave_BMT.ViewModel_.Backup
                     eta = FormatEta(remainingMs);
                 }
 
-                if (_viewModel.guiView is null)
+                if (_viewModel.guiView is null && !IsParallelConsoleExecution)
                 {
                     _viewModel.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
                 }

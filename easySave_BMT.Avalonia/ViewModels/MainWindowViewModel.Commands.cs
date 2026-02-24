@@ -26,6 +26,8 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> LoadConfigCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> ConfigCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> GenerateEncryptionKeyCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> AddCurrentEncryptionKeyCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> RemoveSavedEncryptionKeyCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> AddEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> RemoveEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> AddBusinessSoftwareEntryCommand { get; private set; } = null!;
@@ -123,6 +125,8 @@ namespace easySave_BMT.Avalonia.ViewModels
             LoadConfigCommand = ReactiveCommand.Create(LoadConfigValuesFromModel);
             ConfigCommand = ReactiveCommand.Create(SaveConfigFromViewModel);
             GenerateEncryptionKeyCommand = ReactiveCommand.Create(GenerateEncryptionKey);
+            AddCurrentEncryptionKeyCommand = ReactiveCommand.Create(AddCurrentEncryptionKey);
+            RemoveSavedEncryptionKeyCommand = ReactiveCommand.Create(RemoveSavedEncryptionKey);
 
             AddEncryptionExtensionCommand = ReactiveCommand.Create(AddEncryptionExtension);
             RemoveEncryptionExtensionCommand = ReactiveCommand.Create(RemoveEncryptionExtension);
@@ -169,6 +173,9 @@ namespace easySave_BMT.Avalonia.ViewModels
             string generatedKey = "0x" + Convert.ToHexString(keyBytes);
 
             ConfigCryptoSoftKeyDraft = generatedKey;
+            UpsertSavedCryptoSoftKeyDraft(generatedKey);
+            SelectedCryptoSoftSavedKey = CryptoSoftSavedKeysDraft
+                .FirstOrDefault(k => string.Equals(k.Value, generatedKey, StringComparison.OrdinalIgnoreCase));
 
             string fingerprint = generatedKey.Length >= 8 ? generatedKey[^8..] : generatedKey;
             string traceEntry = string.Format(
@@ -183,6 +190,36 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
 
             SetTimedAreaMessage(MessageArea.Config, Loc["UiEncryptionKeyGenerated"]);
+        }
+
+        private void AddCurrentEncryptionKey()
+        {
+            if (!TryValidateCryptoSoftKey(ConfigCryptoSoftKeyDraft, out string normalizedKey, out _))
+            {
+                SetTimedAreaMessage(MessageArea.Config, Loc["UiEncryptionKeyInvalid"]);
+                return;
+            }
+
+            ConfigCryptoSoftKeyDraft = normalizedKey;
+            UpsertSavedCryptoSoftKeyDraft(normalizedKey);
+            SelectedCryptoSoftSavedKey = CryptoSoftSavedKeysDraft
+                .FirstOrDefault(k => string.Equals(k.Value, normalizedKey, StringComparison.OrdinalIgnoreCase));
+
+            SetTimedAreaMessage(MessageArea.Config, Loc["UiEncryptionKeySaved"]);
+        }
+
+        private void RemoveSavedEncryptionKey()
+        {
+            if (SelectedCryptoSoftSavedKey is null) return;
+
+            string removed = SelectedCryptoSoftSavedKey.Value;
+            CryptoSoftSavedKeysDraft.Remove(SelectedCryptoSoftSavedKey);
+            SelectedCryptoSoftSavedKey = CryptoSoftSavedKeysDraft.FirstOrDefault();
+
+            if (string.Equals(ConfigCryptoSoftKeyDraft, removed, StringComparison.OrdinalIgnoreCase))
+            {
+                ConfigCryptoSoftKeyDraft = SelectedCryptoSoftSavedKey?.Value ?? "";
+            }
         }
 
         private void AddEncryptionExtension()

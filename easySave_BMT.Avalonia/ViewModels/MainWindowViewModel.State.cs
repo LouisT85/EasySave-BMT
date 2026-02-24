@@ -126,6 +126,22 @@ namespace easySave_BMT.Avalonia.ViewModels
             set => this.RaiseAndSetIfChanged(ref _configCryptoSoftKeyDraft, value);
         }
 
+        public ObservableCollection<EncryptionKeyOptionItem> CryptoSoftSavedKeysDraft { get; } = new();
+
+        private EncryptionKeyOptionItem? _selectedCryptoSoftSavedKey;
+        public EncryptionKeyOptionItem? SelectedCryptoSoftSavedKey
+        {
+            get => _selectedCryptoSoftSavedKey;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _selectedCryptoSoftSavedKey, value);
+                if (value is not null)
+                {
+                    ConfigCryptoSoftKeyDraft = value.Value;
+                }
+            }
+        }
+
         private string _configBusinessSoftwareDraft = "";
         public string ConfigBusinessSoftwareDraft
         {
@@ -410,6 +426,18 @@ namespace easySave_BMT.Avalonia.ViewModels
             public long FileSizeBytes { get; init; }
             public long TransferTimeMs { get; init; }
             public long EncryptionTimeMs { get; init; }
+        }
+
+        public sealed class EncryptionKeyOptionItem
+        {
+            public EncryptionKeyOptionItem(string value, string display)
+            {
+                Value = value;
+                Display = display;
+            }
+
+            public string Value { get; }
+            public string Display { get; }
         }
     }
 }

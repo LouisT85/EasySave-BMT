@@ -10,6 +10,7 @@ using EasyLog.Models;
 using System.Threading;
 using System.Text;
 using System.Security.Cryptography;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using easySave_BMT.Resources_;
 namespace easySave_BMT.Model_
@@ -66,6 +67,7 @@ namespace easySave_BMT.Model_
         {
             this.saves = new List<Save>();
             config = Config.Load();
+            SyncCryptoSoftKeyToAppSettings();
 
             // Initialize global resources based on config
             ResourceManager.SetLanguage(config.Language);
@@ -592,6 +594,7 @@ namespace easySave_BMT.Model_
             List<string>? encryptionExtensions = null,
             string? cryptoSoftPath = null,
             string? cryptoSoftKey = null,
+            List<string>? cryptoSoftSavedKeys = null,
             List<string>? encryptionKeyCreationTrace = null,
             string? businessSoftware = null,
             string? themePreference = null)
@@ -604,9 +607,12 @@ namespace easySave_BMT.Model_
                 encryptionExtensions,
                 cryptoSoftPath,
                 cryptoSoftKey,
+                cryptoSoftSavedKeys,
                 encryptionKeyCreationTrace,
                 businessSoftware,
                 themePreference);
+
+            SyncCryptoSoftKeyToAppSettings();
 
             if (!string.IsNullOrWhiteSpace(language))
             {
@@ -640,6 +646,156 @@ namespace easySave_BMT.Model_
             catch (Exception ex)
             {
                 Console.WriteLine($"Error initializing logger: {ex.Message}");
+            }
+        }
+
+        private static bool TryValidateCryptoSoftKey(string rawKey, out string normalizedKey, out string? error)
+        {
+            normalizedKey = (rawKey ?? "").Trim();
+            error = null;
+
+            if (string.IsNullOrWhiteSpace(normalizedKey))
+            {
+                error = "Key is empty.";
+                return false;
+            }
+
+            if (normalizedKey.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            {
+                string hex = normalizedKey.Substring(2).Trim();
+                if (string.IsNullOrWhiteSpace(hex))
+                {
+                    error = "Hex key is empty.";
+                    return false;
+                }
+
+                if (hex.Length % 2 != 0 || !hex.All(Uri.IsHexDigit))
+                {
+                    error = "Hex key must contain an even number of hexadecimal characters.";
+                    return false;
+                }
+
+                if (hex.Length / 2 < 8)
+                {
+                    error = "Hex key must be at least 8 bytes.";
+                    return false;
+                }
+
+                normalizedKey = "0x" + hex.ToUpperInvariant();
+                return true;
+            }
+
+            if (Encoding.UTF8.GetByteCount(normalizedKey) < 8)
+            {
+                error = "Text key must be at least 8 bytes.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private IEnumerable<string> ResolveCryptoSoftAppSettingsPaths()
+        {
+            var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            string? cryptoSoftExe = ResolveCryptoSoftExecutablePath();
+            if (!string.IsNullOrWhiteSpace(cryptoSoftExe))
+            {
+                string? binDirectory = Path.GetDirectoryName(cryptoSoftExe);
+                if (!string.IsNullOrWhiteSpace(binDirectory))
+                {
+                    paths.Add(Path.Combine(binDirectory, "appsettings.json"));
+                }
+            }
+
+            string[] roots = new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory };
+            foreach (var root in roots.Where(r => !string.IsNullOrWhiteSpace(r)))
+            {
+                var dir = new DirectoryInfo(root);
+                for (int i = 0; i < 6 && dir is not null; i++)
+                {
+                    string sourceCandidate = Path.Combine(dir.FullName, "CryptoSoft", "appsettings.json");
+                    if (File.Exists(sourceCandidate))
+                    {
+                        paths.Add(sourceCandidate);
+                    }
+
+                    dir = dir.Parent;
+                }
+            }
+
+            return paths;
+        }
+
+        private static void UpsertCryptoSoftKeyInAppSettings(string appSettingsPath, string key)
+        {
+            JsonObject root;
+            if (File.Exists(appSettingsPath))
+            {
+                string raw = File.ReadAllText(appSettingsPath);
+                root = JsonNode.Parse(raw) as JsonObject ?? new JsonObject();
+            }
+            else
+            {
+                root = new JsonObject();
+            }
+
+            JsonObject encryption = root["Encryption"] as JsonObject ?? new JsonObject();
+            root["Encryption"] = encryption;
+
+            if (encryption["Algorithm"] is null)
+            {
+                encryption["Algorithm"] = "XOR";
+            }
+
+            if (encryption["BufferSize"] is null)
+            {
+                encryption["BufferSize"] = 8192;
+            }
+
+            encryption["Key"] = key;
+
+            string? directory = Path.GetDirectoryName(appSettingsPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            string content = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(appSettingsPath, content);
+        }
+
+        private void SyncCryptoSoftKeyToAppSettings()
+        {
+            string configuredKey = (config.CryptoSoftKey ?? "").Trim();
+            if (!TryValidateCryptoSoftKey(configuredKey, out string normalizedKey, out string? validationError))
+            {
+                if (!string.IsNullOrWhiteSpace(configuredKey))
+                {
+                    Console.WriteLine($"CryptoSoft key was not synced to appsettings.json: {validationError}");
+                }
+                return;
+            }
+
+            bool updated = false;
+            string? lastError = null;
+
+            foreach (string path in ResolveCryptoSoftAppSettingsPaths())
+            {
+                try
+                {
+                    UpsertCryptoSoftKeyInAppSettings(path, normalizedKey);
+                    updated = true;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex.Message;
+                }
+            }
+
+            if (!updated && !string.IsNullOrWhiteSpace(lastError))
+            {
+                Console.WriteLine($"Failed to sync CryptoSoft key to appsettings.json: {lastError}");
             }
         }
 
@@ -818,6 +974,7 @@ namespace easySave_BMT.Model_
         // compare encrypted targets against source plaintext using a stable hash.
         private const string EasySaveCryptoMagicV2 = "EASYSAVECRYPT2";
         private const string CryptoSoftKeyEnvironmentVariable = "EASYSAVE_CRYPTOSOFT_KEY";
+        private static readonly SemaphoreSlim CryptoSoftProcessGate = new SemaphoreSlim(1, 1);
 
         private static string ComputeSha256Hex(string filePath)
         {
@@ -920,113 +1077,139 @@ namespace easySave_BMT.Model_
             encryptionTimeMs = 0;
             error = null;
 
-            string? cryptoSoftExe = ResolveCryptoSoftExecutablePath();
-            if (string.IsNullOrWhiteSpace(cryptoSoftExe))
-            {
-                encryptionTimeMs = -99;
-                error = "CryptoSoft executable not found.";
-                return false;
-            }
-
-            string tempOut = targetFilePath + ".cryptosoft_tmp";
-            string tempFinal = targetFilePath + ".easysavecrypt_tmp";
+            bool gateEntered = false;
 
             try
             {
-                // If the hash is missing, compute it from the plaintext file (rare; normally computed during copy).
-                plaintextHashHex ??= ComputeSha256Hex(targetFilePath);
-
-                var psi = new ProcessStartInfo
+                while (!gateEntered)
                 {
-                    FileName = cryptoSoftExe,
-                    Arguments = $"\"{targetFilePath}\" \"{tempOut}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = false,
-                    RedirectStandardError = false
-                };
+                    if (IsStopRequested() && PeekStopReason() == BackupStopReason.UserRequested)
+                    {
+                        encryptionTimeMs = -98;
+                        error = "Encryption cancelled by user.";
+                        return false;
+                    }
 
-                string configuredKey = (config.CryptoSoftKey ?? "").Trim();
-                if (!string.IsNullOrWhiteSpace(configuredKey))
-                {
-                    psi.Environment[CryptoSoftKeyEnvironmentVariable] = configuredKey;
+                    gateEntered = CryptoSoftProcessGate.Wait(200);
                 }
 
-                var sw = Stopwatch.StartNew();
-                using var proc = Process.Start(psi);
-                if (proc is null)
+                string? cryptoSoftExe = ResolveCryptoSoftExecutablePath();
+                if (string.IsNullOrWhiteSpace(cryptoSoftExe))
                 {
                     encryptionTimeMs = -99;
-                    error = "CryptoSoft failed to start.";
+                    error = "CryptoSoft executable not found.";
                     return false;
                 }
 
-                // Wait with polling so the UI "Stop" can cancel encryption immediately if needed.
-                while (true)
-                {
-                    if (proc.WaitForExit(200))
-                        break;
+                string tempOut = targetFilePath + ".cryptosoft_tmp";
+                string tempFinal = targetFilePath + ".easysavecrypt_tmp";
 
-                    // Only the user stop cancels immediately; business-software stop finishes current file.
-                    if (IsStopRequested() && PeekStopReason() == BackupStopReason.UserRequested)
+                try
+                {
+                    // If the hash is missing, compute it from the plaintext file (rare; normally computed during copy).
+                    plaintextHashHex ??= ComputeSha256Hex(targetFilePath);
+
+                    var psi = new ProcessStartInfo
                     {
-                        try { proc.Kill(entireProcessTree: true); } catch { }
-                        encryptionTimeMs = -98;
-                        error = "Encryption cancelled by user.";
+                        FileName = cryptoSoftExe,
+                        Arguments = $"\"{targetFilePath}\" \"{tempOut}\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = false,
+                        RedirectStandardError = false
+                    };
+
+                    string configuredKey = (config.CryptoSoftKey ?? "").Trim();
+                    if (!string.IsNullOrWhiteSpace(configuredKey))
+                    {
+                        psi.Environment[CryptoSoftKeyEnvironmentVariable] = configuredKey;
+                    }
+
+                    var sw = Stopwatch.StartNew();
+                    using var proc = Process.Start(psi);
+                    if (proc is null)
+                    {
+                        encryptionTimeMs = -99;
+                        error = "CryptoSoft failed to start.";
+                        return false;
+                    }
+
+                    // Wait with polling so the UI "Stop" can cancel encryption immediately if needed.
+                    while (true)
+                    {
+                        if (proc.WaitForExit(200))
+                            break;
+
+                        // Only the user stop cancels immediately; business-software stop finishes current file.
+                        if (IsStopRequested() && PeekStopReason() == BackupStopReason.UserRequested)
+                        {
+                            try { proc.Kill(entireProcessTree: true); } catch { }
+                            encryptionTimeMs = -98;
+                            error = "Encryption cancelled by user.";
+                            try { if (File.Exists(tempOut)) File.Delete(tempOut); } catch { }
+                            try { if (File.Exists(tempFinal)) File.Delete(tempFinal); } catch { }
+                            return false;
+                        }
+                    }
+                    sw.Stop();
+
+                    int exitCode = proc.ExitCode;
+                    if (exitCode < 0)
+                    {
+                        encryptionTimeMs = exitCode; // keep CryptoSoft error codes (<0)
+                        error = exitCode == -10
+                            ? "CryptoSoft mono-instance timeout while waiting for another encryption."
+                            : $"CryptoSoft error (code {exitCode}).";
+
                         try { if (File.Exists(tempOut)) File.Delete(tempOut); } catch { }
                         try { if (File.Exists(tempFinal)) File.Delete(tempFinal); } catch { }
                         return false;
                     }
+
+                    // Success: ensure >0ms when encryption occurred (0 means "no encryption" per spec).
+                    encryptionTimeMs = exitCode > 0 ? exitCode : Math.Max(1, sw.ElapsedMilliseconds);
+
+                    if (!File.Exists(tempOut))
+                    {
+                        encryptionTimeMs = -3;
+                        error = "CryptoSoft reported success but did not produce output.";
+                        return false;
+                    }
+
+                    // Replace the copied file with its encrypted version + EasySave metadata header.
+                    // Format: "EASYSAVECRYPT2\n" + "<sha256hex>\n" + encrypted bytes.
+                    using (var outFs = new FileStream(tempFinal, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        byte[] h1 = Encoding.ASCII.GetBytes(EasySaveCryptoMagicV2 + "\n");
+                        byte[] h2 = Encoding.ASCII.GetBytes(plaintextHashHex + "\n");
+                        outFs.Write(h1, 0, h1.Length);
+                        outFs.Write(h2, 0, h2.Length);
+
+                        using var inFs = new FileStream(tempOut, FileMode.Open, FileAccess.Read, FileShare.Read);
+                        inFs.CopyTo(outFs);
+                        outFs.Flush(true);
+                    }
+
+                    File.Move(tempFinal, targetFilePath, overwrite: true);
+                    try { File.Delete(tempOut); } catch { }
+
+                    return true;
                 }
-                sw.Stop();
-
-                int exitCode = proc.ExitCode;
-                if (exitCode < 0)
+                catch (Exception ex)
                 {
-                    encryptionTimeMs = exitCode; // keep CryptoSoft error codes (<0)
-                    error = $"CryptoSoft error (code {exitCode}).";
-
+                    encryptionTimeMs = -99;
+                    error = ex.Message;
                     try { if (File.Exists(tempOut)) File.Delete(tempOut); } catch { }
                     try { if (File.Exists(tempFinal)) File.Delete(tempFinal); } catch { }
                     return false;
                 }
-
-                // Success: ensure >0ms when encryption occurred (0 means "no encryption" per spec).
-                encryptionTimeMs = exitCode > 0 ? exitCode : Math.Max(1, sw.ElapsedMilliseconds);
-
-                if (!File.Exists(tempOut))
-                {
-                    encryptionTimeMs = -3;
-                    error = "CryptoSoft reported success but did not produce output.";
-                    return false;
-                }
-
-                // Replace the copied file with its encrypted version + EasySave metadata header.
-                // Format: "EASYSAVECRYPT2\n" + "<sha256hex>\n" + encrypted bytes.
-                using (var outFs = new FileStream(tempFinal, FileMode.Create, FileAccess.Write, FileShare.None))
-                {
-                    byte[] h1 = Encoding.ASCII.GetBytes(EasySaveCryptoMagicV2 + "\n");
-                    byte[] h2 = Encoding.ASCII.GetBytes(plaintextHashHex + "\n");
-                    outFs.Write(h1, 0, h1.Length);
-                    outFs.Write(h2, 0, h2.Length);
-
-                    using var inFs = new FileStream(tempOut, FileMode.Open, FileAccess.Read, FileShare.Read);
-                    inFs.CopyTo(outFs);
-                    outFs.Flush(true);
-                }
-
-                File.Move(tempFinal, targetFilePath, overwrite: true);
-                try { File.Delete(tempOut); } catch { }
-
-                return true;
             }
-            catch (Exception ex)
+            finally
             {
-                encryptionTimeMs = -99;
-                error = ex.Message;
-                try { if (File.Exists(tempOut)) File.Delete(tempOut); } catch { }
-                try { if (File.Exists(tempFinal)) File.Delete(tempFinal); } catch { }
-                return false;
+                if (gateEntered)
+                {
+                    CryptoSoftProcessGate.Release();
+                }
             }
         }
 
