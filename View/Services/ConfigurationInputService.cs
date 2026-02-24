@@ -177,7 +177,7 @@ namespace easySave_BMT.View_
 
                 if (validationService.ValidateCentralizedLogEndpoint(input))
                 {
-                    return input;
+                    return Config.NormalizeCentralizedLogEndpoint(input);
                 }
             }
         }

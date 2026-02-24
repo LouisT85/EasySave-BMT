@@ -70,7 +70,7 @@ namespace EasyLog
                         nameof(centralizedEndpoint));
                 }
 
-                _centralizedEndpoint = parsedEndpoint;
+                _centralizedEndpoint = NormalizeCentralizedEndpoint(parsedEndpoint);
                 _httpClient = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
                 _ownsHttpClient = httpClient is null;
             }
@@ -127,6 +127,24 @@ namespace EasyLog
             {
                 entry.UserName = Environment.UserName;
             }
+        }
+
+        private static Uri NormalizeCentralizedEndpoint(Uri endpoint)
+        {
+            var builder = new UriBuilder(endpoint);
+            string path = builder.Path ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(path) || path == "/")
+            {
+                // Default path used by the central service implemented in this project.
+                builder.Path = "/logs";
+            }
+            else if (path.Length > 1 && path.EndsWith("/", StringComparison.Ordinal))
+            {
+                builder.Path = path.TrimEnd('/');
+            }
+
+            return builder.Uri;
         }
 
         private void WriteLocal(LogEntry entry)
