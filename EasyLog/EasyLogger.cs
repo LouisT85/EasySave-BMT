@@ -1,163 +1,272 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
 using EasyLog.Models;
 
-
 namespace EasyLog
 {
     /// <summary>
-    /// EasyLogger is class for write backup logs in JSON files daily.
-    /// Each day one file with array of log entries, format human readable.
+    /// Writes backup logs locally (XML/JSON), to a centralized HTTP service, or both.
     /// </summary>
-    public class EasyLogger
+    public class EasyLogger : IDisposable
     {
-        /// <summary>
-        /// The directory path where store log files.
-        /// Created if not exist.
-        /// </summary>
+        public enum LogFormat
+        {
+            XML,
+            JSON
+        }
+
+        public enum DestinationMode
+        {
+            LocalOnly,
+            CentralizedOnly,
+            LocalAndCentralized
+        }
+
         private readonly string _logDirectory;
-
-
-        /// <summary>
-        /// Constructor initialize logger with log directory.
-        /// Create directory if needed.
-        /// </summary>
-        /// <param name="logDirectory">Path for log files.</param>
-        public enum LogFormat { XML, JSON }
-
-        private readonly LogFormat _format = LogFormat.XML;
+        private readonly LogFormat _format;
+        private readonly DestinationMode _destinationMode;
+        private readonly Uri? _centralizedEndpoint;
+        private readonly HttpClient? _httpClient;
+        private readonly bool _ownsHttpClient;
         private readonly object _writeLock = new();
 
-        public EasyLogger(string logDirectory) : this(logDirectory, LogFormat.XML)
+        public EasyLogger(string logDirectory)
+            : this(logDirectory, LogFormat.XML, DestinationMode.LocalOnly, centralizedEndpoint: null)
         {
         }
 
         public EasyLogger(string logDirectory, LogFormat format)
+            : this(logDirectory, format, DestinationMode.LocalOnly, centralizedEndpoint: null)
         {
-            _logDirectory = logDirectory;
-            _format = format;
-            Directory.CreateDirectory(logDirectory);
         }
 
+        public EasyLogger(
+            string logDirectory,
+            LogFormat format,
+            DestinationMode destinationMode,
+            string? centralizedEndpoint,
+            HttpClient? httpClient = null)
+        {
+            _logDirectory = logDirectory ?? string.Empty;
+            _format = format;
+            _destinationMode = destinationMode;
 
-        /// <summary>
-        /// Write one log entry to todays JSON file.
-        /// Append to array if file exist, create new if first.
-        /// Use french date format dd/MM/yyyy.
-        /// </summary>
-        /// <param name="entry">The LogEntry with backup details.</param>
+            if (ShouldWriteLocal())
+            {
+                Directory.CreateDirectory(_logDirectory);
+            }
+
+            if (ShouldSendCentralized())
+            {
+                if (string.IsNullOrWhiteSpace(centralizedEndpoint) ||
+                    !Uri.TryCreate(centralizedEndpoint.Trim(), UriKind.Absolute, out Uri? parsedEndpoint))
+                {
+                    throw new ArgumentException(
+                        "A valid centralized endpoint URL is required when centralized logging is enabled.",
+                        nameof(centralizedEndpoint));
+                }
+
+                _centralizedEndpoint = parsedEndpoint;
+                _httpClient = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                _ownsHttpClient = httpClient is null;
+            }
+        }
+
         public void Write(LogEntry entry)
         {
-            lock (_writeLock)
+            if (entry is null)
             {
-                string fileName = $"{DateTime.Now:yyyy-MM-dd}." + (_format == LogFormat.XML ? "xml" : "json");
-                string filePath = Path.Combine(_logDirectory, fileName);
+                throw new ArgumentNullException(nameof(entry));
+            }
 
-                if (_format == LogFormat.JSON)
+            EnsureEntryIdentity(entry);
+
+            if (ShouldWriteLocal())
+            {
+                lock (_writeLock)
                 {
-                    // Format JSON with date in french style
-                    var logObject = new
-                    {
-                        Name = entry.BackupName,
-                        FileSource = entry.SourcePath,
-                        FileTarget = entry.DestinationPath,
-                        FileSize = entry.FileSize,
-                        FileTransferTime = entry.TransferTimeMs,
-                        EncryptionTime = entry.EncryptionTimeMs,
-                        time = entry.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")
-                    };
-
-                    string json = JsonSerializer.Serialize(
-                        logObject,
-                        new JsonSerializerOptions { WriteIndented = true }
-                    );
-
-                    // If file exist and not empty, append with comma
-                    if (File.Exists(filePath) && new FileInfo(filePath).Length > 0)
-                    {
-                        // Read existing content
-                        string existingContent = File.ReadAllText(filePath).Trim();
-
-                        // If no open bracket, add it
-                        if (!existingContent.StartsWith("["))
-                        {
-                            existingContent = $"[{existingContent}";
-                        }
-
-                        // Manage close bracket and add comma if need
-                        if (!existingContent.EndsWith("]"))
-                        {
-                            existingContent = existingContent.TrimEnd(',', '\n', '\r', ' ');
-                            existingContent += ",\n";
-                        }
-                        else
-                        {
-                            // Remove close ] and add comma
-                            existingContent = existingContent.TrimEnd(']');
-                            existingContent += ",\n";
-                        }
-
-                        // Add new entry and close array
-                        string newContent = existingContent + json + "\n]";
-                        File.WriteAllText(filePath, newContent);
-                    }
-                    else
-                    {
-                        // New file, create array with one entry
-                        string newContent = $"[{json}\n]";
-                        File.WriteAllText(filePath, newContent);
-                    }
-                }
-                else
-                {
-                    // XML format: store as root <Logs><Log>...</Log></Logs>
-                    XElement logElement = new XElement("Log",
-                        new XElement("Name", entry.BackupName),
-                        new XElement("FileSource", entry.SourcePath),
-                        new XElement("FileTarget", entry.DestinationPath),
-                        new XElement("FileSize", entry.FileSize),
-                        new XElement("FileTransferTime", entry.TransferTimeMs),
-                        new XElement("EncryptionTime", entry.EncryptionTimeMs),
-                        new XElement("Time", entry.Timestamp.ToString("dd/MM/yyyy HH:mm:ss"))
-                    );
-
-                    if (File.Exists(filePath) && new FileInfo(filePath).Length > 0)
-                    {
-                        // Load existing XML and append
-                        XDocument doc;
-                        try
-                        {
-                            doc = XDocument.Load(filePath);
-                        }
-                        catch
-                        {
-                            // If file is corrupted or empty, create new document
-                            doc = new XDocument(new XElement("Logs"));
-                        }
-
-                        var root = doc.Element("Logs");
-                        if (root == null)
-                        {
-                            root = new XElement("Logs");
-                            doc.Add(root);
-                        }
-
-                        root.Add(logElement);
-                        doc.Save(filePath);
-                    }
-                    else
-                    {
-                        // Create new XML document
-                        XDocument doc = new XDocument(
-                            new XDeclaration("1.0", "utf-8", "yes"),
-                            new XElement("Logs", logElement)
-                        );
-                        doc.Save(filePath);
-                    }
+                    WriteLocal(entry);
                 }
             }
+
+            if (ShouldSendCentralized())
+            {
+                SendToCentralized(entry);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_ownsHttpClient)
+            {
+                _httpClient?.Dispose();
+            }
+        }
+
+        private bool ShouldWriteLocal()
+        {
+            return _destinationMode == DestinationMode.LocalOnly ||
+                   _destinationMode == DestinationMode.LocalAndCentralized;
+        }
+
+        private bool ShouldSendCentralized()
+        {
+            return _destinationMode == DestinationMode.CentralizedOnly ||
+                   _destinationMode == DestinationMode.LocalAndCentralized;
+        }
+
+        private static void EnsureEntryIdentity(LogEntry entry)
+        {
+            if (string.IsNullOrWhiteSpace(entry.MachineName))
+            {
+                entry.MachineName = Environment.MachineName;
+            }
+
+            if (string.IsNullOrWhiteSpace(entry.UserName))
+            {
+                entry.UserName = Environment.UserName;
+            }
+        }
+
+        private void WriteLocal(LogEntry entry)
+        {
+            string fileName = $"{DateTime.Now:yyyy-MM-dd}." + (_format == LogFormat.XML ? "xml" : "json");
+            string filePath = Path.Combine(_logDirectory, fileName);
+
+            if (_format == LogFormat.JSON)
+            {
+                WriteLocalJson(filePath, entry);
+            }
+            else
+            {
+                WriteLocalXml(filePath, entry);
+            }
+        }
+
+        private static void WriteLocalJson(string filePath, LogEntry entry)
+        {
+            List<object> entries = new List<object>();
+
+            if (File.Exists(filePath) && new FileInfo(filePath).Length > 0)
+            {
+                try
+                {
+                    string existingRaw = File.ReadAllText(filePath);
+                    using var existingDoc = JsonDocument.Parse(existingRaw);
+                    if (existingDoc.RootElement.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var existing in existingDoc.RootElement.EnumerateArray())
+                        {
+                            entries.Add(existing.Clone());
+                        }
+                    }
+                }
+                catch
+                {
+                    entries.Clear();
+                }
+            }
+
+            entries.Add(BuildLegacyLocalJsonObject(entry));
+
+            string json = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(filePath, json);
+        }
+
+        private static object BuildLegacyLocalJsonObject(LogEntry entry)
+        {
+            return new
+            {
+                Name = entry.BackupName,
+                FileSource = entry.SourcePath,
+                FileTarget = entry.DestinationPath,
+                FileSize = entry.FileSize,
+                FileTransferTime = entry.TransferTimeMs,
+                EncryptionTime = entry.EncryptionTimeMs,
+                MachineName = entry.MachineName,
+                UserName = entry.UserName,
+                time = entry.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")
+            };
+        }
+
+        private static void WriteLocalXml(string filePath, LogEntry entry)
+        {
+            XElement logElement = new XElement("Log",
+                new XElement("Name", entry.BackupName),
+                new XElement("FileSource", entry.SourcePath),
+                new XElement("FileTarget", entry.DestinationPath),
+                new XElement("FileSize", entry.FileSize),
+                new XElement("FileTransferTime", entry.TransferTimeMs),
+                new XElement("EncryptionTime", entry.EncryptionTimeMs),
+                new XElement("MachineName", entry.MachineName),
+                new XElement("UserName", entry.UserName),
+                new XElement("Time", entry.Timestamp.ToString("dd/MM/yyyy HH:mm:ss"))
+            );
+
+            XDocument doc;
+            if (File.Exists(filePath) && new FileInfo(filePath).Length > 0)
+            {
+                try
+                {
+                    doc = XDocument.Load(filePath);
+                }
+                catch
+                {
+                    doc = new XDocument(new XElement("Logs"));
+                }
+            }
+            else
+            {
+                doc = new XDocument(
+                    new XDeclaration("1.0", "utf-8", "yes"),
+                    new XElement("Logs"));
+            }
+
+            var root = doc.Element("Logs");
+            if (root is null)
+            {
+                root = new XElement("Logs");
+                doc.Add(root);
+            }
+
+            root.Add(logElement);
+            doc.Save(filePath);
+        }
+
+        private void SendToCentralized(LogEntry entry)
+        {
+            if (_centralizedEndpoint is null || _httpClient is null)
+            {
+                throw new InvalidOperationException("Centralized logger is not initialized.");
+            }
+
+            var payload = new
+            {
+                Timestamp = entry.Timestamp,
+                BackupName = entry.BackupName,
+                SourcePath = entry.SourcePath,
+                DestinationPath = entry.DestinationPath,
+                FileSize = entry.FileSize,
+                TransferTimeMs = entry.TransferTimeMs,
+                EncryptionTimeMs = entry.EncryptionTimeMs,
+                MachineName = entry.MachineName,
+                UserName = entry.UserName
+            };
+
+            string body = JsonSerializer.Serialize(payload);
+            using var content = new StringContent(body, Encoding.UTF8, "application/json");
+
+            using HttpResponseMessage response = _httpClient
+                .PostAsync(_centralizedEndpoint, content)
+                .GetAwaiter()
+                .GetResult();
+
+            response.EnsureSuccessStatusCode();
         }
     }
 }

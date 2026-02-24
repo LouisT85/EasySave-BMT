@@ -299,7 +299,9 @@
 			</TabItem>
 
 			<TabItem Header="{Binding Loc[Configuration]}">
-				<StackPanel Margin="32" Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
+				<Grid Margin="24" RowDefinitions="*,Auto">
+					<ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+						<StackPanel Margin="8,8,8,16" Spacing="16" MaxWidth="980" HorizontalAlignment="Stretch">
 					<TextBlock Text="{Binding Loc[CurrentConfiguration]}" FontSize="24" FontWeight="Bold"/>
 
 					<Border Classes="card" Background="{DynamicResource BrushAccentSoft}"
@@ -331,22 +333,74 @@
 							</StackPanel>
 
 							<StackPanel Spacing="6">
+								<TextBlock Text="{Binding Loc[UiLogDestinationMode]}" FontWeight="SemiBold"/>
+								<ComboBox ItemsSource="{Binding LogDestinationModeOptions}" SelectedItem="{Binding ConfigLogDestinationModeDraft}" HorizontalAlignment="Stretch"/>
+								<TextBlock Text="{Binding Loc[UiLogModeHelp]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
+							</StackPanel>
+
+							<StackPanel Spacing="6">
+								<TextBlock Text="{Binding Loc[UiCentralizedEndpoint]}" FontWeight="SemiBold"/>
+								<TextBox Text="{Binding ConfigCentralizedLogEndpoint}" Watermark="http://localhost:8080/logs" IsEnabled="{Binding IsCentralizedLoggingModeSelected}"/>
+							</StackPanel>
+
+							<StackPanel Spacing="6">
 								<TextBlock Text="{Binding Loc[UiTheme]}" FontWeight="SemiBold"/>
 								<TextBlock Text="{Binding Loc[UiThemeHint]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
 								<ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}" DisplayMemberBinding="{Binding Display}" HorizontalAlignment="Stretch"/>
 							</StackPanel>
 
-							<StackPanel Spacing="6">
+							<StackPanel Spacing="8">
 								<TextBlock Text="{Binding Loc[UiBusinessSoftware]}" FontWeight="SemiBold"/>
 								<TextBlock Text="{Binding Loc[UiBusinessSoftwareHelp]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
 								<Grid ColumnDefinitions="*,120" Margin="0,2,0,0">
 									<TextBox Grid.Column="0" Text="{Binding NewBusinessSoftwareEntry}" Watermark="{Binding Loc[UiBusinessSoftwareHint]}"/>
 									<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiAdd]}" Command="{Binding AddBusinessSoftwareEntryCommand}"/>
 								</Grid>
-								<Grid ColumnDefinitions="*,120">
-									<ListBox Grid.Column="0" ItemsSource="{Binding ConfigBusinessSoftwareEntriesDraft}" SelectedItem="{Binding SelectedBusinessSoftwareEntry}" Height="90"/>
-									<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiRemove]}" Command="{Binding RemoveBusinessSoftwareEntryCommand}"/>
-								</Grid>
+
+								<StackPanel IsVisible="{Binding HasBusinessSoftwareSuggestions}" Spacing="6">
+									<TextBlock Text="{Binding Loc[UiSuggestions]}" FontSize="12" Foreground="{DynamicResource BrushMuted}"/>
+									<Border Background="{DynamicResource BrushBackground}" CornerRadius="8" Padding="8">
+										<ScrollViewer MaxHeight="140">
+											<ItemsControl ItemsSource="{Binding BusinessSoftwareSuggestions}">
+												<ItemsControl.ItemTemplate>
+													<DataTemplate>
+														<Button Classes="suggestion"
+																HorizontalAlignment="Stretch"
+																Margin="0,0,0,6"
+																Content="{Binding}"
+																Command="{Binding #Root.DataContext.AddBusinessSoftwareSuggestionCommand}"
+																CommandParameter="{Binding}"/>
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+										</ScrollViewer>
+									</Border>
+								</StackPanel>
+
+								<TextBlock Text="{Binding Loc[UiSelectedBusinessSoftware]}" FontSize="12" Foreground="{DynamicResource BrushMuted}"/>
+								<ItemsControl ItemsSource="{Binding ConfigBusinessSoftwareEntriesDraft}">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate>
+											<WrapPanel />
+										</ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate>
+											<Border Classes="chipTag" Margin="0,0,10,10">
+												<Grid>
+													<TextBlock Text="{Binding}" Margin="0,2,14,0" TextTrimming="CharacterEllipsis" MaxWidth="220"/>
+													<Button Classes="chipRemove"
+															HorizontalAlignment="Right"
+															VerticalAlignment="Top"
+															Content="x"
+															Command="{Binding #Root.DataContext.RemoveBusinessSoftwareEntryByValueCommand}"
+															CommandParameter="{Binding}"
+															ToolTip.Tip="{Binding #Root.DataContext.Loc[UiRemove]}"/>
+												</Grid>
+											</Border>
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
 							</StackPanel>
 
 							<Border Background="{DynamicResource BrushBackground}" CornerRadius="8" Padding="12" Margin="0,6,0,0">
@@ -376,21 +430,122 @@
 										<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiAdd]}" Command="{Binding AddEncryptionExtensionCommand}"/>
 									</Grid>
 
-									<Grid ColumnDefinitions="*,120">
-										<ListBox Grid.Column="0" ItemsSource="{Binding ConfigEncryptionExtensionsDraft}" SelectedItem="{Binding SelectedEncryptionExtension}" Height="110"/>
-										<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiRemove]}" Command="{Binding RemoveEncryptionExtensionCommand}"/>
-									</Grid>
+									<StackPanel IsVisible="{Binding HasEncryptionExtensionSuggestions}" Spacing="6">
+										<TextBlock Text="{Binding Loc[UiSuggestions]}" FontSize="12" Foreground="{DynamicResource BrushMuted}"/>
+										<Border Background="{DynamicResource BrushSurface}" CornerRadius="8" Padding="8">
+											<ScrollViewer MaxHeight="120">
+												<ItemsControl ItemsSource="{Binding EncryptionExtensionSuggestions}">
+													<ItemsControl.ItemTemplate>
+														<DataTemplate>
+															<Button Classes="suggestion"
+																	HorizontalAlignment="Stretch"
+																	Margin="0,0,0,6"
+																	Content="{Binding}"
+																	Command="{Binding #Root.DataContext.AddEncryptionExtensionSuggestionCommand}"
+																	CommandParameter="{Binding}"/>
+														</DataTemplate>
+													</ItemsControl.ItemTemplate>
+												</ItemsControl>
+											</ScrollViewer>
+										</Border>
+									</StackPanel>
+
+									<TextBlock Text="{Binding Loc[UiSelectedExtensions]}" FontSize="12" Foreground="{DynamicResource BrushMuted}"/>
+									<ItemsControl ItemsSource="{Binding ConfigEncryptionExtensionsDraft}">
+										<ItemsControl.ItemsPanel>
+											<ItemsPanelTemplate>
+												<WrapPanel />
+											</ItemsPanelTemplate>
+										</ItemsControl.ItemsPanel>
+										<ItemsControl.ItemTemplate>
+											<DataTemplate>
+												<Border Classes="chipTag" Margin="0,0,10,10">
+													<Grid>
+														<TextBlock Text="{Binding}" Margin="0,2,14,0" TextTrimming="CharacterEllipsis" MaxWidth="220"/>
+														<Button Classes="chipRemove"
+																HorizontalAlignment="Right"
+																VerticalAlignment="Top"
+																Content="x"
+																Command="{Binding #Root.DataContext.RemoveEncryptionExtensionByValueCommand}"
+																CommandParameter="{Binding}"
+																ToolTip.Tip="{Binding #Root.DataContext.Loc[UiRemove]}"/>
+													</Grid>
+												</Border>
+											</DataTemplate>
+										</ItemsControl.ItemTemplate>
+									</ItemsControl>
+
+									<Border Background="{DynamicResource BrushSurface}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
+										<StackPanel Spacing="8">
+											<TextBlock Text="{Binding Loc[UiPriorityExtensions]}" FontWeight="SemiBold"/>
+											<TextBlock Text="{Binding Loc[UiPriorityExtensionsHelp]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
+											<Grid ColumnDefinitions="*,120" Margin="0,2,0,0">
+												<TextBox Grid.Column="0" Text="{Binding NewPriorityExtension}" Watermark="{Binding Loc[UiPriorityExtensionHint]}"/>
+												<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiAdd]}" Command="{Binding AddPriorityExtensionCommand}"/>
+											</Grid>
+
+											<StackPanel IsVisible="{Binding HasPriorityExtensionSuggestions}" Spacing="6">
+												<TextBlock Text="{Binding Loc[UiSuggestions]}" FontSize="12" Foreground="{DynamicResource BrushMuted}"/>
+												<Border Background="{DynamicResource BrushBackground}" CornerRadius="8" Padding="8">
+													<ScrollViewer MaxHeight="120">
+														<ItemsControl ItemsSource="{Binding PriorityExtensionSuggestions}">
+															<ItemsControl.ItemTemplate>
+																<DataTemplate>
+																	<Button Classes="suggestion"
+																			HorizontalAlignment="Stretch"
+																			Margin="0,0,0,6"
+																			Content="{Binding}"
+																			Command="{Binding #Root.DataContext.AddPriorityExtensionSuggestionCommand}"
+																			CommandParameter="{Binding}"/>
+																</DataTemplate>
+															</ItemsControl.ItemTemplate>
+														</ItemsControl>
+													</ScrollViewer>
+												</Border>
+											</StackPanel>
+
+											<TextBlock Text="{Binding Loc[UiSelectedPriorityExtensions]}" FontSize="12" Foreground="{DynamicResource BrushMuted}"/>
+											<ItemsControl ItemsSource="{Binding ConfigPriorityExtensionsDraft}">
+												<ItemsControl.ItemsPanel>
+													<ItemsPanelTemplate>
+														<WrapPanel />
+													</ItemsPanelTemplate>
+												</ItemsControl.ItemsPanel>
+												<ItemsControl.ItemTemplate>
+													<DataTemplate>
+														<Border Classes="chipTag" Margin="0,0,10,10">
+															<Grid>
+																<TextBlock Text="{Binding}" Margin="0,2,14,0" TextTrimming="CharacterEllipsis" MaxWidth="220"/>
+																<Button Classes="chipRemove"
+																		HorizontalAlignment="Right"
+																		VerticalAlignment="Top"
+																		Content="x"
+																		Command="{Binding #Root.DataContext.RemovePriorityExtensionByValueCommand}"
+																		CommandParameter="{Binding}"
+																		ToolTip.Tip="{Binding #Root.DataContext.Loc[UiRemove]}"/>
+															</Grid>
+														</Border>
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+										</StackPanel>
+									</Border>
 								</StackPanel>
 							</Border>
 						</StackPanel>
 					</Border>
 
-					<StackPanel Orientation="Horizontal" Spacing="10">
-						<Button Classes="ghost" Command="{Binding LoadConfigCommand}" Content="{Binding Loc[UiReload]}"/>
-						<Button Classes="primary" Command="{Binding ConfigCommand}" Content="{Binding Loc[UiSave]}"/>
-						<Button Classes="power" Command="{Binding QuitCommand}" Content="⏻" ToolTip.Tip="{Binding Loc[Quit]}"/>
-					</StackPanel>
-				</StackPanel>
+						</StackPanel>
+					</ScrollViewer>
+
+					<Border Grid.Row="1" Classes="card" Margin="8,0,8,8" Padding="12">
+						<StackPanel Orientation="Horizontal" Spacing="10">
+							<Button Classes="ghost" Command="{Binding LoadConfigCommand}" Content="{Binding Loc[UiReload]}"/>
+							<Button Classes="primary" Command="{Binding ConfigCommand}" Content="{Binding Loc[UiSave]}"/>
+							<Button Classes="power" Command="{Binding QuitCommand}" Content="⏻" ToolTip.Tip="{Binding Loc[Quit]}"/>
+						</StackPanel>
+					</Border>
+				</Grid>
 			</TabItem>
 
 		</TabControl>

@@ -4,6 +4,7 @@ using Avalonia.Styling;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -23,13 +24,64 @@ namespace easySave_BMT.Avalonia.ViewModels
         private const string SortNewest = "newest";
         private const string SortOldest = "oldest";
         private const string SortName = "name";
+        private static readonly TimeSpan BusinessSuggestionCacheDuration = TimeSpan.FromSeconds(5);
+
+        private static readonly string[] BuiltInBusinessSoftwareSuggestions =
+        {
+            "word",
+            "winword",
+            "excel",
+            "powerpnt",
+            "outlook",
+            "notepad",
+            "calc",
+            "calculatorapp",
+            "chrome",
+            "firefox",
+            "explorer",
+            "teams",
+            "devenv",
+            "code",
+            "cmd",
+            "powershell"
+        };
+
+        private static readonly string[] BuiltInExtensionSuggestions =
+        {
+            ".txt",
+            ".docx",
+            ".doc",
+            ".xlsx",
+            ".xls",
+            ".pptx",
+            ".ppt",
+            ".pdf",
+            ".json",
+            ".xml",
+            ".csv",
+            ".zip",
+            ".bak",
+            ".log"
+        };
 
         private readonly List<string> _allLogFiles = new();
         private readonly List<LogEntryViewItem> _allParsedLogEntries = new();
+        private readonly List<string> _cachedBusinessSuggestionPool = new();
+        private DateTime _businessSuggestionCacheTimestampUtc = DateTime.MinValue;
 
         private System.Collections.Generic.List<string> BuildNormalizedEncryptionExtensionsDraft()
         {
             return ConfigEncryptionExtensionsDraft
+                .Select(e => (e ?? "").Trim())
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Select(e => e.StartsWith(".") ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private System.Collections.Generic.List<string> BuildNormalizedPriorityExtensionsDraft()
+        {
+            return ConfigPriorityExtensionsDraft
                 .Select(e => (e ?? "").Trim())
                 .Where(e => !string.IsNullOrWhiteSpace(e))
                 .Select(e => e.StartsWith(".") ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
@@ -124,10 +176,179 @@ namespace easySave_BMT.Avalonia.ViewModels
                 .ToList();
         }
 
+        private void UpdateBusinessSoftwareSuggestions()
+        {
+            string query = NormalizeBusinessSoftwareEntry(NewBusinessSoftwareEntry);
+
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                BusinessSoftwareSuggestions.Clear();
+                HasBusinessSoftwareSuggestions = false;
+                return;
+            }
+
+            var selected = new HashSet<string>(
+                ConfigBusinessSoftwareEntriesDraft.Select(NormalizeBusinessSoftwareEntry)
+                    .Where(s => !string.IsNullOrWhiteSpace(s)),
+                StringComparer.OrdinalIgnoreCase);
+
+            var suggestions = GetBusinessSoftwareSuggestionPool()
+                .Where(name => name.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                .Where(name => !selected.Contains(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .Take(18)
+                .ToList();
+
+            BusinessSoftwareSuggestions.Clear();
+            foreach (string suggestion in suggestions)
+                BusinessSoftwareSuggestions.Add(suggestion);
+
+            HasBusinessSoftwareSuggestions = BusinessSoftwareSuggestions.Count > 0;
+        }
+
+        private IEnumerable<string> GetBusinessSoftwareSuggestionPool()
+        {
+            if (_cachedBusinessSuggestionPool.Count > 0 &&
+                DateTime.UtcNow - _businessSuggestionCacheTimestampUtc < BusinessSuggestionCacheDuration)
+            {
+                return _cachedBusinessSuggestionPool;
+            }
+
+            var pool = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string builtIn in BuiltInBusinessSoftwareSuggestions)
+                pool.Add(builtIn);
+
+            foreach (string configured in ConfigBusinessSoftwareEntriesDraft)
+            {
+                string normalized = NormalizeBusinessSoftwareEntry(configured);
+                if (!string.IsNullOrWhiteSpace(normalized))
+                    pool.Add(normalized);
+            }
+
+            try
+            {
+                foreach (var process in Process.GetProcesses())
+                {
+                    try
+                    {
+                        string processName = (process.ProcessName ?? "").Trim();
+                        if (!string.IsNullOrWhiteSpace(processName))
+                            pool.Add(processName);
+                    }
+                    catch { }
+                    finally
+                    {
+                        try { process.Dispose(); } catch { }
+                    }
+                }
+            }
+            catch { }
+
+            _cachedBusinessSuggestionPool.Clear();
+            _cachedBusinessSuggestionPool.AddRange(pool.OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
+            _businessSuggestionCacheTimestampUtc = DateTime.UtcNow;
+
+            return _cachedBusinessSuggestionPool;
+        }
+
+        private void UpdateEncryptionExtensionSuggestions()
+        {
+            string query = NormalizeExtensionSuggestionQuery(NewEncryptionExtension);
+
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                EncryptionExtensionSuggestions.Clear();
+                HasEncryptionExtensionSuggestions = false;
+                return;
+            }
+
+            var selected = new HashSet<string>(
+                ConfigEncryptionExtensionsDraft.Select(NormalizeExtensionSuggestionQuery)
+                    .Where(s => !string.IsNullOrWhiteSpace(s)),
+                StringComparer.OrdinalIgnoreCase);
+
+            var pool = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string builtIn in BuiltInExtensionSuggestions)
+                pool.Add(builtIn);
+
+            foreach (string configured in ConfigEncryptionExtensionsDraft)
+            {
+                string normalized = NormalizeExtensionSuggestionQuery(configured);
+                if (!string.IsNullOrWhiteSpace(normalized))
+                    pool.Add(normalized);
+            }
+
+            var suggestions = pool
+                .Where(ext => ext.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                .Where(ext => !selected.Contains(ext))
+                .OrderBy(ext => ext, StringComparer.OrdinalIgnoreCase)
+                .Take(18)
+                .ToList();
+
+            EncryptionExtensionSuggestions.Clear();
+            foreach (string suggestion in suggestions)
+                EncryptionExtensionSuggestions.Add(suggestion);
+
+            HasEncryptionExtensionSuggestions = EncryptionExtensionSuggestions.Count > 0;
+        }
+
+        private void UpdatePriorityExtensionSuggestions()
+        {
+            string query = NormalizeExtensionSuggestionQuery(NewPriorityExtension);
+
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                PriorityExtensionSuggestions.Clear();
+                HasPriorityExtensionSuggestions = false;
+                return;
+            }
+
+            var selected = new HashSet<string>(
+                ConfigPriorityExtensionsDraft.Select(NormalizeExtensionSuggestionQuery)
+                    .Where(s => !string.IsNullOrWhiteSpace(s)),
+                StringComparer.OrdinalIgnoreCase);
+
+            var pool = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string builtIn in BuiltInExtensionSuggestions)
+                pool.Add(builtIn);
+
+            foreach (string configured in ConfigPriorityExtensionsDraft)
+            {
+                string normalized = NormalizeExtensionSuggestionQuery(configured);
+                if (!string.IsNullOrWhiteSpace(normalized))
+                    pool.Add(normalized);
+            }
+
+            var suggestions = pool
+                .Where(ext => ext.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                .Where(ext => !selected.Contains(ext))
+                .OrderBy(ext => ext, StringComparer.OrdinalIgnoreCase)
+                .Take(18)
+                .ToList();
+
+            PriorityExtensionSuggestions.Clear();
+            foreach (string suggestion in suggestions)
+                PriorityExtensionSuggestions.Add(suggestion);
+
+            HasPriorityExtensionSuggestions = PriorityExtensionSuggestions.Count > 0;
+        }
+
+        private static string NormalizeExtensionSuggestionQuery(string? raw)
+        {
+            string value = (raw ?? "").Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(value)) return "";
+            if (!value.StartsWith(".")) value = "." + value;
+            return value;
+        }
         private void ApplyEncryptionDraftToModelForLaunch()
         {
             var cfg = _coreViewModel.model.GetConfig();
             var exts = BuildNormalizedEncryptionExtensionsDraft();
+            var priorityExts = BuildNormalizedPriorityExtensionsDraft();
             string cryptoSoftKey = NormalizeCryptoSoftKey(ConfigCryptoSoftKeyDraft);
             if (TryValidateCryptoSoftKey(cryptoSoftKey, out string normalizedKey, out _))
             {
@@ -148,6 +369,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                 cfg.Language,
                 enableEncryption: ConfigEnableEncryptionDraft,
                 encryptionExtensions: exts,
+                priorityExtensions: priorityExts,
                 cryptoSoftKey: cryptoSoftKey,
                 cryptoSoftSavedKeys: savedKeys,
                 encryptionKeyCreationTrace: keyTrace);
@@ -163,6 +385,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ConfigStateFilePath = cfg.StateFilePath;
                 ConfigLanguage = cfg.Language;
                 ConfigLanguageDraft = cfg.Language;
+                ConfigLogDestinationModeDraft = Config.NormalizeLogDestinationMode(cfg.LogDestinationMode);
+                ConfigCentralizedLogEndpoint = cfg.CentralizedLogEndpoint ?? string.Empty;
                 ConfigTheme = NormalizeThemePreference(cfg.ThemePreference);
                 ConfigThemeDraft = ConfigTheme;
 
@@ -170,8 +394,11 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ConfigCryptoSoftKeyDraft = NormalizeCryptoSoftKey(cfg.CryptoSoftKey);
                 ConfigBusinessSoftwareDraft = (cfg.BusinessSoftware ?? "").Trim();
                 NewBusinessSoftwareEntry = "";
+                NewEncryptionExtension = "";
+                NewPriorityExtension = "";
                 SelectedBusinessSoftwareEntry = null;
                 SelectedCryptoSoftSavedKey = null;
+                SelectedPriorityExtension = null;
                 ConfigBusinessSoftwareEntriesDraft.Clear();
                 EncryptionKeyCreationTraceDraft.Clear();
                 CryptoSoftSavedKeysDraft.Clear();
@@ -212,6 +439,22 @@ namespace easySave_BMT.Avalonia.ViewModels
                     }
                 }
 
+                ConfigPriorityExtensionsDraft.Clear();
+                if (cfg.PriorityExtensions is not null)
+                {
+                    foreach (var extRaw in cfg.PriorityExtensions)
+                    {
+                        var ext = (extRaw ?? "").Trim();
+                        if (string.IsNullOrWhiteSpace(ext)) continue;
+
+                        if (!ext.StartsWith(".")) ext = "." + ext;
+                        ext = ext.ToLowerInvariant();
+
+                        if (!ConfigPriorityExtensionsDraft.Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase)))
+                            ConfigPriorityExtensionsDraft.Add(ext);
+                    }
+                }
+
                 if (cfg.EncryptionKeyCreationTrace is not null)
                 {
                     foreach (var trace in cfg.EncryptionKeyCreationTrace)
@@ -227,6 +470,9 @@ namespace easySave_BMT.Avalonia.ViewModels
                 RefreshThemeOptions();
                 RefreshLogSortOptions();
                 ApplyThemePreference(ConfigThemeDraft);
+                UpdateBusinessSoftwareSuggestions();
+                UpdateEncryptionExtensionSuggestions();
+                UpdatePriorityExtensionSuggestions();
                 RefreshLogFilesSummary();
                 RefreshLogEntriesSummary();
                 this.RaisePropertyChanged(nameof(PauseButtonText));
@@ -248,6 +494,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             try
             {
                 var exts = BuildNormalizedEncryptionExtensionsDraft();
+                var priorityExts = BuildNormalizedPriorityExtensionsDraft();
 
                 var businessEntries = ConfigBusinessSoftwareEntriesDraft
                     .Select(e => NormalizeBusinessSoftwareEntry(e))
@@ -281,17 +528,39 @@ namespace easySave_BMT.Avalonia.ViewModels
                     .Where(e => !string.IsNullOrWhiteSpace(e))
                     .ToList();
 
+                string normalizedMode = Config.NormalizeLogDestinationMode(ConfigLogDestinationModeDraft);
+                ConfigLogDestinationModeDraft = normalizedMode;
+
+                string endpoint = (ConfigCentralizedLogEndpoint ?? string.Empty).Trim();
+                if (Config.RequiresCentralizedEndpoint(normalizedMode))
+                {
+                    if (string.IsNullOrWhiteSpace(endpoint))
+                    {
+                        throw new InvalidOperationException(Loc["UiCentralizedEndpointRequired"]);
+                    }
+
+                    if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) ||
+                        (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                    {
+                        throw new InvalidOperationException(Loc["UiCentralizedEndpointInvalid"]);
+                    }
+                }
+                ConfigCentralizedLogEndpoint = endpoint;
+
                 _coreViewModel.model.UpdateConfig(
                     ConfigLogDirectory,
                     ConfigStateFilePath,
                     ConfigLanguageDraft,
                     enableEncryption: ConfigEnableEncryptionDraft,
                     encryptionExtensions: exts,
+                    priorityExtensions: priorityExts,
                     cryptoSoftKey: cryptoSoftKey,
                     cryptoSoftSavedKeys: savedKeys,
                     encryptionKeyCreationTrace: keyTrace,
                     businessSoftware: businessSoftware,
-                    themePreference: themePreference);
+                    themePreference: themePreference,
+                    logDestinationMode: normalizedMode,
+                    centralizedLogEndpoint: endpoint);
 
                 // Apply language to the current UI only after Save.
                 ConfigLanguage = ConfigLanguageDraft;
@@ -686,13 +955,23 @@ namespace easySave_BMT.Avalonia.ViewModels
 
                     entries.Add(new LogEntryViewItem
                     {
-                        BackupName = TryGetJsonString(element, "Name"),
-                        SourcePath = TryGetJsonString(element, "FileSource"),
-                        TargetPath = TryGetJsonString(element, "FileTarget"),
-                        FileSizeBytes = TryGetJsonLong(element, "FileSize"),
-                        TransferTimeMs = TryGetJsonLong(element, "FileTransferTime"),
-                        EncryptionTimeMs = TryGetJsonLong(element, "EncryptionTime"),
-                        Time = TryGetJsonString(element, "time")
+                        BackupName = FirstNonEmpty(
+                            TryGetJsonString(element, "Name"),
+                            TryGetJsonString(element, "BackupName")),
+                        SourcePath = FirstNonEmpty(
+                            TryGetJsonString(element, "FileSource"),
+                            TryGetJsonString(element, "SourcePath")),
+                        TargetPath = FirstNonEmpty(
+                            TryGetJsonString(element, "FileTarget"),
+                            TryGetJsonString(element, "DestinationPath")),
+                        MachineName = TryGetJsonString(element, "MachineName"),
+                        UserName = TryGetJsonString(element, "UserName"),
+                        FileSizeBytes = TryGetJsonLongAny(element, "FileSize"),
+                        TransferTimeMs = TryGetJsonLongAny(element, "FileTransferTime", "TransferTimeMs"),
+                        EncryptionTimeMs = TryGetJsonLongAny(element, "EncryptionTime", "EncryptionTimeMs"),
+                        Time = FirstNonEmpty(
+                            TryGetJsonString(element, "time"),
+                            TryGetJsonString(element, "Timestamp"))
                     });
                 }
 
@@ -721,6 +1000,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                         BackupName = (log.Element("Name")?.Value ?? "").Trim(),
                         SourcePath = (log.Element("FileSource")?.Value ?? "").Trim(),
                         TargetPath = (log.Element("FileTarget")?.Value ?? "").Trim(),
+                        MachineName = (log.Element("MachineName")?.Value ?? "").Trim(),
+                        UserName = (log.Element("UserName")?.Value ?? "").Trim(),
                         FileSizeBytes = TryGetXmlLong(log, "FileSize"),
                         TransferTimeMs = TryGetXmlLong(log, "FileTransferTime"),
                         EncryptionTimeMs = TryGetXmlLong(log, "EncryptionTime"),
@@ -743,6 +1024,8 @@ namespace easySave_BMT.Avalonia.ViewModels
             sb.AppendLine($"{Loc["Name"]}: {entry.BackupName}");
             sb.AppendLine($"{Loc["Source"]}: {entry.SourcePath}");
             sb.AppendLine($"{Loc["Destination"]}: {entry.TargetPath}");
+            sb.AppendLine($"{Loc["UiLogMachine"]}: {entry.MachineName}");
+            sb.AppendLine($"{Loc["UiLogUser"]}: {entry.UserName}");
             sb.AppendLine($"{Loc["UiLogFileSize"]}: {entry.FileSizeBytes} B");
             sb.AppendLine($"{Loc["UiLogTransferTime"]}: {entry.TransferTimeMs} ms");
             sb.AppendLine($"{Loc["UiLogEncryptionTime"]}: {entry.EncryptionTimeMs} ms");
@@ -834,6 +1117,36 @@ namespace easySave_BMT.Avalonia.ViewModels
                 return parsed;
 
             return 0;
+        }
+
+        private static long TryGetJsonLongAny(JsonElement obj, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (!obj.TryGetProperty(name, out var prop))
+                    continue;
+
+                if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt64(out long val))
+                    return val;
+
+                if (prop.ValueKind == JsonValueKind.String && long.TryParse(prop.GetString(), out long parsed))
+                    return parsed;
+            }
+
+            return 0;
+        }
+
+        private static string FirstNonEmpty(params string[] values)
+        {
+            foreach (var value in values)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
+            }
+
+            return string.Empty;
         }
 
         private static long TryGetXmlLong(XElement node, string elementName)

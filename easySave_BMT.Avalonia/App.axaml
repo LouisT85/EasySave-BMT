@@ -140,6 +140,20 @@
       <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
     </Style>
 
+    <Style Selector="Button.suggestion">
+      <Setter Property="Padding" Value="10,7"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Background" Value="{DynamicResource BrushSurface}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+    </Style>
+    <Style Selector="Button.suggestion:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BrushLogItemHover}"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+    </Style>
+
     <Style Selector="Button.icon">
       <Setter Property="Width" Value="34"/>
       <Setter Property="Height" Value="34"/>
@@ -185,6 +199,33 @@
       <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="Padding" Value="16"/>
+    </Style>
+
+    <Style Selector="Border.chipTag">
+      <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="Padding" Value="10,8,10,8"/>
+    </Style>
+
+    <Style Selector="Button.chipRemove">
+      <Setter Property="Width" Value="16"/>
+      <Setter Property="Height" Value="16"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Background" Value="{DynamicResource BrushDanger}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="Margin" Value="6,-4,-4,0"/>
+    </Style>
+    <Style Selector="Button.chipRemove:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#B91C1C"/>
+      <Setter Property="Foreground" Value="White"/>
     </Style>
 
     <Style Selector="ProgressBar">

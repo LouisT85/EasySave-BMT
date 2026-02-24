@@ -30,8 +30,16 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> RemoveSavedEncryptionKeyCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> AddEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> RemoveEncryptionExtensionCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> AddEncryptionExtensionSuggestionCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> RemoveEncryptionExtensionByValueCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> AddPriorityExtensionCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> RemovePriorityExtensionCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> AddPriorityExtensionSuggestionCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> RemovePriorityExtensionByValueCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> AddBusinessSoftwareEntryCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> RemoveBusinessSoftwareEntryCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> AddBusinessSoftwareSuggestionCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> RemoveBusinessSoftwareEntryByValueCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> LoadLogsCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> PauseCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> StopCommand { get; private set; } = null!;
@@ -130,8 +138,16 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             AddEncryptionExtensionCommand = ReactiveCommand.Create(AddEncryptionExtension);
             RemoveEncryptionExtensionCommand = ReactiveCommand.Create(RemoveEncryptionExtension);
+            AddEncryptionExtensionSuggestionCommand = ReactiveCommand.Create<string>(AddEncryptionExtensionSuggestion);
+            RemoveEncryptionExtensionByValueCommand = ReactiveCommand.Create<string>(RemoveEncryptionExtensionByValue);
+            AddPriorityExtensionCommand = ReactiveCommand.Create(AddPriorityExtension);
+            RemovePriorityExtensionCommand = ReactiveCommand.Create(RemovePriorityExtension);
+            AddPriorityExtensionSuggestionCommand = ReactiveCommand.Create<string>(AddPriorityExtensionSuggestion);
+            RemovePriorityExtensionByValueCommand = ReactiveCommand.Create<string>(RemovePriorityExtensionByValue);
             AddBusinessSoftwareEntryCommand = ReactiveCommand.Create(AddBusinessSoftwareEntry);
             RemoveBusinessSoftwareEntryCommand = ReactiveCommand.Create(RemoveBusinessSoftwareEntry);
+            AddBusinessSoftwareSuggestionCommand = ReactiveCommand.Create<string>(AddBusinessSoftwareSuggestion);
+            RemoveBusinessSoftwareEntryByValueCommand = ReactiveCommand.Create<string>(RemoveBusinessSoftwareEntryByValue);
 
             LoadLogsCommand = ReactiveCommand.Create(LoadLogs);
 
@@ -224,10 +240,21 @@ namespace easySave_BMT.Avalonia.ViewModels
 
         private void AddEncryptionExtension()
         {
-            string ext = (NewEncryptionExtension ?? "").Trim();
+            AddEncryptionExtensionFromValue(NewEncryptionExtension, showValidationFeedback: true);
+        }
+
+        private void AddEncryptionExtensionSuggestion(string suggestion)
+        {
+            AddEncryptionExtensionFromValue(suggestion, showValidationFeedback: false);
+        }
+
+        private void AddEncryptionExtensionFromValue(string? rawValue, bool showValidationFeedback)
+        {
+            string ext = (rawValue ?? "").Trim();
             if (string.IsNullOrWhiteSpace(ext))
             {
-                SetTimedAreaMessage(MessageArea.Config, Loc["UiEnterExtension"]);
+                if (showValidationFeedback)
+                    SetTimedAreaMessage(MessageArea.Config, Loc["UiEnterExtension"]);
                 return;
             }
 
@@ -240,7 +267,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ext.Contains(System.IO.Path.DirectorySeparatorChar) ||
                 ext.Contains(System.IO.Path.AltDirectorySeparatorChar))
             {
-                SetTimedAreaMessage(MessageArea.Config, Loc["UiInvalidExtension"]);
+                if (showValidationFeedback)
+                    SetTimedAreaMessage(MessageArea.Config, Loc["UiInvalidExtension"]);
                 return;
             }
 
@@ -250,6 +278,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
 
             NewEncryptionExtension = "";
+            UpdateEncryptionExtensionSuggestions();
         }
 
         private void RemoveEncryptionExtension()
@@ -257,20 +286,117 @@ namespace easySave_BMT.Avalonia.ViewModels
             if (string.IsNullOrWhiteSpace(SelectedEncryptionExtension)) return;
             ConfigEncryptionExtensionsDraft.Remove(SelectedEncryptionExtension);
             SelectedEncryptionExtension = null;
+            UpdateEncryptionExtensionSuggestions();
+        }
+
+        private void RemoveEncryptionExtensionByValue(string value)
+        {
+            string normalized = (value ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(normalized)) return;
+
+            var match = ConfigEncryptionExtensionsDraft
+                .FirstOrDefault(v => string.Equals(v, normalized, StringComparison.OrdinalIgnoreCase));
+
+            if (match is null) return;
+
+            ConfigEncryptionExtensionsDraft.Remove(match);
+            if (string.Equals(SelectedEncryptionExtension, match, StringComparison.OrdinalIgnoreCase))
+                SelectedEncryptionExtension = null;
+
+            UpdateEncryptionExtensionSuggestions();
+        }
+
+        private void AddPriorityExtension()
+        {
+            AddPriorityExtensionFromValue(NewPriorityExtension, showValidationFeedback: true);
+        }
+
+        private void AddPriorityExtensionSuggestion(string suggestion)
+        {
+            AddPriorityExtensionFromValue(suggestion, showValidationFeedback: false);
+        }
+
+        private void AddPriorityExtensionFromValue(string? rawValue, bool showValidationFeedback)
+        {
+            string ext = (rawValue ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(ext))
+            {
+                if (showValidationFeedback)
+                    SetTimedAreaMessage(MessageArea.Config, Loc["UiEnterExtension"]);
+                return;
+            }
+
+            if (!ext.StartsWith(".")) ext = "." + ext;
+            ext = ext.ToLowerInvariant();
+
+            if (ext.Length < 2 ||
+                ext.Any(ch => char.IsWhiteSpace(ch)) ||
+                ext.Contains(System.IO.Path.DirectorySeparatorChar) ||
+                ext.Contains(System.IO.Path.AltDirectorySeparatorChar))
+            {
+                if (showValidationFeedback)
+                    SetTimedAreaMessage(MessageArea.Config, Loc["UiInvalidExtension"]);
+                return;
+            }
+
+            if (!ConfigPriorityExtensionsDraft.Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase)))
+            {
+                ConfigPriorityExtensionsDraft.Add(ext);
+            }
+
+            NewPriorityExtension = "";
+            UpdatePriorityExtensionSuggestions();
+        }
+
+        private void RemovePriorityExtension()
+        {
+            if (string.IsNullOrWhiteSpace(SelectedPriorityExtension)) return;
+            ConfigPriorityExtensionsDraft.Remove(SelectedPriorityExtension);
+            SelectedPriorityExtension = null;
+            UpdatePriorityExtensionSuggestions();
+        }
+
+        private void RemovePriorityExtensionByValue(string value)
+        {
+            string normalized = (value ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(normalized)) return;
+
+            var match = ConfigPriorityExtensionsDraft
+                .FirstOrDefault(v => string.Equals(v, normalized, StringComparison.OrdinalIgnoreCase));
+
+            if (match is null) return;
+
+            ConfigPriorityExtensionsDraft.Remove(match);
+            if (string.Equals(SelectedPriorityExtension, match, StringComparison.OrdinalIgnoreCase))
+                SelectedPriorityExtension = null;
+
+            UpdatePriorityExtensionSuggestions();
         }
 
         private void AddBusinessSoftwareEntry()
         {
-            string entry = NormalizeBusinessSoftwareEntry(NewBusinessSoftwareEntry);
+            AddBusinessSoftwareEntryFromValue(NewBusinessSoftwareEntry, showValidationFeedback: true);
+        }
+
+        private void AddBusinessSoftwareSuggestion(string suggestion)
+        {
+            AddBusinessSoftwareEntryFromValue(suggestion, showValidationFeedback: false);
+        }
+
+        private void AddBusinessSoftwareEntryFromValue(string? rawValue, bool showValidationFeedback)
+        {
+            string entry = NormalizeBusinessSoftwareEntry(rawValue);
             if (string.IsNullOrWhiteSpace(entry))
             {
-                SetTimedAreaMessage(MessageArea.Config, Loc["UiEnterBusinessSoftwareEntry"]);
+                if (showValidationFeedback)
+                    SetTimedAreaMessage(MessageArea.Config, Loc["UiEnterBusinessSoftwareEntry"]);
                 return;
             }
 
             if (entry.Contains(';') || entry.Contains(',') || entry.Contains('|') || entry.Contains('\n') || entry.Contains('\r'))
             {
-                SetTimedAreaMessage(MessageArea.Config, Loc["UiInvalidBusinessSoftwareEntry"]);
+                if (showValidationFeedback)
+                    SetTimedAreaMessage(MessageArea.Config, Loc["UiInvalidBusinessSoftwareEntry"]);
                 return;
             }
 
@@ -280,6 +406,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
 
             NewBusinessSoftwareEntry = "";
+            UpdateBusinessSoftwareSuggestions();
         }
 
         private void RemoveBusinessSoftwareEntry()
@@ -287,6 +414,24 @@ namespace easySave_BMT.Avalonia.ViewModels
             if (string.IsNullOrWhiteSpace(SelectedBusinessSoftwareEntry)) return;
             ConfigBusinessSoftwareEntriesDraft.Remove(SelectedBusinessSoftwareEntry);
             SelectedBusinessSoftwareEntry = null;
+            UpdateBusinessSoftwareSuggestions();
+        }
+
+        private void RemoveBusinessSoftwareEntryByValue(string value)
+        {
+            string normalized = NormalizeBusinessSoftwareEntry(value);
+            if (string.IsNullOrWhiteSpace(normalized)) return;
+
+            var match = ConfigBusinessSoftwareEntriesDraft
+                .FirstOrDefault(v => string.Equals(v, normalized, StringComparison.OrdinalIgnoreCase));
+
+            if (match is null) return;
+
+            ConfigBusinessSoftwareEntriesDraft.Remove(match);
+            if (string.Equals(SelectedBusinessSoftwareEntry, match, StringComparison.OrdinalIgnoreCase))
+                SelectedBusinessSoftwareEntry = null;
+
+            UpdateBusinessSoftwareSuggestions();
         }
 
         private static string NormalizeBusinessSoftwareEntry(string? raw)
