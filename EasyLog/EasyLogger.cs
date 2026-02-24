@@ -33,6 +33,7 @@ namespace EasyLog
         private readonly Uri? _centralizedEndpoint;
         private readonly HttpClient? _httpClient;
         private readonly bool _ownsHttpClient;
+        private readonly object _writeLock = new();
 
         public EasyLogger(string logDirectory)
             : this(logDirectory, LogFormat.XML, DestinationMode.LocalOnly, centralizedEndpoint: null)
@@ -87,7 +88,10 @@ namespace EasyLog
 
             if (ShouldWriteLocal())
             {
-                WriteLocal(entry);
+                lock (_writeLock)
+                {
+                    WriteLocal(entry);
+                }
             }
 
             if (ShouldSendCentralized())

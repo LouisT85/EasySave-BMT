@@ -89,6 +89,93 @@ namespace easySave_BMT.Avalonia.ViewModels
                 .ToList();
         }
 
+        private static string NormalizeCryptoSoftKey(string? rawKey)
+        {
+            return (rawKey ?? "").Trim();
+        }
+
+        private static bool TryValidateCryptoSoftKey(string? rawKey, out string normalizedKey, out string? error)
+        {
+            normalizedKey = NormalizeCryptoSoftKey(rawKey);
+            error = null;
+
+            if (string.IsNullOrWhiteSpace(normalizedKey))
+            {
+                error = "Empty";
+                return false;
+            }
+
+            if (normalizedKey.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            {
+                string hex = normalizedKey.Substring(2).Trim();
+                if (hex.Length == 0 || hex.Length % 2 != 0 || !hex.All(Uri.IsHexDigit))
+                {
+                    error = "InvalidHex";
+                    return false;
+                }
+
+                if (hex.Length / 2 < 8)
+                {
+                    error = "TooShort";
+                    return false;
+                }
+
+                normalizedKey = "0x" + hex.ToUpperInvariant();
+                return true;
+            }
+
+            if (Encoding.UTF8.GetByteCount(normalizedKey) < 8)
+            {
+                error = "TooShort";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static string BuildCryptoSoftKeyFingerprint(string normalizedKey)
+        {
+            if (string.IsNullOrWhiteSpace(normalizedKey)) return "";
+
+            string compact = normalizedKey.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                ? normalizedKey.Substring(2)
+                : normalizedKey;
+
+            compact = compact.Trim();
+            if (compact.Length <= 8) return compact.ToUpperInvariant();
+            return compact.Substring(compact.Length - 8).ToUpperInvariant();
+        }
+
+        private EncryptionKeyOptionItem CreateEncryptionKeyOption(string normalizedKey)
+        {
+            string fingerprint = BuildCryptoSoftKeyFingerprint(normalizedKey);
+            string format = normalizedKey.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? "HEX" : "TXT";
+            string display = $"{format} ...{fingerprint}";
+            return new EncryptionKeyOptionItem(normalizedKey, display);
+        }
+
+        private void UpsertSavedCryptoSoftKeyDraft(string? key)
+        {
+            if (!TryValidateCryptoSoftKey(key, out string normalizedKey, out _))
+            {
+                return;
+            }
+
+            if (!CryptoSoftSavedKeysDraft.Any(k => string.Equals(k.Value, normalizedKey, StringComparison.OrdinalIgnoreCase)))
+            {
+                CryptoSoftSavedKeysDraft.Add(CreateEncryptionKeyOption(normalizedKey));
+            }
+        }
+
+        private List<string> BuildNormalizedSavedCryptoSoftKeysDraft()
+        {
+            return CryptoSoftSavedKeysDraft
+                .Select(k => NormalizeCryptoSoftKey(k.Value))
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
         private void UpdateBusinessSoftwareSuggestions()
         {
             string query = NormalizeBusinessSoftwareEntry(NewBusinessSoftwareEntry);
@@ -257,13 +344,20 @@ namespace easySave_BMT.Avalonia.ViewModels
             if (!value.StartsWith(".")) value = "." + value;
             return value;
         }
-
         private void ApplyEncryptionDraftToModelForLaunch()
         {
             var cfg = _coreViewModel.model.GetConfig();
             var exts = BuildNormalizedEncryptionExtensionsDraft();
             var priorityExts = BuildNormalizedPriorityExtensionsDraft();
-            string cryptoSoftKey = (ConfigCryptoSoftKeyDraft ?? "").Trim();
+            string cryptoSoftKey = NormalizeCryptoSoftKey(ConfigCryptoSoftKeyDraft);
+            if (TryValidateCryptoSoftKey(cryptoSoftKey, out string normalizedKey, out _))
+            {
+                cryptoSoftKey = normalizedKey;
+                ConfigCryptoSoftKeyDraft = normalizedKey;
+                UpsertSavedCryptoSoftKeyDraft(normalizedKey);
+            }
+
+            var savedKeys = BuildNormalizedSavedCryptoSoftKeysDraft();
             var keyTrace = EncryptionKeyCreationTraceDraft
                 .Select(e => (e ?? "").Trim())
                 .Where(e => !string.IsNullOrWhiteSpace(e))
@@ -277,6 +371,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                 encryptionExtensions: exts,
                 priorityExtensions: priorityExts,
                 cryptoSoftKey: cryptoSoftKey,
+                cryptoSoftSavedKeys: savedKeys,
                 encryptionKeyCreationTrace: keyTrace);
         }
 
@@ -296,15 +391,29 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ConfigThemeDraft = ConfigTheme;
 
                 ConfigEnableEncryptionDraft = cfg.EnableEncryption;
-                ConfigCryptoSoftKeyDraft = (cfg.CryptoSoftKey ?? "").Trim();
+                ConfigCryptoSoftKeyDraft = NormalizeCryptoSoftKey(cfg.CryptoSoftKey);
                 ConfigBusinessSoftwareDraft = (cfg.BusinessSoftware ?? "").Trim();
                 NewBusinessSoftwareEntry = "";
                 NewEncryptionExtension = "";
                 NewPriorityExtension = "";
                 SelectedBusinessSoftwareEntry = null;
+                SelectedCryptoSoftSavedKey = null;
                 SelectedPriorityExtension = null;
                 ConfigBusinessSoftwareEntriesDraft.Clear();
                 EncryptionKeyCreationTraceDraft.Clear();
+                CryptoSoftSavedKeysDraft.Clear();
+
+                if (cfg.CryptoSoftSavedKeys is not null)
+                {
+                    foreach (var savedKey in cfg.CryptoSoftSavedKeys)
+                    {
+                        UpsertSavedCryptoSoftKeyDraft(savedKey);
+                    }
+                }
+
+                UpsertSavedCryptoSoftKeyDraft(ConfigCryptoSoftKeyDraft);
+                SelectedCryptoSoftSavedKey = CryptoSoftSavedKeysDraft
+                    .FirstOrDefault(k => string.Equals(k.Value, ConfigCryptoSoftKeyDraft, StringComparison.OrdinalIgnoreCase));
 
                 foreach (var entry in ParseBusinessSoftwareEntries(ConfigBusinessSoftwareDraft))
                 {
@@ -396,7 +505,23 @@ namespace easySave_BMT.Avalonia.ViewModels
                 string businessSoftware = string.Join("; ", businessEntries);
                 ConfigBusinessSoftwareDraft = businessSoftware;
                 string themePreference = NormalizeThemePreference(ConfigThemeDraft);
-                string cryptoSoftKey = (ConfigCryptoSoftKeyDraft ?? "").Trim();
+                string cryptoSoftKey = NormalizeCryptoSoftKey(ConfigCryptoSoftKeyDraft);
+                if (!string.IsNullOrWhiteSpace(cryptoSoftKey))
+                {
+                    if (!TryValidateCryptoSoftKey(cryptoSoftKey, out string normalizedKey, out _))
+                    {
+                        SetTimedAreaMessage(MessageArea.Config, Loc["UiEncryptionKeyInvalid"]);
+                        return;
+                    }
+
+                    cryptoSoftKey = normalizedKey;
+                    ConfigCryptoSoftKeyDraft = normalizedKey;
+                    UpsertSavedCryptoSoftKeyDraft(normalizedKey);
+                }
+
+                var savedKeys = BuildNormalizedSavedCryptoSoftKeysDraft();
+                SelectedCryptoSoftSavedKey = CryptoSoftSavedKeysDraft
+                    .FirstOrDefault(k => string.Equals(k.Value, cryptoSoftKey, StringComparison.OrdinalIgnoreCase));
                 ConfigCryptoSoftKeyDraft = cryptoSoftKey;
                 var keyTrace = EncryptionKeyCreationTraceDraft
                     .Select(e => (e ?? "").Trim())
@@ -430,6 +555,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                     encryptionExtensions: exts,
                     priorityExtensions: priorityExts,
                     cryptoSoftKey: cryptoSoftKey,
+                    cryptoSoftSavedKeys: savedKeys,
                     encryptionKeyCreationTrace: keyTrace,
                     businessSoftware: businessSoftware,
                     themePreference: themePreference,

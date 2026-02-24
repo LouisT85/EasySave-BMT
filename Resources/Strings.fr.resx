@@ -349,6 +349,9 @@
   <data name="UiLaunchingBackup" xml:space="preserve">
     <value>Lancement de '{0}'...</value>
   </data>
+  <data name="UiLaunchingBackupsParallel" xml:space="preserve">
+    <value>Lancement de {0} sauvegardes en parallèle...</value>
+  </data>
   <data name="UiBackupsFinished" xml:space="preserve">
     <value>Sauvegardes terminées.</value>
   </data>
@@ -397,11 +400,23 @@
   <data name="UiGenerateKey" xml:space="preserve">
     <value>Générer</value>
   </data>
+  <data name="UiSavedEncryptionKeys" xml:space="preserve">
+    <value>Clés enregistrées</value>
+  </data>
+  <data name="UiSaveCurrentKey" xml:space="preserve">
+    <value>Enregistrer la clé</value>
+  </data>
   <data name="UiEncryptionKeyTrace" xml:space="preserve">
     <value>Traçage de génération de clé</value>
   </data>
   <data name="UiEncryptionKeyGenerated" xml:space="preserve">
     <value>Une nouvelle clé de chiffrement a été générée.</value>
+  </data>
+  <data name="UiEncryptionKeySaved" xml:space="preserve">
+    <value>Clé de chiffrement enregistrée et sélectionnée.</value>
+  </data>
+  <data name="UiEncryptionKeyInvalid" xml:space="preserve">
+    <value>Clé de chiffrement invalide. Utilisez du texte (8+ caractères) ou une clé hexadécimale 0x... valide.</value>
   </data>
   <data name="UiEncryptionKeyTraceEntry" xml:space="preserve">
     <value>{0} - clé générée (empreinte : ...{1})</value>
