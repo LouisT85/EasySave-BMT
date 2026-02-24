@@ -20,7 +20,9 @@ Depuis le dossier `CentralLogService/` :
 
 ```bash
 docker build -t easysave-central-log .
-docker run --rm -p 8080:8080 -v central_logs:/app/logs easysave-central-log
+docker run -d --name central-log --rm -p 8080:8080 -v central_logs:/app/logs easysave-central-log
+docker logs -f central-log
+docker stop central-log
 ```
 
 Endpoint cible EasySave:
