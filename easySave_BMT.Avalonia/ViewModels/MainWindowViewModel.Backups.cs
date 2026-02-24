@@ -10,6 +10,9 @@ namespace easySave_BMT.Avalonia.ViewModels
     public partial class MainWindowViewModel
     {
         private const string EtaToken = " | ETA ";
+        private readonly HashSet<string> _currentBatchSaveNames = new(StringComparer.Ordinal);
+        private static readonly TimeSpan StateLogLiveRefreshInterval = TimeSpan.FromMilliseconds(250);
+        private DateTime _lastStateLogLiveRefreshUtc = DateTime.MinValue;
 
         private static (string BaseName, string? Eta) SplitBackupNameAndEta(string backupName)
         {
@@ -155,13 +158,19 @@ namespace easySave_BMT.Avalonia.ViewModels
                     return;
                 }
 
+                _currentBatchSaveNames.Clear();
                 foreach (var save in toRun)
                 {
+                    _currentBatchSaveNames.Add(save.name);
                     SetSaveUiProgress(save.name, 0);
                 }
 
-                string launchLabel = toRun.Count == 1 ? toRun[0].name : $"{toRun.Count} backups";
-                SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiLaunchingBackup"], launchLabel), "");
+                if (toRun.Count > 1)
+                    SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiLaunchingBackupsParallel"], toRun.Count), "");
+                else
+                    SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiLaunchingBackup"], toRun[0].name), "");
+
+                RefreshGlobalBatchProgress();
 
                 var batchResults = await Task.Run(() => _coreViewModel.backupLauncher.LaunchBackupsInParallel(toRun));
                 if (batchResults.Count == 0)
@@ -232,6 +241,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                 {
                     lastResult = 104;
                 }
+
+                TryRefreshSelectedStateLogLive(force: true);
             }
             catch (Exception ex)
             {
@@ -243,6 +254,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                 IsBackupRunning = false;
                 IsBackupPaused = false;
                 _coreViewModel.model.ClearPauseRequest();
+                _currentBatchSaveNames.Clear();
             }
 
             ListSaves(showUserFeedback: false);
@@ -341,13 +353,22 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             Dispatcher.UIThread.Post(() =>
             {
-                ProgressPercent = Math.Clamp(percent, 0, 100);
+                if (!IsBackupRunning) return;
 
-                string etaPart = string.IsNullOrWhiteSpace(eta) ? "" : $" | ETA: {eta}";
-                ProgressText = $"{baseName}: {percent}% ({Loc["FilesRemaining"]}: {filesLeft}){etaPart}";
-
-                IsProgressVisible = true;
                 SetSaveUiProgress(baseName, percent);
+
+                if (_currentBatchSaveNames.Count <= 1)
+                {
+                    ProgressPercent = Math.Clamp(percent, 0, 100);
+                    string etaPart = string.IsNullOrWhiteSpace(eta) ? "" : $" | ETA: {eta}";
+                    ProgressText = $"{baseName}: {percent}% ({Loc["FilesRemaining"]}: {filesLeft}){etaPart}";
+                    IsProgressVisible = true;
+                    TryRefreshSelectedStateLogLive();
+                    return;
+                }
+
+                RefreshGlobalBatchProgress();
+                TryRefreshSelectedStateLogLive();
             });
         }
 
@@ -357,10 +378,11 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             Dispatcher.UIThread.Post(() =>
             {
-                SetSaveUiProgress(baseName, 100);
+                if (!IsBackupRunning) return;
 
-                ProgressPercent = 100;
-                IsProgressVisible = true;
+                SetSaveUiProgress(baseName, 100);
+                RefreshGlobalBatchProgress();
+                TryRefreshSelectedStateLogLive(force: true);
 
                 double seconds = transferTime / 1000.0;
                 SetTimedDashboardStatusText(string.Format(Loc["UiBackupFinished"], baseName, seconds));
@@ -401,6 +423,42 @@ namespace easySave_BMT.Avalonia.ViewModels
                 else
                     SetTimedAreaMessage(MessageArea.Dashboard, message);
             });
+        }
+
+        private void RefreshGlobalBatchProgress()
+        {
+            if (_currentBatchSaveNames.Count == 0)
+                return;
+
+            int sumPercent = 0;
+            int done = 0;
+
+            foreach (string name in _currentBatchSaveNames)
+            {
+                int percent = _uiProgressBySaveName.TryGetValue(name, out int value)
+                    ? Math.Clamp(value, 0, 100)
+                    : 0;
+
+                sumPercent += percent;
+                if (percent >= 100) done++;
+            }
+
+            int globalPercent = (int)Math.Round(sumPercent / (double)_currentBatchSaveNames.Count, MidpointRounding.AwayFromZero);
+            ProgressPercent = Math.Clamp(globalPercent, 0, 100);
+            ProgressText = $"{Loc["Progress"]}: {ProgressPercent}% ({done}/{_currentBatchSaveNames.Count})";
+            IsProgressVisible = true;
+        }
+
+        private void TryRefreshSelectedStateLogLive(bool force = false)
+        {
+            if (SelectedTabIndex != 2) return;
+
+            DateTime now = DateTime.UtcNow;
+            if (!force && now - _lastStateLogLiveRefreshUtc < StateLogLiveRefreshInterval)
+                return;
+
+            _lastStateLogLiveRefreshUtc = now;
+            RefreshSelectedStateLogLive();
         }
     }
 }

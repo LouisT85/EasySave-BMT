@@ -43,6 +43,16 @@ namespace easySave_BMT.Model_
         /// <summary>Internal static storage for the state file's full path.</summary>
         private static string _stateFilePath;
         private static readonly object _stateFileLock = new();
+        private static readonly JsonSerializerOptions _stateWriteOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
+        private static readonly JsonSerializerOptions _stateReadOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
 
         /// <summary>
         /// Configures the file path where states will be saved. 
@@ -133,14 +143,7 @@ namespace easySave_BMT.Model_
 
                     if (existingStates.Count == 0) return;
 
-                    var options = new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                    };
-
-                    string json = JsonSerializer.Serialize(existingStates, options);
+                    string json = JsonSerializer.Serialize(existingStates, _stateWriteOptions);
                     File.WriteAllText(_stateFilePath, json);
                 }
                 catch (Exception ex)
@@ -169,7 +172,7 @@ namespace easySave_BMT.Model_
                     try
                     {
                         string json = File.ReadAllText(_stateFilePath);
-                        var states = JsonSerializer.Deserialize<List<RealTimeState>>(json) ?? new List<RealTimeState>();
+                        var states = JsonSerializer.Deserialize<List<RealTimeState>>(json, _stateReadOptions) ?? new List<RealTimeState>();
 
                         return states.Where(s => s != null && !string.IsNullOrEmpty(s.Name)).ToList();
                     }
@@ -199,14 +202,7 @@ namespace easySave_BMT.Model_
                     {
                         existingStates.Remove(stateToRemove);
 
-                        var options = new JsonSerializerOptions
-                        {
-                            WriteIndented = true,
-                            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                        };
-
-                        string json = JsonSerializer.Serialize(existingStates, options);
+                        string json = JsonSerializer.Serialize(existingStates, _stateWriteOptions);
                         File.WriteAllText(_stateFilePath, json);
                     }
                 }

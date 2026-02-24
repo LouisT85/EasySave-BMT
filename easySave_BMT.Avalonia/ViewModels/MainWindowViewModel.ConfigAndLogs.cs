@@ -65,6 +65,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         };
 
         private readonly List<string> _allLogFiles = new();
+        private readonly Dictionary<string, string> _logFilePathByDisplayName = new(StringComparer.Ordinal);
         private readonly List<LogEntryViewItem> _allParsedLogEntries = new();
         private readonly List<string> _cachedBusinessSuggestionPool = new();
         private DateTime _businessSuggestionCacheTimestampUtc = DateTime.MinValue;
@@ -604,19 +605,104 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
         }
 
+        private static string NormalizePathForComparison(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return "";
+
+            try
+            {
+                return Path.GetFullPath(path)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            }
+            catch
+            {
+                return (path ?? "").Trim();
+            }
+        }
+
+        private bool IsConfiguredStateFilePath(string? path)
+        {
+            string configured = NormalizePathForComparison(ConfigStateFilePath);
+            string candidate = NormalizePathForComparison(path);
+
+            return !string.IsNullOrWhiteSpace(configured) &&
+                   !string.IsNullOrWhiteSpace(candidate) &&
+                   string.Equals(configured, candidate, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string BuildStateLogDisplayName(string statePath)
+        {
+            string fileName = Path.GetFileName(statePath);
+            if (string.IsNullOrWhiteSpace(fileName))
+                fileName = "state.json";
+
+            return $"{fileName} [state]";
+        }
+
+        private void RegisterLogFile(string fullPath, string? preferredDisplayName = null)
+        {
+            if (string.IsNullOrWhiteSpace(fullPath)) return;
+
+            string displayName = (preferredDisplayName ?? Path.GetFileName(fullPath) ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(displayName)) return;
+
+            if (_logFilePathByDisplayName.ContainsKey(displayName))
+            {
+                // Avoid display-name collisions while keeping labels readable.
+                string suffix = " (" + Path.GetDirectoryName(fullPath) + ")";
+                displayName += suffix;
+            }
+
+            _allLogFiles.Add(displayName);
+            _logFilePathByDisplayName[displayName] = fullPath;
+        }
+
+        private bool TryResolveLogFilePath(string displayName, out string path)
+        {
+            path = "";
+
+            if (string.IsNullOrWhiteSpace(displayName))
+                return false;
+
+            if (_logFilePathByDisplayName.TryGetValue(displayName, out string? mapped) &&
+                !string.IsNullOrWhiteSpace(mapped))
+            {
+                path = mapped;
+                return true;
+            }
+
+            path = Path.Combine(ConfigLogDirectory, displayName);
+            return true;
+        }
+
+        private void RefreshSelectedStateLogLive()
+        {
+            if (string.IsNullOrWhiteSpace(SelectedLogFile)) return;
+            if (!TryResolveLogFilePath(SelectedLogFile, out string path)) return;
+            if (!IsConfiguredStateFilePath(path)) return;
+
+            ViewSelectedLog();
+        }
+
         private void LoadLogs()
         {
             try
             {
                 ResetLogViewer();
                 _allLogFiles.Clear();
+                _logFilePathByDisplayName.Clear();
                 string previousSelection = SelectedLogFile;
 
                 if (Directory.Exists(ConfigLogDirectory))
                 {
                     var files = Directory.GetFiles(ConfigLogDirectory);
                     foreach (var f in files)
-                        _allLogFiles.Add(Path.GetFileName(f));
+                        RegisterLogFile(f);
+                }
+
+                if (!string.IsNullOrWhiteSpace(ConfigStateFilePath))
+                {
+                    RegisterLogFile(ConfigStateFilePath, BuildStateLogDisplayName(ConfigStateFilePath));
                 }
 
                 ApplyLogFileFilterAndSort();
@@ -678,7 +764,14 @@ namespace easySave_BMT.Avalonia.ViewModels
                 return;
             }
 
-            string path = Path.Combine(ConfigLogDirectory, SelectedLogFile);
+            if (!TryResolveLogFilePath(SelectedLogFile, out string path))
+            {
+                SelectedLogContent = Loc["UiLogFileMissing"];
+                LogSummaryText = Loc["UiLogFileMissing"];
+                IsRawLogVisible = true;
+                return;
+            }
+
             if (!File.Exists(path))
             {
                 SelectedLogContent = Loc["UiLogFileMissing"];
@@ -688,6 +781,15 @@ namespace easySave_BMT.Avalonia.ViewModels
             }
 
             string raw = File.ReadAllText(path);
+
+            if (IsConfiguredStateFilePath(path))
+            {
+                LogSummaryText = string.Format(Loc["UiLogRawPreview"], Path.GetFileName(path));
+                SelectedLogContent = PrettyPrintRaw(path, raw);
+                IsStructuredLogVisible = false;
+                IsRawLogVisible = true;
+                return;
+            }
 
             if (TryParseStructuredLog(path, raw, out var entries))
             {
