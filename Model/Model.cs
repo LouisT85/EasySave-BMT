@@ -341,7 +341,7 @@ namespace easySave_BMT.Model_
 
         /// <summary>
         /// Same as <see cref="TryCopyFile(Save, FileInfo, long, string, long, int, int, int, out string?)"/> but also
-        /// reports whether encryption was applied or skipped (already encrypted).
+        /// reports whether encryption was applied.
         /// </summary>
         public bool TryCopyFile(
             Save save,
@@ -391,7 +391,7 @@ namespace easySave_BMT.Model_
                 // Notification de progression éventuelle pour la GUI
                 // (l'observateur GUI est porté par le ViewModel qui consomme ces états)
 
-                // Decide encryption from the source content (avoid XOR "decrypt" if file is already encrypted).
+                // Decide encryption from the configured extension rules.
                 bool shouldEncrypt = ShouldEncryptFile(currentFile.FullName, forceEncryptAllExtensions);
 
                 // Perform file copy (and compute plaintext hash only if we will encrypt).
@@ -429,20 +429,6 @@ namespace easySave_BMT.Model_
                 long encryptionTimeMs = 0;
                 bool encryptionOk = true;
                 string? encryptionError = null;
-
-                if (!shouldEncrypt && config.EnableEncryption)
-                {
-                    bool configuredForFile = IsFileEligibleByEncryptionExtensions(
-                        currentFile.FullName,
-                        out string ext,
-                        forceEncryptAllExtensions);
-
-                    if (configuredForFile &&
-                        (HasEasySaveCryptoHeader(currentFile.FullName) || IsLikelyAlreadyEncryptedTextByHeuristic(currentFile.FullName, ext)))
-                    {
-                        encryptionAction = EncryptionAction.SkippedAlreadyEncrypted;
-                    }
-                }
 
                 if (shouldEncrypt)
                 {
@@ -607,7 +593,10 @@ namespace easySave_BMT.Model_
             bool? enableEncryption = null,
             List<string>? encryptionExtensions = null,
             string? cryptoSoftPath = null,
+            string? cryptoSoftKey = null,
+            List<string>? encryptionKeyCreationTrace = null,
             string? businessSoftware = null,
+            string? themePreference = null,
             string? logDestinationMode = null,
             string? centralizedLogEndpoint = null)
         {
@@ -618,7 +607,10 @@ namespace easySave_BMT.Model_
                 enableEncryption,
                 encryptionExtensions,
                 cryptoSoftPath,
+                cryptoSoftKey,
+                encryptionKeyCreationTrace,
                 businessSoftware,
+                themePreference,
                 logDestinationMode,
                 centralizedLogEndpoint);
 
@@ -883,200 +875,10 @@ namespace easySave_BMT.Model_
             });
         }
 
-        // Marker to make encryption idempotent in EasySave:
-        // XOR encryption is symmetric; applying it twice with the same key would decrypt.
-        //
-        // Encrypted file format (v2):
-        //   line1: EASYSAVECRYPT2
-        //   line2: <sha256 hex of original plaintext>
-        //   line3+: encrypted bytes
-        //
-        // We keep v1 detection for backward compatibility (no hash line).
-        private const string EasySaveCryptoMagicV1 = "EASYSAVECRYPT1";
+        // EasySave stores an internal metadata header so differential backups can
+        // compare encrypted targets against source plaintext using a stable hash.
         private const string EasySaveCryptoMagicV2 = "EASYSAVECRYPT2";
-
-        private static bool TryReadEasySaveCryptoHeader(string filePath, out bool isEncrypted, out string? plaintextSha256Hex)
-        {
-            isEncrypted = false;
-            plaintextSha256Hex = null;
-
-            try
-            {
-                // Read only a small prefix and parse the first 1-2 lines.
-                byte[] buf = new byte[256];
-                int read;
-                using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    read = fs.Read(buf, 0, buf.Length);
-                }
-                if (read <= 0) return false;
-
-                int nl1 = Array.IndexOf(buf, (byte)'\n', 0, read);
-                if (nl1 <= 0) return false;
-
-                string line1 = Encoding.ASCII.GetString(buf, 0, nl1).TrimEnd('\r');
-                if (!string.Equals(line1, EasySaveCryptoMagicV1, StringComparison.Ordinal) &&
-                    !string.Equals(line1, EasySaveCryptoMagicV2, StringComparison.Ordinal))
-                {
-                    return false;
-                }
-
-                isEncrypted = true;
-
-                if (string.Equals(line1, EasySaveCryptoMagicV2, StringComparison.Ordinal))
-                {
-                    int start2 = nl1 + 1;
-                    int nl2 = Array.IndexOf(buf, (byte)'\n', start2, read - start2);
-                    if (nl2 > start2)
-                    {
-                        string line2 = Encoding.ASCII.GetString(buf, start2, nl2 - start2).TrimEnd('\r').Trim();
-                        if (line2.Length == 64 && line2.All(ch => Uri.IsHexDigit(ch)))
-                        {
-                            plaintextSha256Hex = line2.ToLowerInvariant();
-                        }
-                    }
-                }
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool HasEasySaveCryptoHeader(string filePath)
-        {
-            return TryReadEasySaveCryptoHeader(filePath, out bool isEncrypted, out _) && isEncrypted;
-        }
-
-        private static bool LooksLikePlaintextJson(string filePath)
-        {
-            try
-            {
-                byte[] data;
-                using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    int max = (int)Math.Min(4096, fs.Length);
-                    data = new byte[max];
-                    int read = fs.Read(data, 0, max);
-                    if (read <= 0) return false;
-                    if (read != max) Array.Resize(ref data, read);
-                }
-
-                int i = 0;
-                // UTF-8 BOM
-                if (data.Length >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF) i = 3;
-
-                for (; i < data.Length; i++)
-                {
-                    byte b = data[i];
-                    if (b == (byte)' ' || b == (byte)'\t' || b == (byte)'\r' || b == (byte)'\n')
-                        continue;
-
-                    return b == (byte)'{' || b == (byte)'[';
-                }
-
-                return false;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool LooksLikePlaintextXml(string filePath)
-        {
-            try
-            {
-                byte[] data;
-                using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    int max = (int)Math.Min(4096, fs.Length);
-                    data = new byte[max];
-                    int read = fs.Read(data, 0, max);
-                    if (read <= 0) return false;
-                    if (read != max) Array.Resize(ref data, read);
-                }
-
-                int i = 0;
-                // UTF-8 BOM
-                if (data.Length >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF) i = 3;
-
-                for (; i < data.Length; i++)
-                {
-                    byte b = data[i];
-                    if (b == (byte)' ' || b == (byte)'\t' || b == (byte)'\r' || b == (byte)'\n')
-                        continue;
-
-                    return b == (byte)'<';
-                }
-
-                return false;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool LooksLikePlaintextText(string filePath)
-        {
-            try
-            {
-                byte[] data;
-                using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    int max = (int)Math.Min(4096, fs.Length);
-                    data = new byte[max];
-                    int read = fs.Read(data, 0, max);
-                    if (read <= 0) return false;
-                    if (read != max) Array.Resize(ref data, read);
-                }
-
-                int bad = 0;
-                for (int i = 0; i < data.Length; i++)
-                {
-                    byte b = data[i];
-                    if (b == 0) return false; // NUL is extremely unlikely in plaintext configs
-                    if (b == (byte)'\t' || b == (byte)'\r' || b == (byte)'\n') continue;
-
-                    // Count control chars as "bad". Allow >= 0x20 or >= 0x80 (UTF-8 bytes).
-                    if (b < 0x20) bad++;
-                }
-
-                // If too many control characters, it's likely encrypted/binary.
-                return ((double)bad / Math.Max(1, data.Length)) <= 0.05;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool IsTextLikeExtension(string ext)
-        {
-            return ext == ".txt" ||
-                   ext == ".json" ||
-                   ext == ".xml" ||
-                   ext == ".csv" ||
-                   ext == ".log" ||
-                   ext == ".ini" ||
-                   ext == ".md" ||
-                   ext == ".yaml" ||
-                   ext == ".yml" ||
-                   ext == ".config";
-        }
-
-        private static bool IsLikelyAlreadyEncryptedTextByHeuristic(string filePath, string ext)
-        {
-            // Only apply heuristics to known text-like formats to avoid skipping encryption on binaries.
-            if (!IsTextLikeExtension(ext)) return false;
-
-            if (ext == ".json") return !LooksLikePlaintextJson(filePath);
-            if (ext == ".xml") return !LooksLikePlaintextXml(filePath);
-            return !LooksLikePlaintextText(filePath);
-        }
+        private const string CryptoSoftKeyEnvironmentVariable = "EASYSAVE_CRYPTOSOFT_KEY";
 
         private static string ComputeSha256Hex(string filePath)
         {
@@ -1125,15 +927,8 @@ namespace easySave_BMT.Model_
         {
             if (!config.EnableEncryption) return false;
 
-            if (!IsFileEligibleByEncryptionExtensions(filePath, out string ext, forceEncryptAllExtensions))
+            if (!IsFileEligibleByEncryptionExtensions(filePath, out _, forceEncryptAllExtensions))
                 return false;
-
-            // Already encrypted by EasySave => do not re-encrypt (prevents XOR "decrypt on second pass").
-            if (HasEasySaveCryptoHeader(filePath)) return false;
-
-            // Heuristic guard to avoid decrypting files that are already XOR-encrypted without the header.
-            // Only apply for text-like formats where we can reasonably detect plaintext.
-            if (IsLikelyAlreadyEncryptedTextByHeuristic(filePath, ext)) return false;
 
             return true;
         }
@@ -1186,13 +981,6 @@ namespace easySave_BMT.Model_
             encryptionTimeMs = 0;
             error = null;
 
-            // If the file is already encrypted by EasySave, do nothing.
-            if (HasEasySaveCryptoHeader(targetFilePath))
-            {
-                encryptionTimeMs = 0;
-                return true;
-            }
-
             string? cryptoSoftExe = ResolveCryptoSoftExecutablePath();
             if (string.IsNullOrWhiteSpace(cryptoSoftExe))
             {
@@ -1218,6 +1006,12 @@ namespace easySave_BMT.Model_
                     RedirectStandardOutput = false,
                     RedirectStandardError = false
                 };
+
+                string configuredKey = (config.CryptoSoftKey ?? "").Trim();
+                if (!string.IsNullOrWhiteSpace(configuredKey))
+                {
+                    psi.Environment[CryptoSoftKeyEnvironmentVariable] = configuredKey;
+                }
 
                 var sw = Stopwatch.StartNew();
                 using var proc = Process.Start(psi);
@@ -1268,7 +1062,7 @@ namespace easySave_BMT.Model_
                     return false;
                 }
 
-                // Replace the copied file with its encrypted version + EasySave header (idempotence + hash).
+                // Replace the copied file with its encrypted version + EasySave metadata header.
                 // Format: "EASYSAVECRYPT2\n" + "<sha256hex>\n" + encrypted bytes.
                 using (var outFs = new FileStream(tempFinal, FileMode.Create, FileAccess.Write, FileShare.None))
                 {

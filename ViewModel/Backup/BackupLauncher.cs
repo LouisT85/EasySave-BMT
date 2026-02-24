@@ -383,8 +383,7 @@ namespace easySave_BMT.ViewModel_.Backup
 
             var activeSw = Stopwatch.StartNew();
 
-            List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst, activeSw,
-                out int encryptedCount, out int skippedEncryptedCount);
+            List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst, activeSw, out int encryptedCount);
 
             activeSw.Stop();
             double transferTime = activeSw.Elapsed.TotalMilliseconds;
@@ -415,7 +414,7 @@ namespace easySave_BMT.ViewModel_.Backup
             if (!stopped)
             {
                 _viewModel.guiView?.OnBackupComplete(_save.name, transferTime);
-                _viewModel.guiView?.OnEncryptionSummary(_save.name, encryptedCount, skippedEncryptedCount);
+                _viewModel.guiView?.OnEncryptionSummary(_save.name, encryptedCount);
             }
 
             return stopped ? 216 : (failedFiles.Count == 0 ? 104 : 216);
@@ -469,15 +468,13 @@ namespace easySave_BMT.ViewModel_.Backup
             long _totalSize,
             string _dst,
             Stopwatch activeSw,
-            out int encryptedCount,
-            out int skippedAlreadyEncryptedCount)
+            out int encryptedCount)
         {
             long leftSize = _totalSize;
             int totalFile = _files.Length;
 
             List<string> failedFiles = new List<string>();
             encryptedCount = 0;
-            skippedAlreadyEncryptedCount = 0;
 
             double emaSpeedBytesPerMs = 0.0;
             const double alpha = 0.20;
@@ -578,7 +575,6 @@ namespace easySave_BMT.ViewModel_.Backup
                 if (ok)
                 {
                     if (encryptionAction == EncryptionAction.Encrypted) encryptedCount++;
-                    else if (encryptionAction == EncryptionAction.SkippedAlreadyEncrypted) skippedAlreadyEncryptedCount++;
 
                     bytesCopiedSuccess += curSize;
 
