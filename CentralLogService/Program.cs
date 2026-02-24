@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -44,35 +45,106 @@ app.MapPost("/logs", (InboundLogEntry entry) =>
 
     lock (fileWriteLock)
     {
-        List<InboundLogEntry> entries = new List<InboundLogEntry>();
+        string serializedEntry = JsonSerializer.Serialize(normalized, jsonOptions);
+        bool appended = TryAppendEntryToJsonArray(outputFilePath, serializedEntry);
 
-        if (File.Exists(outputFilePath) && new FileInfo(outputFilePath).Length > 0)
+        if (!appended)
         {
-            try
+            // Fallback for unexpected file format: rebuild from a parsed list.
+            List<InboundLogEntry> entries = new List<InboundLogEntry>();
+
+            if (File.Exists(outputFilePath) && new FileInfo(outputFilePath).Length > 0)
             {
-                string existingRaw = File.ReadAllText(outputFilePath);
-                entries = JsonSerializer.Deserialize<List<InboundLogEntry>>(existingRaw) ?? new List<InboundLogEntry>();
+                try
+                {
+                    string existingRaw = File.ReadAllText(outputFilePath);
+                    entries = JsonSerializer.Deserialize<List<InboundLogEntry>>(existingRaw) ?? new List<InboundLogEntry>();
+                }
+                catch
+                {
+                    entries = new List<InboundLogEntry>();
+                }
             }
-            catch
-            {
-                entries = new List<InboundLogEntry>();
-            }
+
+            entries.Add(normalized);
+            string serialized = JsonSerializer.Serialize(entries, jsonOptions);
+            File.WriteAllText(outputFilePath, serialized);
         }
 
-        entries.Add(normalized);
-        string serialized = JsonSerializer.Serialize(entries, jsonOptions);
-        File.WriteAllText(outputFilePath, serialized);
-
         app.Logger.LogInformation(
-            "Centralized log entry written to {FilePath}. Total entries in file: {Count}.",
-            outputFilePath,
-            entries.Count);
+            "Centralized log entry written to {FilePath}.",
+            outputFilePath);
     }
 
     return Results.Accepted($"/logs/{timestamp:yyyy-MM-dd}", new { file = $"{timestamp:yyyy-MM-dd}.json" });
 });
 
 app.Run();
+
+static bool TryAppendEntryToJsonArray(string outputFilePath, string serializedEntry)
+{
+    if (!File.Exists(outputFilePath) || new FileInfo(outputFilePath).Length == 0)
+    {
+        File.WriteAllText(outputFilePath, "[\n" + serializedEntry + "\n]");
+        return true;
+    }
+
+    using var fs = new FileStream(outputFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+    long lastNonWhitespacePos = fs.Length - 1;
+    while (lastNonWhitespacePos >= 0)
+    {
+        fs.Seek(lastNonWhitespacePos, SeekOrigin.Begin);
+        int b = fs.ReadByte();
+        if (b < 0) return false;
+        if (!char.IsWhiteSpace((char)b)) break;
+        lastNonWhitespacePos--;
+    }
+
+    if (lastNonWhitespacePos < 0)
+    {
+        return false;
+    }
+
+    fs.Seek(lastNonWhitespacePos, SeekOrigin.Begin);
+    int lastChar = fs.ReadByte();
+    if (lastChar != ']')
+    {
+        return false;
+    }
+
+    long beforeClosingBracketPos = lastNonWhitespacePos - 1;
+    while (beforeClosingBracketPos >= 0)
+    {
+        fs.Seek(beforeClosingBracketPos, SeekOrigin.Begin);
+        int b = fs.ReadByte();
+        if (b < 0) return false;
+        if (!char.IsWhiteSpace((char)b)) break;
+        beforeClosingBracketPos--;
+    }
+
+    if (beforeClosingBracketPos < 0)
+    {
+        return false;
+    }
+
+    fs.Seek(beforeClosingBracketPos, SeekOrigin.Begin);
+    int previousChar = fs.ReadByte();
+    bool isEmptyArray = previousChar == '[';
+
+    // Remove trailing whitespace + closing bracket.
+    fs.SetLength(lastNonWhitespacePos);
+    fs.Seek(lastNonWhitespacePos, SeekOrigin.Begin);
+
+    using var writer = new StreamWriter(fs, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), 1024, leaveOpen: true);
+    writer.Write(isEmptyArray ? "\n" : ",\n");
+    writer.Write(serializedEntry);
+    writer.Write("\n]");
+    writer.Flush();
+    fs.Flush(true);
+
+    return true;
+}
 
 public sealed record InboundLogEntry
 {

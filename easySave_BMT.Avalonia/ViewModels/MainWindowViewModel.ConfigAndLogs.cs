@@ -264,6 +264,23 @@ namespace easySave_BMT.Avalonia.ViewModels
             var exts = BuildNormalizedEncryptionExtensionsDraft();
             var priorityExts = BuildNormalizedPriorityExtensionsDraft();
             string cryptoSoftKey = (ConfigCryptoSoftKeyDraft ?? "").Trim();
+            string normalizedMode = Config.NormalizeLogDestinationMode(ConfigLogDestinationModeDraft);
+            string endpointDraft = Config.NormalizeCentralizedLogEndpoint(ConfigCentralizedLogEndpoint);
+
+            if (Config.RequiresCentralizedEndpoint(normalizedMode))
+            {
+                bool endpointValid = Uri.TryCreate(endpointDraft, UriKind.Absolute, out var endpointUri) &&
+                    (endpointUri.Scheme == Uri.UriSchemeHttp || endpointUri.Scheme == Uri.UriSchemeHttps);
+
+                // If launch is triggered with an invalid centralized endpoint draft,
+                // keep the current persisted endpoint to avoid breaking the run.
+                if (!endpointValid)
+                {
+                    endpointDraft = Config.NormalizeCentralizedLogEndpoint(cfg.CentralizedLogEndpoint);
+                    normalizedMode = Config.NormalizeLogDestinationMode(cfg.LogDestinationMode);
+                }
+            }
+
             var keyTrace = EncryptionKeyCreationTraceDraft
                 .Select(e => (e ?? "").Trim())
                 .Where(e => !string.IsNullOrWhiteSpace(e))
@@ -277,7 +294,9 @@ namespace easySave_BMT.Avalonia.ViewModels
                 encryptionExtensions: exts,
                 priorityExtensions: priorityExts,
                 cryptoSoftKey: cryptoSoftKey,
-                encryptionKeyCreationTrace: keyTrace);
+                encryptionKeyCreationTrace: keyTrace,
+                logDestinationMode: normalizedMode,
+                centralizedLogEndpoint: endpointDraft);
         }
 
         private void LoadConfigValuesFromModel()
