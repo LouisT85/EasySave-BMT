@@ -30,6 +30,10 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> RemoveEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<string, Unit> AddEncryptionExtensionSuggestionCommand { get; private set; } = null!;
         public ReactiveCommand<string, Unit> RemoveEncryptionExtensionByValueCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> AddPriorityExtensionCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> RemovePriorityExtensionCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> AddPriorityExtensionSuggestionCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> RemovePriorityExtensionByValueCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> AddBusinessSoftwareEntryCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> RemoveBusinessSoftwareEntryCommand { get; private set; } = null!;
         public ReactiveCommand<string, Unit> AddBusinessSoftwareSuggestionCommand { get; private set; } = null!;
@@ -132,6 +136,10 @@ namespace easySave_BMT.Avalonia.ViewModels
             RemoveEncryptionExtensionCommand = ReactiveCommand.Create(RemoveEncryptionExtension);
             AddEncryptionExtensionSuggestionCommand = ReactiveCommand.Create<string>(AddEncryptionExtensionSuggestion);
             RemoveEncryptionExtensionByValueCommand = ReactiveCommand.Create<string>(RemoveEncryptionExtensionByValue);
+            AddPriorityExtensionCommand = ReactiveCommand.Create(AddPriorityExtension);
+            RemovePriorityExtensionCommand = ReactiveCommand.Create(RemovePriorityExtension);
+            AddPriorityExtensionSuggestionCommand = ReactiveCommand.Create<string>(AddPriorityExtensionSuggestion);
+            RemovePriorityExtensionByValueCommand = ReactiveCommand.Create<string>(RemovePriorityExtensionByValue);
             AddBusinessSoftwareEntryCommand = ReactiveCommand.Create(AddBusinessSoftwareEntry);
             RemoveBusinessSoftwareEntryCommand = ReactiveCommand.Create(RemoveBusinessSoftwareEntry);
             AddBusinessSoftwareSuggestionCommand = ReactiveCommand.Create<string>(AddBusinessSoftwareSuggestion);
@@ -259,6 +267,73 @@ namespace easySave_BMT.Avalonia.ViewModels
                 SelectedEncryptionExtension = null;
 
             UpdateEncryptionExtensionSuggestions();
+        }
+
+        private void AddPriorityExtension()
+        {
+            AddPriorityExtensionFromValue(NewPriorityExtension, showValidationFeedback: true);
+        }
+
+        private void AddPriorityExtensionSuggestion(string suggestion)
+        {
+            AddPriorityExtensionFromValue(suggestion, showValidationFeedback: false);
+        }
+
+        private void AddPriorityExtensionFromValue(string? rawValue, bool showValidationFeedback)
+        {
+            string ext = (rawValue ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(ext))
+            {
+                if (showValidationFeedback)
+                    SetTimedAreaMessage(MessageArea.Config, Loc["UiEnterExtension"]);
+                return;
+            }
+
+            if (!ext.StartsWith(".")) ext = "." + ext;
+            ext = ext.ToLowerInvariant();
+
+            if (ext.Length < 2 ||
+                ext.Any(ch => char.IsWhiteSpace(ch)) ||
+                ext.Contains(System.IO.Path.DirectorySeparatorChar) ||
+                ext.Contains(System.IO.Path.AltDirectorySeparatorChar))
+            {
+                if (showValidationFeedback)
+                    SetTimedAreaMessage(MessageArea.Config, Loc["UiInvalidExtension"]);
+                return;
+            }
+
+            if (!ConfigPriorityExtensionsDraft.Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase)))
+            {
+                ConfigPriorityExtensionsDraft.Add(ext);
+            }
+
+            NewPriorityExtension = "";
+            UpdatePriorityExtensionSuggestions();
+        }
+
+        private void RemovePriorityExtension()
+        {
+            if (string.IsNullOrWhiteSpace(SelectedPriorityExtension)) return;
+            ConfigPriorityExtensionsDraft.Remove(SelectedPriorityExtension);
+            SelectedPriorityExtension = null;
+            UpdatePriorityExtensionSuggestions();
+        }
+
+        private void RemovePriorityExtensionByValue(string value)
+        {
+            string normalized = (value ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(normalized)) return;
+
+            var match = ConfigPriorityExtensionsDraft
+                .FirstOrDefault(v => string.Equals(v, normalized, StringComparison.OrdinalIgnoreCase));
+
+            if (match is null) return;
+
+            ConfigPriorityExtensionsDraft.Remove(match);
+            if (string.Equals(SelectedPriorityExtension, match, StringComparison.OrdinalIgnoreCase))
+                SelectedPriorityExtension = null;
+
+            UpdatePriorityExtensionSuggestions();
         }
 
         private void AddBusinessSoftwareEntry()

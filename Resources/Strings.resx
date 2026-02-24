@@ -409,6 +409,18 @@
   <data name="UiEncryptExtensions" xml:space="preserve">
     <value>Encrypt only these file extensions (example: .txt). Leave empty to encrypt all files.</value>
   </data>
+  <data name="UiPriorityExtensions" xml:space="preserve">
+    <value>Priority file extensions</value>
+  </data>
+  <data name="UiPriorityExtensionsHelp" xml:space="preserve">
+    <value>Non-priority files wait while at least one selected backup still has pending priority files.</value>
+  </data>
+  <data name="UiPriorityExtensionHint" xml:space="preserve">
+    <value>.docx</value>
+  </data>
+  <data name="UiSelectedPriorityExtensions" xml:space="preserve">
+    <value>Selected priority extensions</value>
+  </data>
   <data name="UiExtensionHint" xml:space="preserve">
     <value>.txt</value>
   </data>

@@ -458,6 +458,62 @@
 											</DataTemplate>
 										</ItemsControl.ItemTemplate>
 									</ItemsControl>
+
+									<Border Background="{DynamicResource BrushSurface}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
+										<StackPanel Spacing="8">
+											<TextBlock Text="{Binding Loc[UiPriorityExtensions]}" FontWeight="SemiBold"/>
+											<TextBlock Text="{Binding Loc[UiPriorityExtensionsHelp]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
+											<Grid ColumnDefinitions="*,120" Margin="0,2,0,0">
+												<TextBox Grid.Column="0" Text="{Binding NewPriorityExtension}" Watermark="{Binding Loc[UiPriorityExtensionHint]}"/>
+												<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiAdd]}" Command="{Binding AddPriorityExtensionCommand}"/>
+											</Grid>
+
+											<StackPanel IsVisible="{Binding HasPriorityExtensionSuggestions}" Spacing="6">
+												<TextBlock Text="{Binding Loc[UiSuggestions]}" FontSize="12" Foreground="{DynamicResource BrushMuted}"/>
+												<Border Background="{DynamicResource BrushBackground}" CornerRadius="8" Padding="8">
+													<ScrollViewer MaxHeight="120">
+														<ItemsControl ItemsSource="{Binding PriorityExtensionSuggestions}">
+															<ItemsControl.ItemTemplate>
+																<DataTemplate>
+																	<Button Classes="suggestion"
+																			HorizontalAlignment="Stretch"
+																			Margin="0,0,0,6"
+																			Content="{Binding}"
+																			Command="{Binding #Root.DataContext.AddPriorityExtensionSuggestionCommand}"
+																			CommandParameter="{Binding}"/>
+																</DataTemplate>
+															</ItemsControl.ItemTemplate>
+														</ItemsControl>
+													</ScrollViewer>
+												</Border>
+											</StackPanel>
+
+											<TextBlock Text="{Binding Loc[UiSelectedPriorityExtensions]}" FontSize="12" Foreground="{DynamicResource BrushMuted}"/>
+											<ItemsControl ItemsSource="{Binding ConfigPriorityExtensionsDraft}">
+												<ItemsControl.ItemsPanel>
+													<ItemsPanelTemplate>
+														<WrapPanel />
+													</ItemsPanelTemplate>
+												</ItemsControl.ItemsPanel>
+												<ItemsControl.ItemTemplate>
+													<DataTemplate>
+														<Border Classes="chipTag" Margin="0,0,10,10">
+															<Grid>
+																<TextBlock Text="{Binding}" Margin="0,2,14,0" TextTrimming="CharacterEllipsis" MaxWidth="220"/>
+																<Button Classes="chipRemove"
+																		HorizontalAlignment="Right"
+																		VerticalAlignment="Top"
+																		Content="x"
+																		Command="{Binding #Root.DataContext.RemovePriorityExtensionByValueCommand}"
+																		CommandParameter="{Binding}"
+																		ToolTip.Tip="{Binding #Root.DataContext.Loc[UiRemove]}"/>
+															</Grid>
+														</Border>
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+										</StackPanel>
+									</Border>
 								</StackPanel>
 							</Border>
 						</StackPanel>

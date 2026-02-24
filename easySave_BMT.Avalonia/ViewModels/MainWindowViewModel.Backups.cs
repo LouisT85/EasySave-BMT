@@ -155,38 +155,83 @@ namespace easySave_BMT.Avalonia.ViewModels
                     return;
                 }
 
-                foreach (var save in toRun)
+                bool usePriorityPolicy =
+                    _coreViewModel.backupLauncher.HasPriorityExtensionsConfigured() &&
+                    toRun.Count > 1;
+
+                if (!usePriorityPolicy)
                 {
-                    SetSaveUiProgress(save.name, 0);
-
-                    SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiLaunchingBackup"], save.name), "");
-                    lastResult = await Task.Run(() => _coreViewModel.backupLauncher.LaunchBackupType(save));
-
-                    if (_coreViewModel.model.TryConsumeStopInfo(out var stopReason, out var stopDetail))
+                    foreach (var save in toRun)
                     {
-                        if (stopReason == BackupStopReason.BusinessSoftwareDetected)
+                        SetSaveUiProgress(save.name, 0);
+
+                        SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiLaunchingBackup"], save.name), "");
+                        lastResult = await Task.Run(() => _coreViewModel.backupLauncher.LaunchBackupType(save));
+
+                        if (TryHandleConsumedStopInfo(save))
                         {
-                            string spec = string.IsNullOrWhiteSpace(stopDetail) ? _coreViewModel.model.GetBusinessSoftwareSpec() : stopDetail;
-                            DashboardMessage = string.Format(Loc["UiBackupStoppedByBusiness"], save.name, spec);
-                        }
-                        else if (stopReason == BackupStopReason.UserRequested)
-                        {
-                            DashboardMessage = string.Format(Loc["UiBackupStoppedByUser"], save.name);
-                            SetSaveUiProgress(save.name, 0);
+                            stoppedOrBlocked = true;
+                            break;
                         }
 
-                        _coreViewModel.model.FinishBackup(save);
-                        ProgressText = "";
-                        ProgressPercent = 0;
-                        IsProgressVisible = false;
-                        stoppedOrBlocked = true;
-                        break;
+                        if (lastResult == 104 || lastResult == 105 || lastResult == 216)
+                        {
+                            _coreViewModel.model.FinishBackup(save);
+                            SetSaveUiProgress(save.name, 100);
+                        }
+                    }
+                }
+                else
+                {
+                    var workload = toRun.ToDictionary(s => s, s => _coreViewModel.backupLauncher.GetFilePriorityCounts(s));
+                    var priorityPhase = toRun.Where(s => workload[s].PriorityFiles > 0).ToList();
+
+                    foreach (var save in priorityPhase)
+                    {
+                        SetSaveUiProgress(save.name, 0);
+                        SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiLaunchingBackup"], save.name), "");
+                        lastResult = await Task.Run(() => _coreViewModel.backupLauncher.LaunchBackupType(
+                            save,
+                            easySave_BMT.ViewModel_.Backup.BackupLauncher.FileSelectionMode.PriorityOnly));
+
+                        if (TryHandleConsumedStopInfo(save))
+                        {
+                            stoppedOrBlocked = true;
+                            break;
+                        }
+
+                        if (lastResult != 104 && lastResult != 105 && lastResult != 216)
+                        {
+                            _coreViewModel.model.FinishBackup(save);
+                            SetMessageFromCode(lastResult, MessageArea.Dashboard);
+                            stoppedOrBlocked = true;
+                            break;
+                        }
                     }
 
-                    if (lastResult == 104 || lastResult == 105 || lastResult == 216)
+                    if (!stoppedOrBlocked)
                     {
-                        _coreViewModel.model.FinishBackup(save);
-                        SetSaveUiProgress(save.name, 100);
+                        foreach (var save in toRun)
+                        {
+                            bool allowResume = workload[save].PriorityFiles > 0;
+                            SetTimedAreaMessage(MessageArea.Dashboard, string.Format(Loc["UiLaunchingBackup"], save.name), "");
+                            lastResult = await Task.Run(() => _coreViewModel.backupLauncher.LaunchBackupType(
+                                save,
+                                easySave_BMT.ViewModel_.Backup.BackupLauncher.FileSelectionMode.NonPriorityOnly,
+                                allowResumeFromCompletedState: allowResume));
+
+                            if (TryHandleConsumedStopInfo(save))
+                            {
+                                stoppedOrBlocked = true;
+                                break;
+                            }
+
+                            if (lastResult == 104 || lastResult == 105 || lastResult == 216)
+                            {
+                                _coreViewModel.model.FinishBackup(save);
+                                SetSaveUiProgress(save.name, 100);
+                            }
+                        }
                     }
                 }
             }
@@ -225,6 +270,29 @@ namespace easySave_BMT.Avalonia.ViewModels
             {
                 SetTimedDashboardStatusText("");
             }
+        }
+
+        private bool TryHandleConsumedStopInfo(Model_.Save save)
+        {
+            if (!_coreViewModel.model.TryConsumeStopInfo(out var stopReason, out var stopDetail))
+                return false;
+
+            if (stopReason == BackupStopReason.BusinessSoftwareDetected)
+            {
+                string spec = string.IsNullOrWhiteSpace(stopDetail) ? _coreViewModel.model.GetBusinessSoftwareSpec() : stopDetail;
+                DashboardMessage = string.Format(Loc["UiBackupStoppedByBusiness"], save.name, spec);
+            }
+            else if (stopReason == BackupStopReason.UserRequested)
+            {
+                DashboardMessage = string.Format(Loc["UiBackupStoppedByUser"], save.name);
+                SetSaveUiProgress(save.name, 0);
+            }
+
+            _coreViewModel.model.FinishBackup(save);
+            ProgressText = "";
+            ProgressPercent = 0;
+            IsProgressVisible = false;
+            return true;
         }
 
         private void SetSaveUiProgress(string backupName, int percent)

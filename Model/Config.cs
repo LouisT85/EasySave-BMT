@@ -37,6 +37,12 @@ namespace easySave_BMT.Model_
         public string CryptoSoftPath { get; set; } = "";
 
         /// <summary>
+        /// File extensions considered priority during copy (e.g., [".docx", ".xlsx"]).
+        /// Comparison is case-insensitive.
+        /// </summary>
+        public System.Collections.Generic.List<string> PriorityExtensions { get; set; } = new System.Collections.Generic.List<string>();
+
+        /// <summary>
         /// Optional encryption key override for CryptoSoft.
         /// Supports plain text or hexadecimal values prefixed with "0x".
         /// </summary>
@@ -89,6 +95,7 @@ namespace easySave_BMT.Model_
                     Config loaded = JsonSerializer.Deserialize<Config>(json) ?? new Config();
                     Config defaults = new Config();
                     loaded.EncryptionExtensions ??= new System.Collections.Generic.List<string>();
+                    loaded.PriorityExtensions ??= new System.Collections.Generic.List<string>();
                     loaded.EncryptionKeyCreationTrace ??= new System.Collections.Generic.List<string>();
                     loaded.CryptoSoftPath ??= "";
                     loaded.CryptoSoftKey ??= "";
@@ -137,6 +144,7 @@ namespace easySave_BMT.Model_
             string lang,
             bool? enableEncryption = null,
             System.Collections.Generic.List<string>? encryptionExtensions = null,
+            System.Collections.Generic.List<string>? priorityExtensions = null,
             string? cryptoSoftPath = null,
             string? cryptoSoftKey = null,
             System.Collections.Generic.List<string>? encryptionKeyCreationTrace = null,
@@ -157,6 +165,9 @@ namespace easySave_BMT.Model_
 
             if (encryptionExtensions is not null)
                 EncryptionExtensions = encryptionExtensions;
+
+            if (priorityExtensions is not null)
+                PriorityExtensions = priorityExtensions;
 
             if (cryptoSoftPath is not null)
                 CryptoSoftPath = cryptoSoftPath;

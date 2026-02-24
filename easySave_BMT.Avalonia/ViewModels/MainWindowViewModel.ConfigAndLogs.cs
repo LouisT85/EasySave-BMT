@@ -79,6 +79,16 @@ namespace easySave_BMT.Avalonia.ViewModels
                 .ToList();
         }
 
+        private System.Collections.Generic.List<string> BuildNormalizedPriorityExtensionsDraft()
+        {
+            return ConfigPriorityExtensionsDraft
+                .Select(e => (e ?? "").Trim())
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Select(e => e.StartsWith(".") ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
         private void UpdateBusinessSoftwareSuggestions()
         {
             string query = NormalizeBusinessSoftwareEntry(NewBusinessSoftwareEntry);
@@ -198,6 +208,48 @@ namespace easySave_BMT.Avalonia.ViewModels
             HasEncryptionExtensionSuggestions = EncryptionExtensionSuggestions.Count > 0;
         }
 
+        private void UpdatePriorityExtensionSuggestions()
+        {
+            string query = NormalizeExtensionSuggestionQuery(NewPriorityExtension);
+
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                PriorityExtensionSuggestions.Clear();
+                HasPriorityExtensionSuggestions = false;
+                return;
+            }
+
+            var selected = new HashSet<string>(
+                ConfigPriorityExtensionsDraft.Select(NormalizeExtensionSuggestionQuery)
+                    .Where(s => !string.IsNullOrWhiteSpace(s)),
+                StringComparer.OrdinalIgnoreCase);
+
+            var pool = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string builtIn in BuiltInExtensionSuggestions)
+                pool.Add(builtIn);
+
+            foreach (string configured in ConfigPriorityExtensionsDraft)
+            {
+                string normalized = NormalizeExtensionSuggestionQuery(configured);
+                if (!string.IsNullOrWhiteSpace(normalized))
+                    pool.Add(normalized);
+            }
+
+            var suggestions = pool
+                .Where(ext => ext.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                .Where(ext => !selected.Contains(ext))
+                .OrderBy(ext => ext, StringComparer.OrdinalIgnoreCase)
+                .Take(18)
+                .ToList();
+
+            PriorityExtensionSuggestions.Clear();
+            foreach (string suggestion in suggestions)
+                PriorityExtensionSuggestions.Add(suggestion);
+
+            HasPriorityExtensionSuggestions = PriorityExtensionSuggestions.Count > 0;
+        }
+
         private static string NormalizeExtensionSuggestionQuery(string? raw)
         {
             string value = (raw ?? "").Trim().ToLowerInvariant();
@@ -210,6 +262,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             var cfg = _coreViewModel.model.GetConfig();
             var exts = BuildNormalizedEncryptionExtensionsDraft();
+            var priorityExts = BuildNormalizedPriorityExtensionsDraft();
             string cryptoSoftKey = (ConfigCryptoSoftKeyDraft ?? "").Trim();
             var keyTrace = EncryptionKeyCreationTraceDraft
                 .Select(e => (e ?? "").Trim())
@@ -222,6 +275,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                 cfg.Language,
                 enableEncryption: ConfigEnableEncryptionDraft,
                 encryptionExtensions: exts,
+                priorityExtensions: priorityExts,
                 cryptoSoftKey: cryptoSoftKey,
                 encryptionKeyCreationTrace: keyTrace);
         }
@@ -244,7 +298,9 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ConfigBusinessSoftwareDraft = (cfg.BusinessSoftware ?? "").Trim();
                 NewBusinessSoftwareEntry = "";
                 NewEncryptionExtension = "";
+                NewPriorityExtension = "";
                 SelectedBusinessSoftwareEntry = null;
+                SelectedPriorityExtension = null;
                 ConfigBusinessSoftwareEntriesDraft.Clear();
                 EncryptionKeyCreationTraceDraft.Clear();
 
@@ -272,6 +328,22 @@ namespace easySave_BMT.Avalonia.ViewModels
                     }
                 }
 
+                ConfigPriorityExtensionsDraft.Clear();
+                if (cfg.PriorityExtensions is not null)
+                {
+                    foreach (var extRaw in cfg.PriorityExtensions)
+                    {
+                        var ext = (extRaw ?? "").Trim();
+                        if (string.IsNullOrWhiteSpace(ext)) continue;
+
+                        if (!ext.StartsWith(".")) ext = "." + ext;
+                        ext = ext.ToLowerInvariant();
+
+                        if (!ConfigPriorityExtensionsDraft.Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase)))
+                            ConfigPriorityExtensionsDraft.Add(ext);
+                    }
+                }
+
                 if (cfg.EncryptionKeyCreationTrace is not null)
                 {
                     foreach (var trace in cfg.EncryptionKeyCreationTrace)
@@ -289,6 +361,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                 ApplyThemePreference(ConfigThemeDraft);
                 UpdateBusinessSoftwareSuggestions();
                 UpdateEncryptionExtensionSuggestions();
+                UpdatePriorityExtensionSuggestions();
                 RefreshLogFilesSummary();
                 RefreshLogEntriesSummary();
                 this.RaisePropertyChanged(nameof(PauseButtonText));
@@ -310,6 +383,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             try
             {
                 var exts = BuildNormalizedEncryptionExtensionsDraft();
+                var priorityExts = BuildNormalizedPriorityExtensionsDraft();
 
                 var businessEntries = ConfigBusinessSoftwareEntriesDraft
                     .Select(e => NormalizeBusinessSoftwareEntry(e))
@@ -333,6 +407,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                     ConfigLanguageDraft,
                     enableEncryption: ConfigEnableEncryptionDraft,
                     encryptionExtensions: exts,
+                    priorityExtensions: priorityExts,
                     cryptoSoftKey: cryptoSoftKey,
                     encryptionKeyCreationTrace: keyTrace,
                     businessSoftware: businessSoftware,

@@ -16,6 +16,27 @@ namespace easySave_BMT.ViewModel_.Backup
     /// </summary>
     public class BackupLauncher
     {
+        public enum FileSelectionMode
+        {
+            All = 0,
+            PriorityOnly = 1,
+            NonPriorityOnly = 2
+        }
+
+        public readonly struct FilePriorityCounts
+        {
+            public int TotalFiles { get; }
+            public int PriorityFiles { get; }
+            public int NonPriorityFiles { get; }
+
+            public FilePriorityCounts(int totalFiles, int priorityFiles, int nonPriorityFiles)
+            {
+                TotalFiles = totalFiles;
+                PriorityFiles = priorityFiles;
+                NonPriorityFiles = nonPriorityFiles;
+            }
+        }
+
         private const string EasySaveCryptoMagicV1 = "EASYSAVECRYPT1";
         private const string EasySaveCryptoMagicV2 = "EASYSAVECRYPT2";
 
@@ -56,6 +77,14 @@ namespace easySave_BMT.ViewModel_.Backup
 
         public int LaunchBackupType(Save _save)
         {
+            return LaunchBackupType(_save, FileSelectionMode.All, allowResumeFromCompletedState: false);
+        }
+
+        public int LaunchBackupType(
+            Save _save,
+            FileSelectionMode selectionMode,
+            bool allowResumeFromCompletedState = false)
+        {
             DirectoryInfo dir = new DirectoryInfo(_save.src);
 
             if (!dir.Exists || !Directory.Exists(_save.dst))
@@ -83,21 +112,105 @@ namespace easySave_BMT.ViewModel_.Backup
                 // Intentionally ignored; the copy layer will surface errors.
             }
 
-            if (_save.state is null || _save.state.progress >= 100)
+            if (_save.state is null || (!allowResumeFromCompletedState && _save.state.progress >= 100))
             {
                 _save.state = new State(0, 0, _save.src, _save.dst);
             }
 
             _viewModel.model.UpdateSaveState(_save);
 
-            return ExecuteBackupStrategy(_save, dir);
+            return ExecuteBackupStrategy(_save, dir, selectionMode, allowResumeFromCompletedState);
+        }
+
+        public bool HasPriorityExtensionsConfigured()
+        {
+            return GetConfiguredPriorityExtensions().Count > 0;
+        }
+
+        public FilePriorityCounts GetFilePriorityCounts(Save save)
+        {
+            if (save is null)
+                return new FilePriorityCounts(0, 0, 0);
+
+            var dir = new DirectoryInfo(save.src ?? "");
+            if (!dir.Exists || !Directory.Exists(save.dst))
+                return new FilePriorityCounts(0, 0, 0);
+
+            if (!TryGetCandidateFiles(save, dir, out var candidates, out _))
+                return new FilePriorityCounts(0, 0, 0);
+
+            var priorityExtensions = GetConfiguredPriorityExtensions();
+            if (priorityExtensions.Count == 0)
+                return new FilePriorityCounts(candidates.Length, 0, candidates.Length);
+
+            int priority = 0;
+            int nonPriority = 0;
+
+            foreach (var file in candidates)
+            {
+                if (IsPriorityExtension(Path.GetExtension(file.FullName), priorityExtensions))
+                    priority++;
+                else
+                    nonPriority++;
+            }
+
+            return new FilePriorityCounts(candidates.Length, priority, nonPriority);
         }
 
         private void BackupAllSaves()
         {
-            foreach (Save save in _viewModel.model.saves)
+            var saves = _viewModel.model.saves.ToList();
+            if (saves.Count == 0) return;
+
+            if (!HasPriorityExtensionsConfigured())
             {
-                int result = LaunchBackupType(save);
+                foreach (Save save in saves)
+                {
+                    int result = LaunchBackupType(save);
+                    _viewModel.view.DisplayMessage(result);
+
+                    if (result == 104 || result == 105 || result == 216)
+                    {
+                        _viewModel.model.FinishBackup(save);
+                    }
+
+                    if (_viewModel.model.PeekStopReason() == BackupStopReason.BusinessSoftwareDetected)
+                    {
+                        break;
+                    }
+
+                    _viewModel.view.DisplayMessage(4);
+                }
+
+                return;
+            }
+
+            var workloadBySave = saves.ToDictionary(
+                s => s,
+                s => GetFilePriorityCounts(s));
+
+            foreach (Save save in saves.Where(s => workloadBySave[s].PriorityFiles > 0))
+            {
+                int result = LaunchBackupType(save, FileSelectionMode.PriorityOnly);
+                if (result != 104 && result != 105 && result != 216)
+                {
+                    _viewModel.view.DisplayMessage(result);
+                    return;
+                }
+
+                if (_viewModel.model.PeekStopReason() == BackupStopReason.BusinessSoftwareDetected)
+                {
+                    return;
+                }
+            }
+
+            foreach (Save save in saves)
+            {
+                int result = LaunchBackupType(
+                    save,
+                    FileSelectionMode.NonPriorityOnly,
+                    allowResumeFromCompletedState: workloadBySave[save].PriorityFiles > 0);
+
                 _viewModel.view.DisplayMessage(result);
 
                 if (result == 104 || result == 105 || result == 216)
@@ -128,25 +241,84 @@ namespace easySave_BMT.ViewModel_.Backup
             }
         }
 
-        private int ExecuteBackupStrategy(Save _save, DirectoryInfo _dir)
+        private int ExecuteBackupStrategy(
+            Save _save,
+            DirectoryInfo _dir,
+            FileSelectionMode selectionMode,
+            bool allowResumeFromCompletedState)
         {
-            return _save.backupType switch
-            {
-                BackupType.DIFFERENTIAL => DifferentialOrFallbackToFull(_save, _dir),
-                BackupType.FULL => FullBackupSetup(_save, _dir),
-                _ => 208
-            };
+            if (!TryGetCandidateFiles(_save, _dir, out FileInfo[] candidates, out int code))
+                return code;
+
+            var priorityExtensions = GetConfiguredPriorityExtensions();
+            FileInfo[] files = ApplySelectionToFiles(candidates, selectionMode, priorityExtensions);
+            long totalSize = files.Sum(f => f.Length);
+
+            if (files.Length == 0)
+                return CompleteBackupWithoutFiles(_save);
+
+            return DoBackup(_save, files, totalSize, allowResumeFromCompletedState);
         }
 
-        private int DifferentialOrFallbackToFull(Save _save, DirectoryInfo _dir)
+        private bool TryGetCandidateFiles(Save save, DirectoryInfo dir, out FileInfo[] files, out int code)
         {
-            string? fullBackupDir = GetFullBackupDir(_save);
-            if (fullBackupDir != null)
+            files = Array.Empty<FileInfo>();
+            code = 0;
+
+            switch (save.backupType)
             {
-                return DifferentialBackupSetup(_save, _dir, fullBackupDir);
+                case BackupType.FULL:
+                    files = dir.GetFiles("*.*", SearchOption.AllDirectories);
+                    return true;
+
+                case BackupType.DIFFERENTIAL:
+                    string? fullBackupDir = GetFullBackupDir(save);
+                    if (string.IsNullOrWhiteSpace(fullBackupDir))
+                    {
+                        files = dir.GetFiles("*.*", SearchOption.AllDirectories);
+                        return true;
+                    }
+
+                    files = BuildDifferentialCandidateFiles(save, dir, fullBackupDir);
+                    return true;
+
+                default:
+                    code = 208;
+                    return false;
+            }
+        }
+
+        private FileInfo[] BuildDifferentialCandidateFiles(Save save, DirectoryInfo sourceDir, string fullBackupDir)
+        {
+            FileInfo[] srcFiles = sourceDir.GetFiles("*.*", SearchOption.AllDirectories);
+            List<FileInfo> filesToCopy = new List<FileInfo>();
+
+            foreach (FileInfo file in srcFiles)
+            {
+                string currFullBackPath = Path.Combine(fullBackupDir, Path.GetRelativePath(save.src, file.FullName));
+
+                if (!File.Exists(currFullBackPath) || !IsSameFile(currFullBackPath, file.FullName))
+                {
+                    filesToCopy.Add(file);
+                }
             }
 
-            return FullBackupSetup(_save, _dir);
+            return filesToCopy.ToArray();
+        }
+
+        private int CompleteBackupWithoutFiles(Save save)
+        {
+            save.lastBackupDate = DateTime.Now.ToString("yyyy/MM/dd_HH:mm:ss");
+            _viewModel.model.AddLogInJSONFile();
+
+            if (_viewModel.guiView is null)
+            {
+                _viewModel.view.DisplayMessage(3);
+                _viewModel.view.DisplayBackupRecap(save.name, 0);
+            }
+
+            _viewModel.guiView?.OnBackupComplete(save.name, 0);
+            return 105;
         }
 
         private string? GetFullBackupDir(Save _save)
@@ -166,54 +338,6 @@ namespace easySave_BMT.ViewModel_.Backup
             {
                 return null;
             }
-        }
-
-        private int FullBackupSetup(Save _save, DirectoryInfo _dir)
-        {
-            long totalSize = 0;
-            FileInfo[] files = _dir.GetFiles("*.*", SearchOption.AllDirectories);
-
-            foreach (FileInfo file in files)
-            {
-                totalSize += file.Length;
-            }
-
-            return DoBackup(_save, files, totalSize);
-        }
-
-        private int DifferentialBackupSetup(Save _save, DirectoryInfo _dir, string _fullBackupDir)
-        {
-            long totalSize = 0;
-            FileInfo[] srcFiles = _dir.GetFiles("*.*", SearchOption.AllDirectories);
-            List<FileInfo> filesToCopy = new List<FileInfo>();
-
-            foreach (FileInfo file in srcFiles)
-            {
-                string currFullBackPath = Path.Combine(_fullBackupDir, Path.GetRelativePath(_save.src, file.FullName));
-
-                if (!File.Exists(currFullBackPath) || !IsSameFile(currFullBackPath, file.FullName))
-                {
-                    totalSize += file.Length;
-                    filesToCopy.Add(file);
-                }
-            }
-
-            if (filesToCopy.Count == 0)
-            {
-                _save.lastBackupDate = DateTime.Now.ToString("yyyy/MM/dd_HH:mm:ss");
-                _viewModel.model.AddLogInJSONFile();
-
-                if (_viewModel.guiView is null)
-                {
-                    _viewModel.view.DisplayMessage(3);
-                    _viewModel.view.DisplayBackupRecap(_save.name, 0);
-                }
-
-                _viewModel.guiView?.OnBackupComplete(_save.name, 0);
-                return 105;
-            }
-
-            return DoBackup(_save, filesToCopy.ToArray(), totalSize);
         }
 
         private static bool TryReadEasySaveCryptoHeader(string filePath, out bool isEncrypted, out string? plaintextSha256Hex)
@@ -306,12 +430,13 @@ namespace easySave_BMT.ViewModel_.Backup
             }
         }
 
-        private static string? TryGetExistingBackupRootFromState(Save save)
+        private static string? TryGetExistingBackupRootFromState(Save save, bool allowCompletedProgress)
         {
             try
             {
                 if (save.state is null) return null;
-                if (save.state.progress <= 0 || save.state.progress >= 100) return null;
+                if (save.state.progress <= 0) return null;
+                if (!allowCompletedProgress && save.state.progress >= 100) return null;
 
                 string currentDest = save.state.currentPathDest ?? "";
                 if (string.IsNullOrWhiteSpace(currentDest)) return null;
@@ -348,10 +473,14 @@ namespace easySave_BMT.ViewModel_.Backup
             return null;
         }
 
-        private int DoBackup(Save _save, FileInfo[] _files, long _totalSize)
+        private int DoBackup(
+            Save _save,
+            FileInfo[] _files,
+            long _totalSize,
+            bool allowResumeFromCompletedState)
         {
             DateTime startTime = DateTime.Now;
-            string? resumeRoot = TryGetExistingBackupRootFromState(_save);
+            string? resumeRoot = TryGetExistingBackupRootFromState(_save, allowResumeFromCompletedState);
             string dst;
 
             if (!string.IsNullOrWhiteSpace(resumeRoot) && Directory.Exists(resumeRoot))
@@ -435,6 +564,51 @@ namespace easySave_BMT.ViewModel_.Backup
             if (ext.Length == 0) return string.Empty;
             if (!ext.StartsWith(".")) ext = "." + ext;
             return ext.ToLowerInvariant();
+        }
+
+        private HashSet<string> GetConfiguredPriorityExtensions()
+        {
+            var cfg = _viewModel.model.GetConfig();
+
+            return (cfg.PriorityExtensions ?? new List<string>())
+                .Select(NormalizeExtension)
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static bool IsPriorityExtension(string extension, HashSet<string> priorityExtensions)
+        {
+            if (priorityExtensions is null || priorityExtensions.Count == 0)
+                return false;
+
+            string normalized = NormalizeExtension(extension);
+            return !string.IsNullOrWhiteSpace(normalized) && priorityExtensions.Contains(normalized);
+        }
+
+        private static FileInfo[] ApplySelectionToFiles(
+            FileInfo[] files,
+            FileSelectionMode selectionMode,
+            HashSet<string> priorityExtensions)
+        {
+            if (files.Length == 0)
+                return files;
+
+            return selectionMode switch
+            {
+                FileSelectionMode.PriorityOnly => files
+                    .Where(f => IsPriorityExtension(Path.GetExtension(f.FullName), priorityExtensions))
+                    .ToArray(),
+                FileSelectionMode.NonPriorityOnly => files
+                    .Where(f => !IsPriorityExtension(Path.GetExtension(f.FullName), priorityExtensions))
+                    .ToArray(),
+                _ => priorityExtensions.Count == 0
+                    ? files
+                    : files
+                        .OrderByDescending(f => IsPriorityExtension(Path.GetExtension(f.FullName), priorityExtensions))
+                        .ThenBy(f => f.FullName, StringComparer.OrdinalIgnoreCase)
+                        .ToArray()
+            };
         }
 
         private bool ShouldForceEncryptAllExtensions(FileInfo[] files)

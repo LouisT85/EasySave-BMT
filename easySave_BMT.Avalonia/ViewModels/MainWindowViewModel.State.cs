@@ -137,6 +137,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ObservableCollection<string> BusinessSoftwareSuggestions { get; } = new();
         public ObservableCollection<string> EncryptionKeyCreationTraceDraft { get; } = new();
         public ObservableCollection<string> EncryptionExtensionSuggestions { get; } = new();
+        public ObservableCollection<string> PriorityExtensionSuggestions { get; } = new();
 
         private bool _hasBusinessSoftwareSuggestions;
         public bool HasBusinessSoftwareSuggestions
@@ -150,6 +151,13 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             get => _hasEncryptionExtensionSuggestions;
             set => this.RaiseAndSetIfChanged(ref _hasEncryptionExtensionSuggestions, value);
+        }
+
+        private bool _hasPriorityExtensionSuggestions;
+        public bool HasPriorityExtensionSuggestions
+        {
+            get => _hasPriorityExtensionSuggestions;
+            set => this.RaiseAndSetIfChanged(ref _hasPriorityExtensionSuggestions, value);
         }
 
         private string _newBusinessSoftwareEntry = "";
@@ -171,6 +179,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         }
 
         public ObservableCollection<string> ConfigEncryptionExtensionsDraft { get; } = new();
+        public ObservableCollection<string> ConfigPriorityExtensionsDraft { get; } = new();
 
         private string _newEncryptionExtension = "";
         public string NewEncryptionExtension
@@ -188,6 +197,24 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             get => _selectedEncryptionExtension;
             set => this.RaiseAndSetIfChanged(ref _selectedEncryptionExtension, value);
+        }
+
+        private string _newPriorityExtension = "";
+        public string NewPriorityExtension
+        {
+            get => _newPriorityExtension;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _newPriorityExtension, value);
+                UpdatePriorityExtensionSuggestions();
+            }
+        }
+
+        private string? _selectedPriorityExtension;
+        public string? SelectedPriorityExtension
+        {
+            get => _selectedPriorityExtension;
+            set => this.RaiseAndSetIfChanged(ref _selectedPriorityExtension, value);
         }
 
         // --- Logs ---
