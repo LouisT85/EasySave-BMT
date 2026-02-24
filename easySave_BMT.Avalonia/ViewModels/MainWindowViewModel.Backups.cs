@@ -15,7 +15,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             if (string.IsNullOrWhiteSpace(backupName))
                 return ("", null);
-
+ 
             int idx = backupName.IndexOf(EtaToken, StringComparison.Ordinal);
             if (idx <= 0)
                 return (backupName, null);
