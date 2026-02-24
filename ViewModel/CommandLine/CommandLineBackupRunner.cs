@@ -51,62 +51,26 @@ namespace easySave_BMT.ViewModel_.CommandLine
                 }
             }
 
-            bool usePriorityPolicy =
-                _viewModel.backupLauncher.HasPriorityExtensionsConfigured() &&
-                selected.Count > 1;
-
-            if (usePriorityPolicy)
+            if (selected.Count > 0)
             {
-                var blocked = new HashSet<Save>();
-                var workload = selected.ToDictionary(
-                    x => x.Save,
-                    x => _viewModel.backupLauncher.GetFilePriorityCounts(x.Save));
+                Console.WriteLine($"Running {selected.Count} backup(s) in parallel...\n");
+
+                var batchResults = _viewModel.backupLauncher.LaunchBackupsInParallel(
+                    selected.Select(x => x.Save).ToList());
+
+                var resultBySave = batchResults.ToDictionary(r => r.Save, r => r.ResultCode);
 
                 foreach (var item in selected)
                 {
-                    if (workload[item.Save].PriorityFiles <= 0) continue;
-
-                    Console.WriteLine($"Executing priority files for backup {item.Index}: {item.Save.name}");
-                    int phaseResult = _viewModel.backupLauncher.LaunchBackupType(
-                        item.Save,
-                        BackupLauncher.FileSelectionMode.PriorityOnly);
-
-                    if (phaseResult == 104 || phaseResult == 105 || phaseResult == 216) continue;
-
-                    blocked.Add(item.Save);
-                    errorCount++;
-                    failedBackups.Add($"{item.Index} - {item.Save.name}");
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"[x] Backup {item.Index} failed during priority pass (Error {phaseResult})\n");
-                    Console.ResetColor();
-                }
-
-                foreach (var item in selected)
-                {
-                    if (blocked.Contains(item.Save)) continue;
-
-                    Console.WriteLine($"Executing remaining files for backup {item.Index}: {item.Save.name}");
-                    int result = _viewModel.backupLauncher.LaunchBackupType(
-                        item.Save,
-                        BackupLauncher.FileSelectionMode.NonPriorityOnly,
-                        allowResumeFromCompletedState: workload[item.Save].PriorityFiles > 0);
-
-                    RegisterResult(
-                        item.Index,
-                        item.Save,
-                        result,
-                        ref successCount,
-                        ref errorCount,
-                        executedBackups,
-                        failedBackups);
-                }
-            }
-            else
-            {
-                foreach (var item in selected)
-                {
-                    Console.WriteLine($"Executing backup {item.Index}: {item.Save.name}");
-                    int result = _viewModel.backupLauncher.LaunchBackupType(item.Save);
+                    if (!resultBySave.TryGetValue(item.Save, out int result))
+                    {
+                        errorCount++;
+                        failedBackups.Add($"{item.Index} - {item.Save.name} (not executed)");
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"[x] Backup {item.Index} was not executed due to a previous phase failure\n");
+                        Console.ResetColor();
+                        continue;
+                    }
 
                     RegisterResult(
                         item.Index,
