@@ -411,7 +411,7 @@
 									<TextBlock Text="{Binding Loc[UiEncryptionKey]}" FontWeight="SemiBold"/>
 									<TextBlock Text="{Binding Loc[UiEncryptionKeyHelp]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
 									<Grid ColumnDefinitions="*,120">
-										<TextBox Grid.Column="0" Text="{Binding ConfigCryptoSoftKeyDraft}" Watermark="{Binding Loc[UiEncryptionKeyHint]}"/>
+										<TextBox Grid.Column="0" Text="{Binding ConfigCryptoSoftKeyDraft}" Watermark="{Binding Loc[UiEncryptionKeyHint]}" IsEnabled="False"/>
 										<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiGenerateKey]}" Command="{Binding GenerateEncryptionKeyCommand}"/>
 									</Grid>
 
