@@ -770,8 +770,6 @@ namespace easySave_BMT.ViewModel_.Backup
                     emaSpeedBytesPerMs = (emaSpeedBytesPerMs <= 0.0)
                         ? speedThisFile
                         : (alpha * speedThisFile + (1.0 - alpha) * emaSpeedBytesPerMs);
-
-                    Thread.Sleep((int)(curSize / 1000000));
                 }
                 else
                 {
