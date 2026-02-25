@@ -27,12 +27,24 @@ namespace easySave_BMT.ViewModel_.Backup
             public int TotalFiles { get; }
             public int PriorityFiles { get; }
             public int NonPriorityFiles { get; }
+            public long TotalSizeBytes { get; }
+            public long PrioritySizeBytes { get; }
+            public long NonPrioritySizeBytes { get; }
 
-            public FilePriorityCounts(int totalFiles, int priorityFiles, int nonPriorityFiles)
+            public FilePriorityCounts(
+                int totalFiles,
+                int priorityFiles,
+                int nonPriorityFiles,
+                long totalSizeBytes = 0,
+                long prioritySizeBytes = 0,
+                long nonPrioritySizeBytes = 0)
             {
                 TotalFiles = totalFiles;
                 PriorityFiles = priorityFiles;
                 NonPriorityFiles = nonPriorityFiles;
+                TotalSizeBytes = totalSizeBytes;
+                PrioritySizeBytes = prioritySizeBytes;
+                NonPrioritySizeBytes = nonPrioritySizeBytes;
             }
         }
 
@@ -91,7 +103,12 @@ namespace easySave_BMT.ViewModel_.Backup
         public int LaunchBackupType(
             Save _save,
             FileSelectionMode selectionMode,
-            bool allowResumeFromCompletedState = false)
+            bool allowResumeFromCompletedState = false,
+            int completedFilesBeforePhase = 0,
+            long completedSizeBeforePhase = 0,
+            int? overallTotalFiles = null,
+            long? overallTotalSize = null,
+            bool suppressCompletionNotification = false)
         {
             DirectoryInfo dir = new DirectoryInfo(_save.src);
 
@@ -127,7 +144,16 @@ namespace easySave_BMT.ViewModel_.Backup
 
             _viewModel.model.UpdateSaveState(_save);
 
-            return ExecuteBackupStrategy(_save, dir, selectionMode, allowResumeFromCompletedState);
+            return ExecuteBackupStrategy(
+                _save,
+                dir,
+                selectionMode,
+                allowResumeFromCompletedState,
+                completedFilesBeforePhase,
+                completedSizeBeforePhase,
+                overallTotalFiles,
+                overallTotalSize,
+                suppressCompletionNotification);
         }
 
         public bool HasPriorityExtensionsConfigured()
@@ -149,20 +175,42 @@ namespace easySave_BMT.ViewModel_.Backup
 
             var priorityExtensions = GetConfiguredPriorityExtensions();
             if (priorityExtensions.Count == 0)
-                return new FilePriorityCounts(candidates.Length, 0, candidates.Length);
+            {
+                long totalSize = 0;
+                foreach (var file in candidates)
+                {
+                    totalSize += file.Length;
+                }
+
+                return new FilePriorityCounts(candidates.Length, 0, candidates.Length, totalSize, 0, totalSize);
+            }
 
             int priority = 0;
             int nonPriority = 0;
+            long prioritySize = 0;
+            long nonPrioritySize = 0;
 
             foreach (var file in candidates)
             {
                 if (IsPriorityExtension(Path.GetExtension(file.FullName), priorityExtensions))
+                {
                     priority++;
+                    prioritySize += file.Length;
+                }
                 else
+                {
                     nonPriority++;
+                    nonPrioritySize += file.Length;
+                }
             }
 
-            return new FilePriorityCounts(candidates.Length, priority, nonPriority);
+            return new FilePriorityCounts(
+                candidates.Length,
+                priority,
+                nonPriority,
+                prioritySize + nonPrioritySize,
+                prioritySize,
+                nonPrioritySize);
         }
 
         public IReadOnlyList<BackupBatchItemResult> LaunchBackupsInParallel(IReadOnlyList<Save> saves)
@@ -189,7 +237,15 @@ namespace easySave_BMT.ViewModel_.Backup
 
             var priorityPhaseResults = ExecutePhaseInParallel(
                 priorityPhaseSaves,
-                save => LaunchBackupType(save, FileSelectionMode.PriorityOnly));
+                save => LaunchBackupType(
+                    save,
+                    FileSelectionMode.PriorityOnly,
+                    allowResumeFromCompletedState: false,
+                    completedFilesBeforePhase: 0,
+                    completedSizeBeforePhase: 0,
+                    overallTotalFiles: workloadBySave[save].TotalFiles,
+                    overallTotalSize: workloadBySave[save].TotalSizeBytes,
+                    suppressCompletionNotification: workloadBySave[save].NonPriorityFiles > 0));
 
             foreach (var result in priorityPhaseResults)
             {
@@ -204,12 +260,23 @@ namespace easySave_BMT.ViewModel_.Backup
                     .ToList();
             }
 
+            var nonPriorityPhaseSaves = orderedSaves
+                .Where(save =>
+                    workloadBySave[save].NonPriorityFiles > 0 ||
+                    workloadBySave[save].PriorityFiles == 0)
+                .ToList();
+
             var nonPriorityPhaseResults = ExecutePhaseInParallel(
-                orderedSaves,
+                nonPriorityPhaseSaves,
                 save => LaunchBackupType(
                     save,
                     FileSelectionMode.NonPriorityOnly,
-                    allowResumeFromCompletedState: workloadBySave[save].PriorityFiles > 0));
+                    allowResumeFromCompletedState: workloadBySave[save].PriorityFiles > 0,
+                    completedFilesBeforePhase: workloadBySave[save].PriorityFiles,
+                    completedSizeBeforePhase: workloadBySave[save].PrioritySizeBytes,
+                    overallTotalFiles: workloadBySave[save].TotalFiles,
+                    overallTotalSize: workloadBySave[save].TotalSizeBytes,
+                    suppressCompletionNotification: false));
 
             foreach (var result in nonPriorityPhaseResults)
             {
@@ -302,7 +369,12 @@ namespace easySave_BMT.ViewModel_.Backup
             Save _save,
             DirectoryInfo _dir,
             FileSelectionMode selectionMode,
-            bool allowResumeFromCompletedState)
+            bool allowResumeFromCompletedState,
+            int completedFilesBeforePhase,
+            long completedSizeBeforePhase,
+            int? overallTotalFiles,
+            long? overallTotalSize,
+            bool suppressCompletionNotification)
         {
             if (!TryGetCandidateFiles(_save, _dir, out FileInfo[] candidates, out int code))
                 return code;
@@ -314,7 +386,16 @@ namespace easySave_BMT.ViewModel_.Backup
             if (files.Length == 0)
                 return CompleteBackupWithoutFiles(_save);
 
-            return DoBackup(_save, files, totalSize, allowResumeFromCompletedState);
+            return DoBackup(
+                _save,
+                files,
+                totalSize,
+                allowResumeFromCompletedState,
+                completedFilesBeforePhase,
+                completedSizeBeforePhase,
+                overallTotalFiles,
+                overallTotalSize,
+                suppressCompletionNotification);
         }
 
         private bool TryGetCandidateFiles(Save save, DirectoryInfo dir, out FileInfo[] files, out int code)
@@ -488,7 +569,12 @@ namespace easySave_BMT.ViewModel_.Backup
             Save _save,
             FileInfo[] _files,
             long _totalSize,
-            bool allowResumeFromCompletedState)
+            bool allowResumeFromCompletedState,
+            int completedFilesBeforePhase,
+            long completedSizeBeforePhase,
+            int? overallTotalFiles,
+            long? overallTotalSize,
+            bool suppressCompletionNotification)
         {
             DateTime startTime = DateTime.Now;
             string? resumeRoot = TryGetExistingBackupRootFromState(_save, allowResumeFromCompletedState);
@@ -504,7 +590,12 @@ namespace easySave_BMT.ViewModel_.Backup
                 dst = Path.Combine(_save.dst, backupDirName) + Path.DirectorySeparatorChar;
             }
 
-            _save.state = new State(_files.Length, _totalSize, _save.src, dst);
+            int effectiveTotalFiles = overallTotalFiles ?? (_files.Length + Math.Max(0, completedFilesBeforePhase));
+            long effectiveTotalSize = overallTotalSize ?? (_totalSize + Math.Max(0L, completedSizeBeforePhase));
+            if (effectiveTotalFiles < 0) effectiveTotalFiles = 0;
+            if (effectiveTotalSize < 0) effectiveTotalSize = 0;
+
+            _save.state = new State(effectiveTotalFiles, effectiveTotalSize, _save.src, dst);
             _save.lastBackupDate = startTime.ToString("yyyy/MM/dd_HH:mm:ss");
 
             try
@@ -523,7 +614,17 @@ namespace easySave_BMT.ViewModel_.Backup
 
             var activeSw = Stopwatch.StartNew();
 
-            List<string> failedFiles = CopyFiles(_save, _files, _totalSize, dst, activeSw, out int encryptedCount);
+            List<string> failedFiles = CopyFiles(
+                _save,
+                _files,
+                _totalSize,
+                dst,
+                activeSw,
+                completedFilesBeforePhase,
+                completedSizeBeforePhase,
+                effectiveTotalFiles,
+                effectiveTotalSize,
+                out int encryptedCount);
 
             activeSw.Stop();
             double transferTime = activeSw.Elapsed.TotalMilliseconds;
@@ -551,7 +652,7 @@ namespace easySave_BMT.ViewModel_.Backup
                 _viewModel.view.DisplayBackupRecap(_save.name, transferTime);
             }
 
-            if (!stopped)
+            if (!stopped && !suppressCompletionNotification)
             {
                 _viewModel.guiView?.OnBackupComplete(_save.name, transferTime);
                 _viewModel.guiView?.OnEncryptionSummary(_save.name, encryptedCount);
@@ -646,10 +747,18 @@ namespace easySave_BMT.ViewModel_.Backup
             long _totalSize,
             string _dst,
             Stopwatch activeSw,
+            int completedFilesBeforePhase,
+            long completedSizeBeforePhase,
+            int overallTotalFiles,
+            long overallTotalSize,
             out int encryptedCount)
         {
             long leftSize = _totalSize;
             int totalFile = _files.Length;
+            int safeOverallTotalFiles = Math.Max(0, overallTotalFiles);
+            long safeOverallTotalSize = Math.Max(0L, overallTotalSize);
+            int safeCompletedFilesBeforePhase = Math.Max(0, completedFilesBeforePhase);
+            long safeCompletedSizeBeforePhase = Math.Max(0L, completedSizeBeforePhase);
 
             List<string> failedFiles = new List<string>();
             encryptedCount = 0;
@@ -747,12 +856,34 @@ namespace easySave_BMT.ViewModel_.Backup
 
                 long curSize = _files[i].Length;
                 leftSize -= curSize;
-                int pourcent = ComputeSizeBasedProgressPercent(_totalSize, leftSize, i + 1, totalFile);
+                long phaseCopiedSize = Math.Clamp(_totalSize - leftSize, 0L, _totalSize);
+                long overallCopiedSize = Math.Clamp(
+                    safeCompletedSizeBeforePhase + phaseCopiedSize,
+                    0L,
+                    safeOverallTotalSize);
+                long overallLeftSize = Math.Max(0L, safeOverallTotalSize - overallCopiedSize);
+                int overallProcessedFiles = Math.Clamp(
+                    safeCompletedFilesBeforePhase + i + 1,
+                    0,
+                    safeOverallTotalFiles);
+                int overallFilesLeft = Math.Max(0, safeOverallTotalFiles - overallProcessedFiles);
+                int pourcent = ComputeSizeBasedProgressPercent(
+                    safeOverallTotalSize,
+                    overallLeftSize,
+                    overallProcessedFiles,
+                    safeOverallTotalFiles);
 
                 DateTime fileStartUtc = DateTime.UtcNow;
 
                 bool ok = _viewModel.model.TryCopyFile(
-                    _save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent,
+                    _save,
+                    _files[i],
+                    curSize,
+                    _dst,
+                    overallLeftSize,
+                    safeOverallTotalFiles,
+                    safeCompletedFilesBeforePhase + i,
+                    pourcent,
                     out string? error, out EncryptionAction encryptionAction);
 
                 double fileMs = (DateTime.UtcNow - fileStartUtc).TotalMilliseconds;
@@ -809,16 +940,16 @@ namespace easySave_BMT.ViewModel_.Backup
 
                 if (emaSpeedBytesPerMs > 0.0 && i >= 2 && bytesCopiedSuccess > 0 && activeSw.ElapsedMilliseconds > 500)
                 {
-                    double remainingMs = leftSize / emaSpeedBytesPerMs;
+                    double remainingMs = overallLeftSize / emaSpeedBytesPerMs;
                     eta = FormatEta(remainingMs);
                 }
 
                 if (_viewModel.guiView is null)
                 {
-                    _viewModel.view.DisplayCurrentState(_save.name, totalFile - i - 1, leftSize, curSize, pourcent);
+                    _viewModel.view.DisplayCurrentState(_save.name, overallFilesLeft, overallLeftSize, curSize, pourcent);
                 }
 
-                _viewModel.guiView?.OnProgressUpdate($"{_save.name} | ETA {eta}", totalFile - i - 1, leftSize, curSize, pourcent);
+                _viewModel.guiView?.OnProgressUpdate($"{_save.name} | ETA {eta}", overallFilesLeft, overallLeftSize, curSize, pourcent);
 
             }
 
