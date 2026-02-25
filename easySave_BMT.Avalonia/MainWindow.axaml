@@ -93,19 +93,13 @@
 
 											<StackPanel Grid.Column="2" Grid.Row="1" Margin="16,8,0,0" Spacing="8">
 												<ProgressBar Width="140" Value="{Binding UiProgressPercent}" Maximum="100"/>
-												<StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+												<StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
 													<Button Classes="ghost icon"
 															Content="{Binding UiPauseButtonSymbol}"
 															Command="{Binding #Root.DataContext.PauseSaveCommand}"
 															CommandParameter="{Binding}"
 															IsEnabled="{Binding UiCanControl}"
 															ToolTip.Tip="{Binding #Root.DataContext.Loc[UiPause]}"/>
-													<Button Classes="danger icon"
-															Content="⏹"
-															Command="{Binding #Root.DataContext.StopSaveCommand}"
-															CommandParameter="{Binding}"
-															IsEnabled="{Binding UiCanControl}"
-															ToolTip.Tip="{Binding #Root.DataContext.Loc[UiStop]}"/>
 												</StackPanel>
 											</StackPanel>
 										</Grid>
@@ -339,6 +333,15 @@
 								<Grid ColumnDefinitions="*,120">
 									<TextBox Grid.Column="0" Text="{Binding ConfigStateFilePath}" Watermark="C:\ProgramData\EasySave\state.json" IsEnabled = "False"/>
 									<Button Grid.Column="1" Margin="10,0,0,0" Content="{Binding Loc[UiChoose]}" Command="{Binding BrowseStateFilePathCommand}"/>
+								</Grid>
+							</StackPanel>
+
+							<StackPanel Spacing="6">
+								<TextBlock Text="{Binding Loc[UiLargeFileThreshold]}" FontWeight="SemiBold"/>
+								<TextBlock Text="{Binding Loc[UiLargeFileThresholdHelp]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
+								<Grid ColumnDefinitions="*,Auto">
+									<TextBox Grid.Column="0" Text="{Binding ConfigLargeFileTransferThresholdKbDraft}" Watermark="1024"/>
+									<TextBlock Grid.Column="1" Text="Ko" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="{DynamicResource BrushMuted}"/>
 								</Grid>
 							</StackPanel>
 

@@ -496,6 +496,15 @@
   <data name="UiBusinessSoftwareHelp" xml:space="preserve">
     <value>Vous pouvez mettre des applications comme calc, notepad etc. En détection, EasySave met en pause puis reprend automatiquement.</value>
   </data>
+  <data name="UiLargeFileThreshold" xml:space="preserve">
+    <value>Seuil gros fichiers (Ko)</value>
+  </data>
+  <data name="UiLargeFileThresholdHelp" xml:space="preserve">
+    <value>Deux fichiers supérieurs à ce seuil ne peuvent pas être transférés en même temps. Les fichiers plus petits restent transférables en parallèle.</value>
+  </data>
+  <data name="UiInvalidLargeFileThreshold" xml:space="preserve">
+    <value>Seuil gros fichiers invalide. Entrez un entier entre 1 et 1048576 Ko.</value>
+  </data>
   <data name="UiPausedByBusinessDetected" xml:space="preserve">
     <value>Pause automatique : logiciel métier détecté ({0}).</value>
   </data>

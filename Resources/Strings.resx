@@ -496,6 +496,15 @@
   <data name="UiBusinessSoftwareHelp" xml:space="preserve">
     <value>You can provide multiple entries (separated by ; , or newline). On detection, EasySave pauses and resumes automatically.</value>
   </data>
+  <data name="UiLargeFileThreshold" xml:space="preserve">
+    <value>Large file parallel limit (KB)</value>
+  </data>
+  <data name="UiLargeFileThresholdHelp" xml:space="preserve">
+    <value>Two files larger than this threshold cannot be transferred at the same time. Smaller files may still transfer in parallel.</value>
+  </data>
+  <data name="UiInvalidLargeFileThreshold" xml:space="preserve">
+    <value>Invalid large-file threshold. Enter an integer between 1 and 1048576 KB.</value>
+  </data>
   <data name="UiPausedByBusinessDetected" xml:space="preserve">
     <value>Automatic pause: business software detected ({0}).</value>
   </data>

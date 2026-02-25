@@ -345,6 +345,22 @@ namespace easySave_BMT.Avalonia.ViewModels
             if (!value.StartsWith(".")) value = "." + value;
             return value;
         }
+
+        private bool TryParseLargeFileTransferThresholdKbDraft(out int thresholdKb)
+        {
+            thresholdKb = Config.DefaultLargeFileTransferThresholdKb;
+            string raw = (ConfigLargeFileTransferThresholdKbDraft ?? "").Trim();
+
+            if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed))
+                return false;
+
+            if (parsed < Config.MinLargeFileTransferThresholdKb || parsed > Config.MaxLargeFileTransferThresholdKb)
+                return false;
+
+            thresholdKb = parsed;
+            return true;
+        }
+
         private void ApplyEncryptionDraftToModelForLaunch()
         {
             var cfg = _coreViewModel.model.GetConfig();
@@ -380,6 +396,16 @@ namespace easySave_BMT.Avalonia.ViewModels
                 .Where(e => !string.IsNullOrWhiteSpace(e))
                 .ToList();
 
+            int largeFileTransferThresholdKb = cfg.LargeFileTransferThresholdKb;
+            if (TryParseLargeFileTransferThresholdKbDraft(out int parsedThresholdKb))
+            {
+                largeFileTransferThresholdKb = parsedThresholdKb;
+            }
+            else
+            {
+                ConfigLargeFileTransferThresholdKbDraft = cfg.LargeFileTransferThresholdKb.ToString(CultureInfo.InvariantCulture);
+            }
+
             _coreViewModel.model.UpdateConfig(
                 cfg.LogDirectory,
                 cfg.StateFilePath,
@@ -391,7 +417,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                 cryptoSoftSavedKeys: savedKeys,
                 encryptionKeyCreationTrace: keyTrace,
                 logDestinationMode: normalizedMode,
-                centralizedLogEndpoint: endpointDraft);
+                centralizedLogEndpoint: endpointDraft,
+                largeFileTransferThresholdKb: largeFileTransferThresholdKb);
         }
 
         private void LoadConfigValuesFromModel()
@@ -402,6 +429,7 @@ namespace easySave_BMT.Avalonia.ViewModels
 
                 ConfigLogDirectory = cfg.LogDirectory;
                 ConfigStateFilePath = cfg.StateFilePath;
+                ConfigLargeFileTransferThresholdKbDraft = cfg.LargeFileTransferThresholdKb.ToString(CultureInfo.InvariantCulture);
                 ConfigLanguage = cfg.Language;
                 ConfigLanguageDraft = cfg.Language;
                 ConfigLogDestinationModeDraft = Config.NormalizeLogDestinationMode(cfg.LogDestinationMode);
@@ -568,6 +596,13 @@ namespace easySave_BMT.Avalonia.ViewModels
                 endpoint = Config.NormalizeCentralizedLogEndpoint(endpoint);
                 ConfigCentralizedLogEndpoint = endpoint;
 
+                if (!TryParseLargeFileTransferThresholdKbDraft(out int largeFileTransferThresholdKb))
+                {
+                    throw new InvalidOperationException(Loc["UiInvalidLargeFileThreshold"]);
+                }
+
+                ConfigLargeFileTransferThresholdKbDraft = largeFileTransferThresholdKb.ToString(CultureInfo.InvariantCulture);
+
                 _coreViewModel.model.UpdateConfig(
                     ConfigLogDirectory,
                     ConfigStateFilePath,
@@ -581,7 +616,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                     businessSoftware: businessSoftware,
                     themePreference: themePreference,
                     logDestinationMode: normalizedMode,
-                    centralizedLogEndpoint: endpoint);
+                    centralizedLogEndpoint: endpoint,
+                    largeFileTransferThresholdKb: largeFileTransferThresholdKb);
 
                 // Apply language to the current UI only after Save.
                 ConfigLanguage = ConfigLanguageDraft;

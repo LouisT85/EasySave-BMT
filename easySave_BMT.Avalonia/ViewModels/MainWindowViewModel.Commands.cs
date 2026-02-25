@@ -44,7 +44,6 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> PauseCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> StopCommand { get; private set; } = null!;
         public ReactiveCommand<Model_.Save, Unit> PauseSaveCommand { get; private set; } = null!;
-        public ReactiveCommand<Model_.Save, Unit> StopSaveCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> QuitCommand { get; private set; } = null!;
 
         private void InitCommands()
@@ -193,7 +192,6 @@ namespace easySave_BMT.Avalonia.ViewModels
             });
 
             PauseSaveCommand = ReactiveCommand.Create<Model_.Save>(ToggleSingleBackupPause);
-            StopSaveCommand = ReactiveCommand.Create<Model_.Save>(RequestSingleBackupStop);
 
             QuitCommand = ReactiveCommand.Create(ShutdownApp);
         }
@@ -221,16 +219,6 @@ namespace easySave_BMT.Avalonia.ViewModels
             _coreViewModel.model.ClearPauseRequest(save.name);
             save.UiIsPausedByUser = false;
             DashboardStatusText = $"{save.name}: {Loc["UiResumed"]}";
-        }
-
-        private void RequestSingleBackupStop(Model_.Save? save)
-        {
-            if (!CanControlSingleSave(save)) return;
-
-            _coreViewModel.model.RequestStop(save!.name, BackupStopReason.UserRequested, detail: "cleanup");
-            _coreViewModel.model.ClearPauseRequest(save.name);
-            save.UiIsPausedByUser = false;
-            DashboardStatusText = $"{save.name}: {Loc["UiStopRequested"]}";
         }
 
         private void GenerateEncryptionKey()

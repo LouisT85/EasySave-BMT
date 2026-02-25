@@ -56,6 +56,7 @@ namespace easySave_BMT.Model_
         private readonly HashSet<string> _pausedSaveNames = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, (BackupStopReason Reason, string? Detail)> _stopRequestsBySaveName =
             new(StringComparer.OrdinalIgnoreCase);
+        private static readonly SemaphoreSlim LargeFileTransferGate = new SemaphoreSlim(1, 1);
 
         /// <summary>List of all configured backup jobs.</summary>
         public List<Save> saves { get; private set; }
@@ -402,34 +403,58 @@ namespace easySave_BMT.Model_
 
                 // Perform file copy (and compute plaintext hash only if we will encrypt).
                 string? plaintextHashHex = null;
-                var copySw = Stopwatch.StartNew();
-                if (shouldEncrypt)
-                {
-                    using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-                    byte[] buffer = new byte[81920];
+                long transferTime;
+                bool largeTransferGateEntered = false;
 
-                    using (var inFs = new FileStream(currentFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                    using (var outFs = new FileStream(dstFile, FileMode.Create, FileAccess.Write, FileShare.None))
+                try
+                {
+                    if (RequiresLargeFileTransferGate(curSize))
                     {
-                        int read;
-                        while ((read = inFs.Read(buffer, 0, buffer.Length)) > 0)
+                        if (!TryEnterLargeFileTransferGate(save.name, curSize))
                         {
-                            outFs.Write(buffer, 0, read);
-                            hasher.AppendData(buffer, 0, read);
+                            error = "Copy cancelled by user.";
+                            return false;
                         }
 
-                        outFs.Flush(true);
+                        largeTransferGateEntered = true;
                     }
 
-                    plaintextHashHex = Convert.ToHexString(hasher.GetHashAndReset()).ToLowerInvariant();
-                }
-                else
-                {
-                    currentFile.CopyTo(dstFile, true);
-                }
-                copySw.Stop();
+                    var copySw = Stopwatch.StartNew();
+                    if (shouldEncrypt)
+                    {
+                        using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                        byte[] buffer = new byte[81920];
 
-                long transferTime = copySw.ElapsedMilliseconds;
+                        using (var inFs = new FileStream(currentFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        using (var outFs = new FileStream(dstFile, FileMode.Create, FileAccess.Write, FileShare.None))
+                        {
+                            int read;
+                            while ((read = inFs.Read(buffer, 0, buffer.Length)) > 0)
+                            {
+                                outFs.Write(buffer, 0, read);
+                                hasher.AppendData(buffer, 0, read);
+                            }
+
+                            outFs.Flush(true);
+                        }
+
+                        plaintextHashHex = Convert.ToHexString(hasher.GetHashAndReset()).ToLowerInvariant();
+                    }
+                    else
+                    {
+                        currentFile.CopyTo(dstFile, true);
+                    }
+                    copySw.Stop();
+
+                    transferTime = copySw.ElapsedMilliseconds;
+                }
+                finally
+                {
+                    if (largeTransferGateEntered)
+                    {
+                        LargeFileTransferGate.Release();
+                    }
+                }
 
                 // Optional encryption step (CryptoSoft) depending on user configuration.
                 long encryptionTimeMs = 0;
@@ -742,7 +767,8 @@ namespace easySave_BMT.Model_
             string? businessSoftware = null,
             string? themePreference = null,
             string? logDestinationMode = null,
-            string? centralizedLogEndpoint = null)
+            string? centralizedLogEndpoint = null,
+            int? largeFileTransferThresholdKb = null)
         {
             config.UpdateFromUserInput(
                 logDir,
@@ -758,7 +784,8 @@ namespace easySave_BMT.Model_
                 businessSoftware,
                 themePreference,
                 logDestinationMode,
-                centralizedLogEndpoint);
+                centralizedLogEndpoint,
+                largeFileTransferThresholdKb);
 
             SyncCryptoSoftKeyToAppSettings();
 
@@ -1290,6 +1317,29 @@ namespace easySave_BMT.Model_
             }
 
             return false;
+        }
+
+        private long GetLargeFileTransferThresholdBytes()
+        {
+            int thresholdKb = Config.NormalizeLargeFileTransferThresholdKb(config.LargeFileTransferThresholdKb);
+            return thresholdKb * 1024L;
+        }
+
+        private bool RequiresLargeFileTransferGate(long fileSizeBytes)
+        {
+            return fileSizeBytes > GetLargeFileTransferThresholdBytes();
+        }
+
+        private bool TryEnterLargeFileTransferGate(string? saveName, long fileSizeBytes)
+        {
+            while (true)
+            {
+                if (IsUserStopRequestedForSave(saveName))
+                    return false;
+
+                if (LargeFileTransferGate.Wait(200))
+                    return true;
+            }
         }
 
         private bool TryEncryptInPlaceWithCryptoSoft(

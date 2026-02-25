@@ -74,6 +74,13 @@ namespace easySave_BMT.Avalonia.ViewModels
         private string _configStateFilePath = string.Empty;
         public string ConfigStateFilePath { get => _configStateFilePath; set => this.RaiseAndSetIfChanged(ref _configStateFilePath, value); }
 
+        private string _configLargeFileTransferThresholdKbDraft = Model_.Config.DefaultLargeFileTransferThresholdKb.ToString();
+        public string ConfigLargeFileTransferThresholdKbDraft
+        {
+            get => _configLargeFileTransferThresholdKbDraft;
+            set => this.RaiseAndSetIfChanged(ref _configLargeFileTransferThresholdKbDraft, value);
+        }
+
         private string _configLanguage = "fr";
         public string ConfigLanguage
         {

@@ -13,6 +13,9 @@ namespace easySave_BMT.Model_
         public const string LogDestinationModeLocalOnly = "LocalOnly";
         public const string LogDestinationModeCentralizedOnly = "CentralizedOnly";
         public const string LogDestinationModeLocalAndCentralized = "LocalAndCentralized";
+        public const int DefaultLargeFileTransferThresholdKb = 1024;
+        public const int MinLargeFileTransferThresholdKb = 1;
+        public const int MaxLargeFileTransferThresholdKb = 1024 * 1024;
 
         /// <summary>The directory where backup log files are stored.</summary>
         public string LogDirectory { get; set; }
@@ -83,6 +86,12 @@ namespace easySave_BMT.Model_
         /// </summary>
         public string ThemePreference { get; set; } = "auto";
 
+        /// <summary>
+        /// Size threshold in KB above which file transfers are considered "large".
+        /// Two large files cannot be transferred in parallel.
+        /// </summary>
+        public int LargeFileTransferThresholdKb { get; set; } = DefaultLargeFileTransferThresholdKb;
+
         /// <summary>The relative path to the configuration file itself.</summary>
         private static readonly string ConfigPath = "./config.json";
 
@@ -140,6 +149,22 @@ namespace easySave_BMT.Model_
         {
             LogDestinationMode = NormalizeLogDestinationMode(LogDestinationMode);
             CentralizedLogEndpoint = NormalizeCentralizedLogEndpoint(CentralizedLogEndpoint);
+            LargeFileTransferThresholdKb = NormalizeLargeFileTransferThresholdKb(LargeFileTransferThresholdKb);
+        }
+
+        public static int NormalizeLargeFileTransferThresholdKb(int value)
+        {
+            if (value < MinLargeFileTransferThresholdKb)
+            {
+                return DefaultLargeFileTransferThresholdKb;
+            }
+
+            if (value > MaxLargeFileTransferThresholdKb)
+            {
+                return MaxLargeFileTransferThresholdKb;
+            }
+
+            return value;
         }
 
         public static string NormalizeCentralizedLogEndpoint(string? endpoint)
@@ -270,7 +295,8 @@ namespace easySave_BMT.Model_
             string? businessSoftware = null,
             string? themePreference = null,
             string? logDestinationMode = null,
-            string? centralizedLogEndpoint = null)
+            string? centralizedLogEndpoint = null,
+            int? largeFileTransferThresholdKb = null)
         {
             if (!string.IsNullOrWhiteSpace(logDir))
                 LogDirectory = logDir;
@@ -321,6 +347,9 @@ namespace easySave_BMT.Model_
 
             if (centralizedLogEndpoint is not null)
                 CentralizedLogEndpoint = NormalizeCentralizedLogEndpoint(centralizedLogEndpoint);
+
+            if (largeFileTransferThresholdKb.HasValue)
+                LargeFileTransferThresholdKb = NormalizeLargeFileTransferThresholdKb(largeFileTransferThresholdKb.Value);
 
             Normalize();
 
