@@ -2,6 +2,7 @@ using Avalonia.Collections;
 using ReactiveUI;
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace easySave_BMT.Avalonia.ViewModels
 {
@@ -91,12 +92,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         private string _configLanguageDraft = "fr";
         public string ConfigLanguageDraft { get => _configLanguageDraft; set => this.RaiseAndSetIfChanged(ref _configLanguageDraft, value); }
 
-        public ObservableCollection<string> LogDestinationModeOptions { get; } = new()
-        {
-            Model_.Config.LogDestinationModeLocalOnly,
-            Model_.Config.LogDestinationModeCentralizedOnly,
-            Model_.Config.LogDestinationModeLocalAndCentralized
-        };
+        public ObservableCollection<LogDestinationModeOptionItem> LogDestinationModeOptions { get; } = new();
 
         private string _configLogDestinationModeDraft = Model_.Config.LogDestinationModeLocalOnly;
         public string ConfigLogDestinationModeDraft
@@ -107,6 +103,27 @@ namespace easySave_BMT.Avalonia.ViewModels
                 string normalized = Model_.Config.NormalizeLogDestinationMode(value);
                 this.RaiseAndSetIfChanged(ref _configLogDestinationModeDraft, normalized);
                 this.RaisePropertyChanged(nameof(IsCentralizedLoggingModeSelected));
+                SyncSelectedLogDestinationModeOption();
+            }
+        }
+
+        private LogDestinationModeOptionItem? _selectedLogDestinationModeOption;
+        private bool _isSyncingLogDestinationModeSelection;
+        public LogDestinationModeOptionItem? SelectedLogDestinationModeOption
+        {
+            get => _selectedLogDestinationModeOption;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _selectedLogDestinationModeOption, value);
+
+                if (_isSyncingLogDestinationModeSelection || value is null)
+                    return;
+
+                string normalized = Model_.Config.NormalizeLogDestinationMode(value.Key);
+                if (!string.Equals(_configLogDestinationModeDraft, normalized, StringComparison.OrdinalIgnoreCase))
+                {
+                    ConfigLogDestinationModeDraft = normalized;
+                }
             }
         }
 
@@ -440,10 +457,33 @@ namespace easySave_BMT.Avalonia.ViewModels
         public string StopButtonSymbol => "⏹";
 
         private string _dashboardMessage = string.Empty;
-        public string DashboardMessage { get => _dashboardMessage; set => this.RaiseAndSetIfChanged(ref _dashboardMessage, value); }
+        public string DashboardMessage
+        {
+            get => _dashboardMessage;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _dashboardMessage, value);
+                this.RaisePropertyChanged(nameof(IsDashboardReadyVisible));
+                this.RaisePropertyChanged(nameof(HasDashboardStatusText));
+            }
+        }
 
         private string _dashboardStatusText = string.Empty;
-        public string DashboardStatusText { get => _dashboardStatusText; set => this.RaiseAndSetIfChanged(ref _dashboardStatusText, value); }
+        public string DashboardStatusText
+        {
+            get => _dashboardStatusText;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _dashboardStatusText, value);
+                this.RaisePropertyChanged(nameof(IsDashboardReadyVisible));
+                this.RaisePropertyChanged(nameof(HasDashboardStatusText));
+            }
+        }
+
+        public bool HasDashboardStatusText => !string.IsNullOrWhiteSpace(DashboardStatusText);
+        public bool IsDashboardReadyVisible =>
+            string.IsNullOrWhiteSpace(DashboardMessage) &&
+            string.IsNullOrWhiteSpace(DashboardStatusText);
 
         private string _newTaskMessage = string.Empty;
         public string NewTaskMessage
@@ -485,6 +525,26 @@ namespace easySave_BMT.Avalonia.ViewModels
         public bool IsConfigBannerVisible =>
             !string.IsNullOrWhiteSpace(ConfigMessage);
 
+        private void SyncSelectedLogDestinationModeOption()
+        {
+            string normalized = Model_.Config.NormalizeLogDestinationMode(_configLogDestinationModeDraft);
+            var target = LogDestinationModeOptions
+                .FirstOrDefault(o => string.Equals(o.Key, normalized, StringComparison.OrdinalIgnoreCase));
+
+            if (ReferenceEquals(_selectedLogDestinationModeOption, target))
+                return;
+
+            _isSyncingLogDestinationModeSelection = true;
+            try
+            {
+                this.RaiseAndSetIfChanged(ref _selectedLogDestinationModeOption, target);
+            }
+            finally
+            {
+                _isSyncingLogDestinationModeSelection = false;
+            }
+        }
+
         private void UpdateHasSelection()
         {
             HasSelection = (SelectedSaves.Count > 0) || (SelectedSave != null);
@@ -510,6 +570,18 @@ namespace easySave_BMT.Avalonia.ViewModels
         public sealed class LogSortOptionItem
         {
             public LogSortOptionItem(string key, string display)
+            {
+                Key = key;
+                Display = display;
+            }
+
+            public string Key { get; }
+            public string Display { get; }
+        }
+
+        public sealed class LogDestinationModeOptionItem
+        {
+            public LogDestinationModeOptionItem(string key, string display)
             {
                 Key = key;
                 Display = display;

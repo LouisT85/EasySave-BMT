@@ -18,7 +18,7 @@ namespace easySave_BMT.ViewModel_
     {
         public Model model;
         public View view;
-        public IProgressObserverGUI? guiView; // NOUVEAU : pour Avalonia
+        public IProgressObserverGUI? guiView;
 
         // Controllers - publics pour accès interne
         public CommandLineParser commandLineParser;

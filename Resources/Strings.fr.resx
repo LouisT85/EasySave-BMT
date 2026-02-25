@@ -569,7 +569,7 @@
     <value>Centralise uniquement</value>
   </data>
   <data name="LogModeLocalAndCentralized" xml:space="preserve">
-    <value>Local + centralise</value>
+    <value>Local + centralisé</value>
   </data>
   <data name="ModifyCentralizedEndpoint" xml:space="preserve">
     <value>Modifier l'endpoint centralise</value>

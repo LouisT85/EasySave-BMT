@@ -46,9 +46,8 @@ namespace easySave_BMT.Avalonia.ViewModels
             LoadConfigValuesFromModel();
             LoadLogs();
             RefreshBackupTypeOptions();
+            RefreshLogDestinationModeOptions();
             ListSaves(showUserFeedback: false);
-
-            SetMessageFromCode(100, MessageArea.Dashboard);
         }
 
         private void ShutdownApp()

@@ -114,7 +114,8 @@
 						<Grid ColumnDefinitions="*, Auto">
 							<StackPanel Orientation="Vertical" VerticalAlignment="Center">
 								<TextBlock Text="{Binding DashboardMessage}" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccent}" TextWrapping="Wrap"/>
-								<TextBlock Text="{Binding DashboardStatusText}" FontSize="12" Foreground="{DynamicResource BrushMuted}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+								<TextBlock Text="{Binding DashboardStatusText}" FontSize="12" Foreground="{DynamicResource BrushMuted}" Margin="0,6,0,0" TextWrapping="Wrap" IsVisible="{Binding HasDashboardStatusText}"/>
+								<TextBlock Text="{Binding Loc[UiReady]}" FontSize="12" Foreground="{DynamicResource BrushMuted}" Margin="0,6,0,0" TextWrapping="Wrap" IsVisible="{Binding IsDashboardReadyVisible}"/>
 								<StackPanel Orientation="Horizontal" Spacing="12" Margin="0,6,0,0">
 									<TextBlock Text="{Binding ProgressText}" FontSize="12" Foreground="{DynamicResource BrushMuted}"/>
 									<ProgressBar Value="{Binding ProgressPercent}" Maximum="100" Width="220" VerticalAlignment="Center" IsVisible="{Binding IsProgressVisible}"/>
@@ -352,7 +353,7 @@
 
 							<StackPanel Spacing="6">
 								<TextBlock Text="{Binding Loc[UiLogDestinationMode]}" FontWeight="SemiBold"/>
-								<ComboBox ItemsSource="{Binding LogDestinationModeOptions}" SelectedItem="{Binding ConfigLogDestinationModeDraft}" HorizontalAlignment="Stretch"/>
+								<ComboBox ItemsSource="{Binding LogDestinationModeOptions}" SelectedItem="{Binding SelectedLogDestinationModeOption}" DisplayMemberBinding="{Binding Display}" HorizontalAlignment="Stretch"/>
 								<TextBlock Text="{Binding Loc[UiLogModeHelp]}" Foreground="{DynamicResource BrushMuted}" FontSize="12"/>
 							</StackPanel>
 

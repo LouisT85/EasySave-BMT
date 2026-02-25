@@ -535,6 +535,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                 RefreshBackupTypeOptions();
                 RefreshThemeOptions();
                 RefreshLogSortOptions();
+                RefreshLogDestinationModeOptions();
                 ApplyThemePreference(ConfigThemeDraft);
                 UpdateBusinessSoftwareSuggestions();
                 UpdateEncryptionExtensionSuggestions();
@@ -646,6 +647,7 @@ namespace easySave_BMT.Avalonia.ViewModels
                 RefreshBackupTypeOptions();
                 RefreshThemeOptions();
                 RefreshLogSortOptions();
+                RefreshLogDestinationModeOptions();
                 ApplyThemePreference(themePreference);
 
                 LoadConfigValuesFromModel();
@@ -935,6 +937,20 @@ namespace easySave_BMT.Avalonia.ViewModels
             SelectedLogEntrySortOption =
                 LogEntrySortOptions.FirstOrDefault(o => string.Equals(o.Key, entrySortKey, StringComparison.OrdinalIgnoreCase))
                 ?? LogEntrySortOptions.FirstOrDefault();
+        }
+
+        private void RefreshLogDestinationModeOptions()
+        {
+            string selectedKey = Config.NormalizeLogDestinationMode(ConfigLogDestinationModeDraft);
+
+            LogDestinationModeOptions.Clear();
+            LogDestinationModeOptions.Add(new LogDestinationModeOptionItem(Config.LogDestinationModeLocalOnly, Loc["LogModeLocalOnly"]));
+            LogDestinationModeOptions.Add(new LogDestinationModeOptionItem(Config.LogDestinationModeCentralizedOnly, Loc["LogModeCentralizedOnly"]));
+            LogDestinationModeOptions.Add(new LogDestinationModeOptionItem(Config.LogDestinationModeLocalAndCentralized, Loc["LogModeLocalAndCentralized"]));
+
+            SelectedLogDestinationModeOption =
+                LogDestinationModeOptions.FirstOrDefault(o => string.Equals(o.Key, selectedKey, StringComparison.OrdinalIgnoreCase))
+                ?? LogDestinationModeOptions.FirstOrDefault();
         }
 
         private void ApplyLogFileFilterAndSort(bool preserveSelection = true)
