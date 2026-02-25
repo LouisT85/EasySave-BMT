@@ -367,17 +367,17 @@
 								<StackPanel Orientation="Horizontal" Spacing="8">
 									<ToggleButton Classes="themeMode"
 												  Content="{Binding Loc[UiThemeAuto]}"
-												  IsChecked="{Binding IsThemeAutoSelected}"
+												  IsChecked="{Binding IsThemeAutoSelected, Mode=OneWay}"
 												  Command="{Binding SetThemeDraftCommand}"
 												  CommandParameter="auto"/>
 									<ToggleButton Classes="themeMode"
 												  Content="{Binding Loc[UiThemeLight]}"
-												  IsChecked="{Binding IsThemeLightSelected}"
+												  IsChecked="{Binding IsThemeLightSelected, Mode=OneWay}"
 												  Command="{Binding SetThemeDraftCommand}"
 												  CommandParameter="light"/>
 									<ToggleButton Classes="themeMode"
 												  Content="{Binding Loc[UiThemeDark]}"
-												  IsChecked="{Binding IsThemeDarkSelected}"
+												  IsChecked="{Binding IsThemeDarkSelected, Mode=OneWay}"
 												  Command="{Binding SetThemeDraftCommand}"
 												  CommandParameter="dark"/>
 								</StackPanel>

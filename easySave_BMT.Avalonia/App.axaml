@@ -161,18 +161,20 @@
       <Setter Property="Background" Value="{DynamicResource BrushSurface}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Foreground" Value="{DynamicResource BrushMuted}"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
     <Style Selector="ToggleButton.themeMode:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource BrushButtonHover}"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
     </Style>
     <Style Selector="ToggleButton.themeMode:checked">
       <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
-      <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
+      <Setter Property="Foreground" Value="White"/>
     </Style>
     <Style Selector="ToggleButton.themeMode:checked /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}"/>
+      <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+      <Setter Property="Foreground" Value="White"/>
     </Style>
 
     <Style Selector="Button.icon">
