@@ -145,13 +145,14 @@ namespace easySave_BMT.Avalonia.ViewModels
 
             int lastResult = 0;
             bool stoppedOrBlocked = false;
+            List<Model_.Save> toRun = new();
 
             try
             {
                 ApplyEncryptionDraftToModelForLaunch();
                 ListSaves(showUserFeedback: false);
 
-                var toRun = _coreViewModel.model.saves.Where(s => names.Contains(s.name)).ToList();
+                toRun = _coreViewModel.model.saves.Where(s => names.Contains(s.name)).ToList();
                 if (toRun.Count == 0)
                 {
                     SetTimedAreaMessage(MessageArea.Dashboard, Loc["UiSelectBackup"], "");
@@ -162,6 +163,8 @@ namespace easySave_BMT.Avalonia.ViewModels
                 foreach (var save in toRun)
                 {
                     _currentBatchSaveNames.Add(save.name);
+                    save.UiIsInActiveBatch = true;
+                    save.UiIsPausedByUser = false;
                     SetSaveUiProgress(save.name, 0);
                 }
 
@@ -254,6 +257,14 @@ namespace easySave_BMT.Avalonia.ViewModels
                 IsBackupRunning = false;
                 IsBackupPaused = false;
                 _coreViewModel.model.ClearPauseRequest();
+
+                foreach (var save in toRun)
+                {
+                    _coreViewModel.model.ClearSaveControlRequests(save.name);
+                    save.UiIsInActiveBatch = false;
+                    save.UiIsPausedByUser = false;
+                }
+
                 _currentBatchSaveNames.Clear();
             }
 
@@ -333,6 +344,9 @@ namespace easySave_BMT.Avalonia.ViewModels
                     save.UiProgressPercent = percent;
                 else
                     save.UiProgressPercent = 0;
+
+                save.UiIsInActiveBatch = _currentBatchSaveNames.Contains(save.name);
+                save.UiIsPausedByUser = _coreViewModel.model.IsPauseRequested(save.name);
             }
         }
 

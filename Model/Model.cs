@@ -52,6 +52,10 @@ namespace easySave_BMT.Model_
         private string? _stopDetail;
         private readonly object _stopLock = new();
         private volatile bool _pauseRequested;
+        private readonly object _saveControlLock = new();
+        private readonly HashSet<string> _pausedSaveNames = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, (BackupStopReason Reason, string? Detail)> _stopRequestsBySaveName =
+            new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>List of all configured backup jobs.</summary>
         public List<Save> saves { get; private set; }
@@ -435,7 +439,12 @@ namespace easySave_BMT.Model_
                 if (shouldEncrypt)
                 {
                     encryptionAction = EncryptionAction.Encrypted;
-                    encryptionOk = TryEncryptInPlaceWithCryptoSoft(dstFile, plaintextHashHex, out encryptionTimeMs, out encryptionError);
+                    encryptionOk = TryEncryptInPlaceWithCryptoSoft(
+                        dstFile,
+                        plaintextHashHex,
+                        save.name,
+                        out encryptionTimeMs,
+                        out encryptionError);
                 }
 
                 // Log success
@@ -512,6 +521,11 @@ namespace easySave_BMT.Model_
                 _stopReason = BackupStopReason.None;
                 _stopDetail = null;
             }
+
+            lock (_saveControlLock)
+            {
+                _stopRequestsBySaveName.Clear();
+            }
         }
 
         public void RequestStop(BackupStopReason reason, string? detail = null)
@@ -525,6 +539,27 @@ namespace easySave_BMT.Model_
 
             // Stop overrides pause.
             _pauseRequested = false;
+
+            lock (_saveControlLock)
+            {
+                _pausedSaveNames.Clear();
+            }
+        }
+
+        public void RequestStop(string? saveName, BackupStopReason reason, string? detail = null)
+        {
+            string normalizedSaveName = NormalizeSaveControlName(saveName);
+            if (string.IsNullOrWhiteSpace(normalizedSaveName))
+            {
+                RequestStop(reason, detail);
+                return;
+            }
+
+            lock (_saveControlLock)
+            {
+                _stopRequestsBySaveName[normalizedSaveName] = (reason, detail);
+                _pausedSaveNames.Remove(normalizedSaveName);
+            }
         }
 
         public bool IsStopRequested()
@@ -532,19 +567,78 @@ namespace easySave_BMT.Model_
             return _stopRequested;
         }
 
+        public bool IsStopRequested(string? saveName)
+        {
+            string normalizedSaveName = NormalizeSaveControlName(saveName);
+            if (string.IsNullOrWhiteSpace(normalizedSaveName))
+                return false;
+
+            lock (_saveControlLock)
+            {
+                return _stopRequestsBySaveName.ContainsKey(normalizedSaveName);
+            }
+        }
+
         public void RequestPause()
         {
             _pauseRequested = true;
         }
 
+        public void RequestPause(string? saveName)
+        {
+            string normalizedSaveName = NormalizeSaveControlName(saveName);
+            if (string.IsNullOrWhiteSpace(normalizedSaveName))
+            {
+                RequestPause();
+                return;
+            }
+
+            lock (_saveControlLock)
+            {
+                _pausedSaveNames.Add(normalizedSaveName);
+            }
+        }
+
         public void ClearPauseRequest()
         {
             _pauseRequested = false;
+
+            lock (_saveControlLock)
+            {
+                _pausedSaveNames.Clear();
+            }
+        }
+
+        public void ClearPauseRequest(string? saveName)
+        {
+            string normalizedSaveName = NormalizeSaveControlName(saveName);
+            if (string.IsNullOrWhiteSpace(normalizedSaveName))
+            {
+                ClearPauseRequest();
+                return;
+            }
+
+            lock (_saveControlLock)
+            {
+                _pausedSaveNames.Remove(normalizedSaveName);
+            }
         }
 
         public bool IsPauseRequested()
         {
             return _pauseRequested;
+        }
+
+        public bool IsPauseRequested(string? saveName)
+        {
+            string normalizedSaveName = NormalizeSaveControlName(saveName);
+            if (string.IsNullOrWhiteSpace(normalizedSaveName))
+                return false;
+
+            lock (_saveControlLock)
+            {
+                return _pausedSaveNames.Contains(normalizedSaveName);
+            }
         }
 
         public BackupStopReason PeekStopReason()
@@ -555,11 +649,39 @@ namespace easySave_BMT.Model_
             }
         }
 
+        public BackupStopReason PeekStopReason(string? saveName)
+        {
+            string normalizedSaveName = NormalizeSaveControlName(saveName);
+            if (string.IsNullOrWhiteSpace(normalizedSaveName))
+                return BackupStopReason.None;
+
+            lock (_saveControlLock)
+            {
+                return _stopRequestsBySaveName.TryGetValue(normalizedSaveName, out var info)
+                    ? info.Reason
+                    : BackupStopReason.None;
+            }
+        }
+
         public string? PeekStopDetail()
         {
             lock (_stopLock)
             {
                 return _stopRequested ? _stopDetail : null;
+            }
+        }
+
+        public string? PeekStopDetail(string? saveName)
+        {
+            string normalizedSaveName = NormalizeSaveControlName(saveName);
+            if (string.IsNullOrWhiteSpace(normalizedSaveName))
+                return null;
+
+            lock (_saveControlLock)
+            {
+                return _stopRequestsBySaveName.TryGetValue(normalizedSaveName, out var info)
+                    ? info.Detail
+                    : null;
             }
         }
 
@@ -583,6 +705,24 @@ namespace easySave_BMT.Model_
                 _stopDetail = null;
                 return true;
             }
+        }
+
+        public void ClearSaveControlRequests(string? saveName)
+        {
+            string normalizedSaveName = NormalizeSaveControlName(saveName);
+            if (string.IsNullOrWhiteSpace(normalizedSaveName))
+                return;
+
+            lock (_saveControlLock)
+            {
+                _pausedSaveNames.Remove(normalizedSaveName);
+                _stopRequestsBySaveName.Remove(normalizedSaveName);
+            }
+        }
+
+        private static string NormalizeSaveControlName(string? saveName)
+        {
+            return (saveName ?? "").Trim();
         }
 
         /// <summary>
@@ -1135,7 +1275,29 @@ namespace easySave_BMT.Model_
             return null;
         }
 
-        private bool TryEncryptInPlaceWithCryptoSoft(string targetFilePath, string? plaintextHashHex, out long encryptionTimeMs, out string? error)
+        private bool IsUserStopRequestedForSave(string? saveName)
+        {
+            if (IsStopRequested() && PeekStopReason() == BackupStopReason.UserRequested)
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(saveName) &&
+                IsStopRequested(saveName) &&
+                PeekStopReason(saveName) == BackupStopReason.UserRequested)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryEncryptInPlaceWithCryptoSoft(
+            string targetFilePath,
+            string? plaintextHashHex,
+            string? saveName,
+            out long encryptionTimeMs,
+            out string? error)
         {
             encryptionTimeMs = 0;
             error = null;
@@ -1146,7 +1308,7 @@ namespace easySave_BMT.Model_
             {
                 while (!gateEntered)
                 {
-                    if (IsStopRequested() && PeekStopReason() == BackupStopReason.UserRequested)
+                    if (IsUserStopRequestedForSave(saveName))
                     {
                         encryptionTimeMs = -98;
                         error = "Encryption cancelled by user.";
@@ -1204,7 +1366,7 @@ namespace easySave_BMT.Model_
                             break;
 
                         // Only the user stop cancels immediately; business-software stop finishes current file.
-                        if (IsStopRequested() && PeekStopReason() == BackupStopReason.UserRequested)
+                        if (IsUserStopRequestedForSave(saveName))
                         {
                             try { proc.Kill(entireProcessTree: true); } catch { }
                             encryptionTimeMs = -98;

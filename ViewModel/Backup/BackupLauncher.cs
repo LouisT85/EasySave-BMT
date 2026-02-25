@@ -581,7 +581,7 @@ namespace easySave_BMT.ViewModel_.Backup
 
             _viewModel.model.AddLogInJSONFile();
 
-            bool stopped = _viewModel.model.IsStopRequested();
+            bool stopped = _viewModel.model.IsStopRequested() || _viewModel.model.IsStopRequested(_save.name);
 
             if (_viewModel.guiView is null)
             {
@@ -727,8 +727,13 @@ namespace easySave_BMT.ViewModel_.Backup
             for (int i = 0; i < _files.Length; i++)
             {
                 bool businessRunning = _viewModel.model.TryGetRunningBusinessSoftware(out string runningBusinessProcess);
+                bool globalStopRequested = _viewModel.model.IsStopRequested();
+                bool saveStopRequested = _viewModel.model.IsStopRequested(_save.name);
+                bool manualPauseRequested =
+                    _viewModel.model.IsPauseRequested() ||
+                    _viewModel.model.IsPauseRequested(_save.name);
 
-                if ((_viewModel.model.IsPauseRequested() || businessRunning) && !_viewModel.model.IsStopRequested())
+                if ((manualPauseRequested || businessRunning) && !globalStopRequested && !saveStopRequested)
                 {
                     activeSw.Stop();
 
@@ -744,15 +749,21 @@ namespace easySave_BMT.ViewModel_.Backup
                         businessPauseActive = true;
                     }
 
-                    while (!_viewModel.model.IsStopRequested())
+                    while (true)
                     {
-                        bool stillManualPause = _viewModel.model.IsPauseRequested();
+                        bool stillGlobalStop = _viewModel.model.IsStopRequested();
+                        bool stillSaveStop = _viewModel.model.IsStopRequested(_save.name);
+                        if (stillGlobalStop || stillSaveStop) break;
+
+                        bool stillManualPause =
+                            _viewModel.model.IsPauseRequested() ||
+                            _viewModel.model.IsPauseRequested(_save.name);
                         bool stillBusinessPause = _viewModel.model.TryGetRunningBusinessSoftware(out _);
                         if (!stillManualPause && !stillBusinessPause) break;
                         Thread.Sleep(200);
                     }
 
-                    if (!_viewModel.model.IsStopRequested())
+                    if (!_viewModel.model.IsStopRequested() && !_viewModel.model.IsStopRequested(_save.name))
                     {
                         if (businessPauseActive && !_viewModel.model.TryGetRunningBusinessSoftware(out _))
                         {
@@ -770,12 +781,17 @@ namespace easySave_BMT.ViewModel_.Backup
                     }
                 }
 
-                if (_viewModel.model.IsStopRequested())
+                if (_viewModel.model.IsStopRequested() || _viewModel.model.IsStopRequested(_save.name))
                 {
                     var reason = _viewModel.model.PeekStopReason();
-                    if (reason == BackupStopReason.None) reason = BackupStopReason.UserRequested;
-
                     var detail = _viewModel.model.PeekStopDetail();
+                    if (reason == BackupStopReason.None)
+                    {
+                        reason = _viewModel.model.PeekStopReason(_save.name);
+                        detail = _viewModel.model.PeekStopDetail(_save.name);
+                    }
+
+                    if (reason == BackupStopReason.None) reason = BackupStopReason.UserRequested;
 
                     _viewModel.model.WriteBackupStopLog(_save.name, reason, _save.state?.currentPathSrc);
 
@@ -828,12 +844,17 @@ namespace easySave_BMT.ViewModel_.Backup
                     _viewModel.guiView?.OnFileError($"{_files[i].FullName}: {detail}");
                     failedFiles.Add($"{_files[i].FullName}: {detail}");
 
-                    if (_viewModel.model.IsStopRequested())
+                    if (_viewModel.model.IsStopRequested() || _viewModel.model.IsStopRequested(_save.name))
                     {
                         var reason = _viewModel.model.PeekStopReason();
-                        if (reason == BackupStopReason.None) reason = BackupStopReason.UserRequested;
-
                         var stopDetail = _viewModel.model.PeekStopDetail();
+                        if (reason == BackupStopReason.None)
+                        {
+                            reason = _viewModel.model.PeekStopReason(_save.name);
+                            stopDetail = _viewModel.model.PeekStopDetail(_save.name);
+                        }
+
+                        if (reason == BackupStopReason.None) reason = BackupStopReason.UserRequested;
 
                         _viewModel.model.WriteBackupStopLog(_save.name, reason, _save.state?.currentPathSrc);
 

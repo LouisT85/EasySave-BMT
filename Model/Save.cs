@@ -18,6 +18,8 @@ namespace easySave_BMT.Model_
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
         private int _uiProgressPercent;
+        private bool _uiIsInActiveBatch;
+        private bool _uiIsPausedByUser;
 
         /// <summary>
         /// UI-only progress (0-100) for the GUI list. Not persisted to BackupSave.json.
@@ -33,6 +35,59 @@ namespace easySave_BMT.Model_
                 OnPropertyChanged();
             }
         }
+
+        /// <summary>
+        /// UI-only flag indicating whether this backup is part of the currently running batch.
+        /// Not persisted to BackupSave.json.
+        /// </summary>
+        [JsonIgnore]
+        public bool UiIsInActiveBatch
+        {
+            get => _uiIsInActiveBatch;
+            set
+            {
+                if (_uiIsInActiveBatch == value) return;
+                _uiIsInActiveBatch = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(UiCanControl));
+
+                if (!value && _uiIsPausedByUser)
+                {
+                    _uiIsPausedByUser = false;
+                    OnPropertyChanged(nameof(UiIsPausedByUser));
+                    OnPropertyChanged(nameof(UiPauseButtonSymbol));
+                }
+            }
+        }
+
+        /// <summary>
+        /// UI-only flag for per-backup manual pause state.
+        /// Not persisted to BackupSave.json.
+        /// </summary>
+        [JsonIgnore]
+        public bool UiIsPausedByUser
+        {
+            get => _uiIsPausedByUser;
+            set
+            {
+                if (_uiIsPausedByUser == value) return;
+                _uiIsPausedByUser = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(UiPauseButtonSymbol));
+            }
+        }
+
+        /// <summary>
+        /// Indicates whether per-backup controls should be enabled.
+        /// </summary>
+        [JsonIgnore]
+        public bool UiCanControl => UiIsInActiveBatch;
+
+        /// <summary>
+        /// Per-backup pause button symbol: pause when running, play when paused.
+        /// </summary>
+        [JsonIgnore]
+        public string UiPauseButtonSymbol => UiIsPausedByUser ? "▶" : "❚❚";
 
         /// <summary>The unique name assigned to the backup job.</summary>
         public string name { get; set; }
@@ -63,6 +118,8 @@ namespace easySave_BMT.Model_
             this.state = null;
             this.lastBackupDate = "";
             this.UiProgressPercent = 0;
+            this.UiIsInActiveBatch = false;
+            this.UiIsPausedByUser = false;
         }
 
         /// <summary>
@@ -81,6 +138,8 @@ namespace easySave_BMT.Model_
             this.state = null;
             this.lastBackupDate = "";
             this.UiProgressPercent = 0;
+            this.UiIsInActiveBatch = false;
+            this.UiIsPausedByUser = false;
         }
     }
 }

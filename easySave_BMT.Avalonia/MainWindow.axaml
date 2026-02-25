@@ -67,8 +67,8 @@
 							<ListBox.ItemTemplate>
 								<DataTemplate>
 									<Border Classes="saveItem" Background="{DynamicResource BrushSurface}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="12" Padding="14">
-										<Grid ColumnDefinitions="6,*,Auto" RowDefinitions="Auto,Auto">
-											<Rectangle Grid.Column="0" Grid.RowSpan="2" Fill="{DynamicResource BrushAccent}" RadiusX="3" RadiusY="3"/>
+										<Grid ColumnDefinitions="6,*,Auto" RowDefinitions="Auto,Auto,Auto">
+											<Rectangle Grid.Column="0" Grid.RowSpan="3" Fill="{DynamicResource BrushAccent}" RadiusX="3" RadiusY="3"/>
 
 											<StackPanel Grid.Column="1" Grid.Row="0" Margin="12,0,0,0" Spacing="2">
 												<TextBlock Text="{Binding name}" FontWeight="Bold" FontSize="16"/>
@@ -91,8 +91,23 @@
 												<TextBlock Text="{Binding lastBackupDate}" FontWeight="SemiBold"/>
 											</StackPanel>
 
-											<ProgressBar Grid.Column="2" Grid.Row="1" Width="140" Margin="16,8,0,0"
-                                                         Value="{Binding UiProgressPercent}" Maximum="100"/>
+											<StackPanel Grid.Column="2" Grid.Row="1" Margin="16,8,0,0" Spacing="8">
+												<ProgressBar Width="140" Value="{Binding UiProgressPercent}" Maximum="100"/>
+												<StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+													<Button Classes="ghost icon"
+															Content="{Binding UiPauseButtonSymbol}"
+															Command="{Binding #Root.DataContext.PauseSaveCommand}"
+															CommandParameter="{Binding}"
+															IsEnabled="{Binding UiCanControl}"
+															ToolTip.Tip="{Binding #Root.DataContext.Loc[UiPause]}"/>
+													<Button Classes="danger icon"
+															Content="⏹"
+															Command="{Binding #Root.DataContext.StopSaveCommand}"
+															CommandParameter="{Binding}"
+															IsEnabled="{Binding UiCanControl}"
+															ToolTip.Tip="{Binding #Root.DataContext.Loc[UiStop]}"/>
+												</StackPanel>
+											</StackPanel>
 										</Grid>
 									</Border>
 								</DataTemplate>

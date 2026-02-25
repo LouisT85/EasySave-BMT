@@ -43,6 +43,8 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> LoadLogsCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> PauseCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> StopCommand { get; private set; } = null!;
+        public ReactiveCommand<Model_.Save, Unit> PauseSaveCommand { get; private set; } = null!;
+        public ReactiveCommand<Model_.Save, Unit> StopSaveCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> QuitCommand { get; private set; } = null!;
 
         private void InitCommands()
@@ -177,10 +179,58 @@ namespace easySave_BMT.Avalonia.ViewModels
                 _coreViewModel.model.RequestStop(BackupStopReason.UserRequested, detail: "cleanup");
                 _coreViewModel.model.ClearPauseRequest();
                 IsBackupPaused = false;
+
+                foreach (string saveName in _currentBatchSaveNames)
+                {
+                    var save = Saves.FirstOrDefault(s => string.Equals(s.name, saveName, StringComparison.Ordinal));
+                    if (save is not null)
+                    {
+                        save.UiIsPausedByUser = false;
+                    }
+                }
+
                 DashboardStatusText = Loc["UiStopRequested"];
             });
 
+            PauseSaveCommand = ReactiveCommand.Create<Model_.Save>(ToggleSingleBackupPause);
+            StopSaveCommand = ReactiveCommand.Create<Model_.Save>(RequestSingleBackupStop);
+
             QuitCommand = ReactiveCommand.Create(ShutdownApp);
+        }
+
+        private bool CanControlSingleSave(Model_.Save? save)
+        {
+            return IsBackupRunning &&
+                save is not null &&
+                !string.IsNullOrWhiteSpace(save.name) &&
+                _currentBatchSaveNames.Contains(save.name);
+        }
+
+        private void ToggleSingleBackupPause(Model_.Save? save)
+        {
+            if (!CanControlSingleSave(save)) return;
+
+            if (!save!.UiIsPausedByUser)
+            {
+                _coreViewModel.model.RequestPause(save.name);
+                save.UiIsPausedByUser = true;
+                DashboardStatusText = $"{save.name}: {Loc["UiPaused"]}";
+                return;
+            }
+
+            _coreViewModel.model.ClearPauseRequest(save.name);
+            save.UiIsPausedByUser = false;
+            DashboardStatusText = $"{save.name}: {Loc["UiResumed"]}";
+        }
+
+        private void RequestSingleBackupStop(Model_.Save? save)
+        {
+            if (!CanControlSingleSave(save)) return;
+
+            _coreViewModel.model.RequestStop(save!.name, BackupStopReason.UserRequested, detail: "cleanup");
+            _coreViewModel.model.ClearPauseRequest(save.name);
+            save.UiIsPausedByUser = false;
+            DashboardStatusText = $"{save.name}: {Loc["UiStopRequested"]}";
         }
 
         private void GenerateEncryptionKey()
