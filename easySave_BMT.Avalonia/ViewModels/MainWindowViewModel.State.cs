@@ -131,8 +131,20 @@ namespace easySave_BMT.Avalonia.ViewModels
             {
                 this.RaiseAndSetIfChanged(ref _configThemeDraft, value);
                 ApplyThemePreference(value);
+                this.RaisePropertyChanged(nameof(IsThemeAutoSelected));
+                this.RaisePropertyChanged(nameof(IsThemeLightSelected));
+                this.RaisePropertyChanged(nameof(IsThemeDarkSelected));
             }
         }
+
+        public bool IsThemeAutoSelected =>
+            string.Equals(NormalizeThemePreference(ConfigThemeDraft), ThemeAuto, StringComparison.Ordinal);
+
+        public bool IsThemeLightSelected =>
+            string.Equals(NormalizeThemePreference(ConfigThemeDraft), ThemeLight, StringComparison.Ordinal);
+
+        public bool IsThemeDarkSelected =>
+            string.Equals(NormalizeThemePreference(ConfigThemeDraft), ThemeDark, StringComparison.Ordinal);
 
         private ThemeOptionItem? _selectedThemeOption;
         public ThemeOptionItem? SelectedThemeOption

@@ -383,6 +383,7 @@ namespace easySave_BMT.Model_
                 Directory.CreateDirectory(dstDirectory);
 
                 dstFile = Path.Combine(dstDirectory, currentFile.Name);
+                DeletePlaintextHashSidecar(dstFile);
 
                 // Update dynamic state before starting the copy
                 save.state.UpdateState(
@@ -410,7 +411,7 @@ namespace easySave_BMT.Model_
                 {
                     if (RequiresLargeFileTransferGate(curSize))
                     {
-                        if (!TryEnterLargeFileTransferGate(save.name, curSize))
+                        if (!TryEnterLargeFileTransferGate(save.name))
                         {
                             error = "Copy cancelled by user.";
                             return false;
@@ -443,6 +444,7 @@ namespace easySave_BMT.Model_
                     else
                     {
                         currentFile.CopyTo(dstFile, true);
+                        DeletePlaintextHashSidecar(dstFile);
                     }
                     copySw.Stop();
 
@@ -1200,10 +1202,10 @@ namespace easySave_BMT.Model_
             });
         }
 
-        // EasySave stores an internal metadata header so differential backups can
-        // compare encrypted targets against source plaintext using a stable hash.
-        private const string EasySaveCryptoMagicV2 = "EASYSAVECRYPT2";
+        // EasySave stores sidecar metadata so differential backups can compare
+        // encrypted targets against source plaintext using a stable hash.
         private const string CryptoSoftKeyEnvironmentVariable = "EASYSAVE_CRYPTOSOFT_KEY";
+        private const string EasySavePlaintextHashSidecarSuffix = ".easysave.sha256";
         private static readonly SemaphoreSlim CryptoSoftProcessGate = new SemaphoreSlim(1, 1);
 
         private static string ComputeSha256Hex(string filePath)
@@ -1218,6 +1220,46 @@ namespace easySave_BMT.Model_
                 sb.Append(b.ToString("x2"));
             }
             return sb.ToString();
+        }
+
+        private static string GetPlaintextHashSidecarPath(string filePath)
+        {
+            return filePath + EasySavePlaintextHashSidecarSuffix;
+        }
+
+        private static void DeletePlaintextHashSidecar(string filePath)
+        {
+            try
+            {
+                string sidecarPath = GetPlaintextHashSidecarPath(filePath);
+                if (File.Exists(sidecarPath))
+                {
+                    File.Delete(sidecarPath);
+                }
+            }
+            catch
+            {
+                // Best-effort cleanup.
+            }
+        }
+
+        private static void WritePlaintextHashSidecar(string filePath, string? plaintextHashHex)
+        {
+            if (string.IsNullOrWhiteSpace(plaintextHashHex))
+                return;
+
+            try
+            {
+                string hash = plaintextHashHex.Trim().ToLowerInvariant();
+                if (hash.Length != 64 || !hash.All(Uri.IsHexDigit))
+                    return;
+
+                File.WriteAllText(GetPlaintextHashSidecarPath(filePath), hash);
+            }
+            catch
+            {
+                // Best-effort metadata write.
+            }
         }
 
         private bool IsFileEligibleByEncryptionExtensions(
@@ -1330,7 +1372,7 @@ namespace easySave_BMT.Model_
             return fileSizeBytes > GetLargeFileTransferThresholdBytes();
         }
 
-        private bool TryEnterLargeFileTransferGate(string? saveName, long fileSizeBytes)
+        private bool TryEnterLargeFileTransferGate(string? saveName)
         {
             while (true)
             {
@@ -1377,7 +1419,6 @@ namespace easySave_BMT.Model_
                 }
 
                 string tempOut = targetFilePath + ".cryptosoft_tmp";
-                string tempFinal = targetFilePath + ".easysavecrypt_tmp";
 
                 try
                 {
@@ -1422,7 +1463,6 @@ namespace easySave_BMT.Model_
                             encryptionTimeMs = -98;
                             error = "Encryption cancelled by user.";
                             try { if (File.Exists(tempOut)) File.Delete(tempOut); } catch { }
-                            try { if (File.Exists(tempFinal)) File.Delete(tempFinal); } catch { }
                             return false;
                         }
                     }
@@ -1437,7 +1477,6 @@ namespace easySave_BMT.Model_
                             : $"CryptoSoft error (code {exitCode}).";
 
                         try { if (File.Exists(tempOut)) File.Delete(tempOut); } catch { }
-                        try { if (File.Exists(tempFinal)) File.Delete(tempFinal); } catch { }
                         return false;
                     }
 
@@ -1451,22 +1490,10 @@ namespace easySave_BMT.Model_
                         return false;
                     }
 
-                    // Replace the copied file with its encrypted version + EasySave metadata header.
-                    // Format: "EASYSAVECRYPT2\n" + "<sha256hex>\n" + encrypted bytes.
-                    using (var outFs = new FileStream(tempFinal, FileMode.Create, FileAccess.Write, FileShare.None))
-                    {
-                        byte[] h1 = Encoding.ASCII.GetBytes(EasySaveCryptoMagicV2 + "\n");
-                        byte[] h2 = Encoding.ASCII.GetBytes(plaintextHashHex + "\n");
-                        outFs.Write(h1, 0, h1.Length);
-                        outFs.Write(h2, 0, h2.Length);
-
-                        using var inFs = new FileStream(tempOut, FileMode.Open, FileAccess.Read, FileShare.Read);
-                        inFs.CopyTo(outFs);
-                        outFs.Flush(true);
-                    }
-
-                    File.Move(tempFinal, targetFilePath, overwrite: true);
-                    try { File.Delete(tempOut); } catch { }
+                    // No in-file watermark/header is written anymore.
+                    // Keep compatibility for differential mode via a sidecar hash metadata file.
+                    File.Move(tempOut, targetFilePath, overwrite: true);
+                    WritePlaintextHashSidecar(targetFilePath, plaintextHashHex);
 
                     return true;
                 }
@@ -1475,7 +1502,6 @@ namespace easySave_BMT.Model_
                     encryptionTimeMs = -99;
                     error = ex.Message;
                     try { if (File.Exists(tempOut)) File.Delete(tempOut); } catch { }
-                    try { if (File.Exists(tempFinal)) File.Delete(tempFinal); } catch { }
                     return false;
                 }
             }

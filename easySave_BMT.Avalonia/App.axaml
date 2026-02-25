@@ -154,6 +154,27 @@
       <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
     </Style>
 
+    <Style Selector="ToggleButton.themeMode">
+      <Setter Property="Padding" Value="14,8"/>
+      <Setter Property="CornerRadius" Value="16"/>
+      <Setter Property="MinWidth" Value="92"/>
+      <Setter Property="Background" Value="{DynamicResource BrushSurface}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushMuted}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="ToggleButton.themeMode:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BrushButtonHover}"/>
+    </Style>
+    <Style Selector="ToggleButton.themeMode:checked">
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
+    </Style>
+    <Style Selector="ToggleButton.themeMode:checked /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}"/>
+    </Style>
+
     <Style Selector="Button.icon">
       <Setter Property="Width" Value="34"/>
       <Setter Property="Height" Value="34"/>

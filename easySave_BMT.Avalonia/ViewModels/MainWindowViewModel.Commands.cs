@@ -26,7 +26,6 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> LoadConfigCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> ConfigCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> GenerateEncryptionKeyCommand { get; private set; } = null!;
-        public ReactiveCommand<Unit, Unit> AddCurrentEncryptionKeyCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> RemoveSavedEncryptionKeyCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> AddEncryptionExtensionCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> RemoveEncryptionExtensionCommand { get; private set; } = null!;
@@ -44,6 +43,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         public ReactiveCommand<Unit, Unit> PauseCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> StopCommand { get; private set; } = null!;
         public ReactiveCommand<Model_.Save, Unit> PauseSaveCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> SetThemeDraftCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> QuitCommand { get; private set; } = null!;
 
         private void InitCommands()
@@ -134,7 +134,6 @@ namespace easySave_BMT.Avalonia.ViewModels
             LoadConfigCommand = ReactiveCommand.Create(LoadConfigValuesFromModel);
             ConfigCommand = ReactiveCommand.Create(SaveConfigFromViewModel);
             GenerateEncryptionKeyCommand = ReactiveCommand.Create(GenerateEncryptionKey);
-            AddCurrentEncryptionKeyCommand = ReactiveCommand.Create(AddCurrentEncryptionKey);
             RemoveSavedEncryptionKeyCommand = ReactiveCommand.Create(RemoveSavedEncryptionKey);
 
             AddEncryptionExtensionCommand = ReactiveCommand.Create(AddEncryptionExtension);
@@ -192,6 +191,7 @@ namespace easySave_BMT.Avalonia.ViewModels
             });
 
             PauseSaveCommand = ReactiveCommand.Create<Model_.Save>(ToggleSingleBackupPause);
+            SetThemeDraftCommand = ReactiveCommand.Create<string>(SetThemeDraft);
 
             QuitCommand = ReactiveCommand.Create(ShutdownApp);
         }
@@ -246,22 +246,6 @@ namespace easySave_BMT.Avalonia.ViewModels
             SetTimedAreaMessage(MessageArea.Config, Loc["UiEncryptionKeyGenerated"]);
         }
 
-        private void AddCurrentEncryptionKey()
-        {
-            if (!TryValidateCryptoSoftKey(ConfigCryptoSoftKeyDraft, out string normalizedKey, out _))
-            {
-                SetTimedAreaMessage(MessageArea.Config, Loc["UiEncryptionKeyInvalid"]);
-                return;
-            }
-
-            ConfigCryptoSoftKeyDraft = normalizedKey;
-            UpsertSavedCryptoSoftKeyDraft(normalizedKey);
-            SelectedCryptoSoftSavedKey = CryptoSoftSavedKeysDraft
-                .FirstOrDefault(k => string.Equals(k.Value, normalizedKey, StringComparison.OrdinalIgnoreCase));
-
-            SetTimedAreaMessage(MessageArea.Config, Loc["UiEncryptionKeySaved"]);
-        }
-
         private void RemoveSavedEncryptionKey()
         {
             if (SelectedCryptoSoftSavedKey is null) return;
@@ -274,6 +258,16 @@ namespace easySave_BMT.Avalonia.ViewModels
             {
                 ConfigCryptoSoftKeyDraft = SelectedCryptoSoftSavedKey?.Value ?? "";
             }
+        }
+
+        private void SetThemeDraft(string? value)
+        {
+            string normalized = NormalizeThemePreference(value);
+            ConfigThemeDraft = normalized;
+
+            SelectedThemeOption = ThemeOptions
+                .FirstOrDefault(o => string.Equals(o.Key, normalized, StringComparison.OrdinalIgnoreCase))
+                ?? ThemeOptions.FirstOrDefault();
         }
 
         private void AddEncryptionExtension()

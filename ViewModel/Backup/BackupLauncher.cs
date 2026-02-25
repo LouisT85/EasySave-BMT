@@ -52,6 +52,7 @@ namespace easySave_BMT.ViewModel_.Backup
 
         private const string EasySaveCryptoMagicV1 = "EASYSAVECRYPT1";
         private const string EasySaveCryptoMagicV2 = "EASYSAVECRYPT2";
+        private const string EasySavePlaintextHashSidecarSuffix = ".easysave.sha256";
 
         private readonly ViewModel _viewModel;
 
@@ -448,6 +449,30 @@ namespace easySave_BMT.ViewModel_.Backup
             }
         }
 
+        private static bool TryReadEasySavePlaintextHashSidecar(string encryptedFilePath, out string? plaintextSha256Hex)
+        {
+            plaintextSha256Hex = null;
+
+            try
+            {
+                string sidecarPath = encryptedFilePath + EasySavePlaintextHashSidecarSuffix;
+                if (!File.Exists(sidecarPath)) return false;
+
+                string hash = (File.ReadAllText(sidecarPath) ?? "").Trim();
+                if (hash.Length == 64 && hash.All(Uri.IsHexDigit))
+                {
+                    plaintextSha256Hex = hash.ToLowerInvariant();
+                    return true;
+                }
+            }
+            catch
+            {
+                // Ignore metadata read failures.
+            }
+
+            return false;
+        }
+
         private static string ComputeSha256Hex(string filePath)
         {
             using var sha = SHA256.Create();
@@ -466,6 +491,13 @@ namespace easySave_BMT.ViewModel_.Backup
         {
             try
             {
+                if (TryReadEasySavePlaintextHashSidecar(path1, out string? expectedHashFromSidecar) &&
+                    !string.IsNullOrWhiteSpace(expectedHashFromSidecar))
+                {
+                    string actual = ComputeSha256Hex(path2);
+                    return string.Equals(expectedHashFromSidecar, actual, StringComparison.OrdinalIgnoreCase);
+                }
+
                 if (TryReadEasySaveCryptoHeader(path1, out bool isEncrypted, out string? expectedHash) &&
                     isEncrypted &&
                     !string.IsNullOrWhiteSpace(expectedHash))
