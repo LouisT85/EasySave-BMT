@@ -643,6 +643,24 @@ namespace easySave_BMT.ViewModel_.Backup
             return stopped ? 216 : (failedFiles.Count == 0 ? 104 : 216);
         }
 
+        private static int ComputeSizeBasedProgressPercent(long totalSize, long leftSize, int processedFiles, int totalFiles)
+        {
+            if (totalSize <= 0)
+            {
+                if (totalFiles <= 0) return 0;
+                return Math.Clamp((processedFiles * 100) / totalFiles, 0, 100);
+            }
+
+            long boundedLeft = Math.Clamp(leftSize, 0L, totalSize);
+            long copiedSize = totalSize - boundedLeft;
+            int percent = (int)((copiedSize * 100L) / totalSize);
+
+            if (processedFiles >= totalFiles)
+                return 100;
+
+            return Math.Clamp(percent, 0, 100);
+        }
+
         private static string FormatEta(double ms)
         {
             if (double.IsNaN(ms) || double.IsInfinity(ms) || ms <= 0) return "Calcul...";
@@ -841,9 +859,9 @@ namespace easySave_BMT.ViewModel_.Backup
                     break;
                 }
 
-                int pourcent = ((i + 1) * 100) / totalFile;
                 long curSize = _files[i].Length;
                 leftSize -= curSize;
+                int pourcent = ComputeSizeBasedProgressPercent(_totalSize, leftSize, i + 1, totalFile);
 
                 DateTime fileStartUtc = DateTime.UtcNow;
 
