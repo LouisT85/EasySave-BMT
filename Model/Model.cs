@@ -9,7 +9,6 @@ using EasyLog;
 using EasyLog.Models;
 using System.Threading;
 using System.Text;
-using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using easySave_BMT.Resources_;
@@ -360,8 +359,7 @@ namespace easySave_BMT.Model_
             int fileIndex,
             int pourcent,
             out string? error,
-            out EncryptionAction encryptionAction,
-            bool forceEncryptAllExtensions = false)
+            out EncryptionAction encryptionAction)
         {
             string curDirPath = currentFile.DirectoryName ?? save.src ?? "";
             string dstDirectory = dst;
@@ -383,7 +381,7 @@ namespace easySave_BMT.Model_
                 Directory.CreateDirectory(dstDirectory);
 
                 dstFile = Path.Combine(dstDirectory, currentFile.Name);
-                DeletePlaintextHashSidecar(dstFile);
+                DeleteLegacyPlaintextHashSidecar(dstFile);
 
                 // Update dynamic state before starting the copy
                 save.state.UpdateState(
@@ -400,10 +398,9 @@ namespace easySave_BMT.Model_
                 // (l'observateur GUI est porté par le ViewModel qui consomme ces états)
 
                 // Decide encryption from the configured extension rules.
-                bool shouldEncrypt = ShouldEncryptFile(currentFile.FullName, forceEncryptAllExtensions);
+                bool shouldEncrypt = ShouldEncryptFile(currentFile.FullName);
 
-                // Perform file copy (and compute plaintext hash only if we will encrypt).
-                string? plaintextHashHex = null;
+                // Copy source bytes first; encryption (if enabled) is applied in place afterwards.
                 long transferTime;
                 bool largeTransferGateEntered = false;
 
@@ -421,31 +418,7 @@ namespace easySave_BMT.Model_
                     }
 
                     var copySw = Stopwatch.StartNew();
-                    if (shouldEncrypt)
-                    {
-                        using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-                        byte[] buffer = new byte[81920];
-
-                        using (var inFs = new FileStream(currentFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                        using (var outFs = new FileStream(dstFile, FileMode.Create, FileAccess.Write, FileShare.None))
-                        {
-                            int read;
-                            while ((read = inFs.Read(buffer, 0, buffer.Length)) > 0)
-                            {
-                                outFs.Write(buffer, 0, read);
-                                hasher.AppendData(buffer, 0, read);
-                            }
-
-                            outFs.Flush(true);
-                        }
-
-                        plaintextHashHex = Convert.ToHexString(hasher.GetHashAndReset()).ToLowerInvariant();
-                    }
-                    else
-                    {
-                        currentFile.CopyTo(dstFile, true);
-                        DeletePlaintextHashSidecar(dstFile);
-                    }
+                    currentFile.CopyTo(dstFile, true);
                     copySw.Stop();
 
                     transferTime = copySw.ElapsedMilliseconds;
@@ -468,7 +441,6 @@ namespace easySave_BMT.Model_
                     encryptionAction = EncryptionAction.Encrypted;
                     encryptionOk = TryEncryptInPlaceWithCryptoSoft(
                         dstFile,
-                        plaintextHashHex,
                         save.name,
                         out encryptionTimeMs,
                         out encryptionError);
@@ -1202,36 +1174,14 @@ namespace easySave_BMT.Model_
             });
         }
 
-        // EasySave stores sidecar metadata so differential backups can compare
-        // encrypted targets against source plaintext using a stable hash.
         private const string CryptoSoftKeyEnvironmentVariable = "EASYSAVE_CRYPTOSOFT_KEY";
-        private const string EasySavePlaintextHashSidecarSuffix = ".easysave.sha256";
         private static readonly SemaphoreSlim CryptoSoftProcessGate = new SemaphoreSlim(1, 1);
 
-        private static string ComputeSha256Hex(string filePath)
-        {
-            using var sha = SHA256.Create();
-            using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            var hash = sha.ComputeHash(fs);
-
-            var sb = new StringBuilder(hash.Length * 2);
-            foreach (byte b in hash)
-            {
-                sb.Append(b.ToString("x2"));
-            }
-            return sb.ToString();
-        }
-
-        private static string GetPlaintextHashSidecarPath(string filePath)
-        {
-            return filePath + EasySavePlaintextHashSidecarSuffix;
-        }
-
-        private static void DeletePlaintextHashSidecar(string filePath)
+        private static void DeleteLegacyPlaintextHashSidecar(string filePath)
         {
             try
             {
-                string sidecarPath = GetPlaintextHashSidecarPath(filePath);
+                string sidecarPath = filePath + ".easysave.sha256";
                 if (File.Exists(sidecarPath))
                 {
                     File.Delete(sidecarPath);
@@ -1239,46 +1189,31 @@ namespace easySave_BMT.Model_
             }
             catch
             {
-                // Best-effort cleanup.
-            }
-        }
-
-        private static void WritePlaintextHashSidecar(string filePath, string? plaintextHashHex)
-        {
-            if (string.IsNullOrWhiteSpace(plaintextHashHex))
-                return;
-
-            try
-            {
-                string hash = plaintextHashHex.Trim().ToLowerInvariant();
-                if (hash.Length != 64 || !hash.All(Uri.IsHexDigit))
-                    return;
-
-                File.WriteAllText(GetPlaintextHashSidecarPath(filePath), hash);
-            }
-            catch
-            {
-                // Best-effort metadata write.
+                // Best-effort cleanup for old metadata files.
             }
         }
 
         private bool IsFileEligibleByEncryptionExtensions(
             string filePath,
-            out string normalizedExtension,
-            bool forceEncryptAllExtensions = false)
+            out string normalizedExtension)
         {
             normalizedExtension = NormalizeExtension(Path.GetExtension(filePath));
 
-            if (forceEncryptAllExtensions) return true;
-
-            bool hasConfiguredExtensions = false;
             foreach (var configured in config.EncryptionExtensions ?? new List<string>())
             {
-                string normalizedConfigured = NormalizeExtension(configured);
-                if (string.IsNullOrWhiteSpace(normalizedConfigured))
+                string raw = (configured ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(raw))
                     continue;
 
-                hasConfiguredExtensions = true;
+                if (string.Equals(raw, "*", StringComparison.Ordinal) ||
+                    string.Equals(raw, ".*", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+
+                string normalizedConfigured = NormalizeExtension(raw);
+                if (string.IsNullOrWhiteSpace(normalizedConfigured))
+                    continue;
 
                 if (!string.IsNullOrWhiteSpace(normalizedExtension) &&
                     string.Equals(normalizedExtension, normalizedConfigured, StringComparison.OrdinalIgnoreCase))
@@ -1287,15 +1222,15 @@ namespace easySave_BMT.Model_
                 }
             }
 
-            // No configured extension means "encrypt all files".
-            return !hasConfiguredExtensions;
+            // No selected extension means "encrypt no file".
+            return false;
         }
 
-        private bool ShouldEncryptFile(string filePath, bool forceEncryptAllExtensions = false)
+        private bool ShouldEncryptFile(string filePath)
         {
             if (!config.EnableEncryption) return false;
 
-            if (!IsFileEligibleByEncryptionExtensions(filePath, out _, forceEncryptAllExtensions))
+            if (!IsFileEligibleByEncryptionExtensions(filePath, out _))
                 return false;
 
             return true;
@@ -1386,7 +1321,6 @@ namespace easySave_BMT.Model_
 
         private bool TryEncryptInPlaceWithCryptoSoft(
             string targetFilePath,
-            string? plaintextHashHex,
             string? saveName,
             out long encryptionTimeMs,
             out string? error)
@@ -1422,9 +1356,6 @@ namespace easySave_BMT.Model_
 
                 try
                 {
-                    // If the hash is missing, compute it from the plaintext file (rare; normally computed during copy).
-                    plaintextHashHex ??= ComputeSha256Hex(targetFilePath);
-
                     var psi = new ProcessStartInfo
                     {
                         FileName = cryptoSoftExe,
@@ -1490,10 +1421,8 @@ namespace easySave_BMT.Model_
                         return false;
                     }
 
-                    // No in-file watermark/header is written anymore.
-                    // Keep compatibility for differential mode via a sidecar hash metadata file.
+                    // Only replace the copied file by the encrypted output.
                     File.Move(tempOut, targetFilePath, overwrite: true);
-                    WritePlaintextHashSidecar(targetFilePath, plaintextHashHex);
 
                     return true;
                 }

@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using easySave_BMT.Model_;
@@ -49,10 +47,6 @@ namespace easySave_BMT.ViewModel_.Backup
                 ResultCode = resultCode;
             }
         }
-
-        private const string EasySaveCryptoMagicV1 = "EASYSAVECRYPT1";
-        private const string EasySaveCryptoMagicV2 = "EASYSAVECRYPT2";
-        private const string EasySavePlaintextHashSidecarSuffix = ".easysave.sha256";
 
         private readonly ViewModel _viewModel;
 
@@ -403,117 +397,40 @@ namespace easySave_BMT.ViewModel_.Backup
             }
         }
 
-        private static bool TryReadEasySaveCryptoHeader(string filePath, out bool isEncrypted, out string? plaintextSha256Hex)
-        {
-            isEncrypted = false;
-            plaintextSha256Hex = null;
-
-            try
-            {
-                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                byte[] buf = new byte[256];
-                int read = fs.Read(buf, 0, buf.Length);
-                if (read <= 0) return false;
-
-                int nl1 = Array.IndexOf(buf, (byte)'\n', 0, read);
-                if (nl1 <= 0) return false;
-
-                string line1 = Encoding.ASCII.GetString(buf, 0, nl1).TrimEnd('\r');
-                if (!string.Equals(line1, EasySaveCryptoMagicV1, StringComparison.Ordinal) &&
-                    !string.Equals(line1, EasySaveCryptoMagicV2, StringComparison.Ordinal))
-                {
-                    return false;
-                }
-
-                isEncrypted = true;
-
-                if (string.Equals(line1, EasySaveCryptoMagicV2, StringComparison.Ordinal))
-                {
-                    int start2 = nl1 + 1;
-                    int nl2 = Array.IndexOf(buf, (byte)'\n', start2, read - start2);
-                    if (nl2 > start2)
-                    {
-                        string line2 = Encoding.ASCII.GetString(buf, start2, nl2 - start2).TrimEnd('\r').Trim();
-                        if (line2.Length == 64 && line2.All(Uri.IsHexDigit))
-                        {
-                            plaintextSha256Hex = line2.ToLowerInvariant();
-                        }
-                    }
-                }
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool TryReadEasySavePlaintextHashSidecar(string encryptedFilePath, out string? plaintextSha256Hex)
-        {
-            plaintextSha256Hex = null;
-
-            try
-            {
-                string sidecarPath = encryptedFilePath + EasySavePlaintextHashSidecarSuffix;
-                if (!File.Exists(sidecarPath)) return false;
-
-                string hash = (File.ReadAllText(sidecarPath) ?? "").Trim();
-                if (hash.Length == 64 && hash.All(Uri.IsHexDigit))
-                {
-                    plaintextSha256Hex = hash.ToLowerInvariant();
-                    return true;
-                }
-            }
-            catch
-            {
-                // Ignore metadata read failures.
-            }
-
-            return false;
-        }
-
-        private static string ComputeSha256Hex(string filePath)
-        {
-            using var sha = SHA256.Create();
-            using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            var hash = sha.ComputeHash(fs);
-
-            var sb = new StringBuilder(hash.Length * 2);
-            foreach (byte b in hash)
-            {
-                sb.Append(b.ToString("x2"));
-            }
-            return sb.ToString();
-        }
-
         private bool IsSameFile(string path1, string path2)
         {
             try
             {
-                if (TryReadEasySavePlaintextHashSidecar(path1, out string? expectedHashFromSidecar) &&
-                    !string.IsNullOrWhiteSpace(expectedHashFromSidecar))
+                var file1 = new FileInfo(path1);
+                var file2 = new FileInfo(path2);
+                if (!file1.Exists || !file2.Exists)
+                    return false;
+
+                if (file1.Length != file2.Length)
+                    return false;
+
+                const int bufferSize = 81920;
+                byte[] buffer1 = new byte[bufferSize];
+                byte[] buffer2 = new byte[bufferSize];
+
+                using var fs1 = new FileStream(path1, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var fs2 = new FileStream(path2, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+                while (true)
                 {
-                    string actual = ComputeSha256Hex(path2);
-                    return string.Equals(expectedHashFromSidecar, actual, StringComparison.OrdinalIgnoreCase);
-                }
+                    int read1 = fs1.Read(buffer1, 0, buffer1.Length);
+                    int read2 = fs2.Read(buffer2, 0, buffer2.Length);
+                    if (read1 != read2)
+                        return false;
 
-                if (TryReadEasySaveCryptoHeader(path1, out bool isEncrypted, out string? expectedHash) &&
-                    isEncrypted &&
-                    !string.IsNullOrWhiteSpace(expectedHash))
-                {
-                    string actual = ComputeSha256Hex(path2);
-                    return string.Equals(expectedHash, actual, StringComparison.OrdinalIgnoreCase);
-                }
+                    if (read1 == 0)
+                        break;
 
-                byte[] file1 = File.ReadAllBytes(path1);
-                byte[] file2 = File.ReadAllBytes(path2);
-
-                if (file1.Length != file2.Length) return false;
-
-                for (int i = 0; i < file1.Length; i++)
-                {
-                    if (file1[i] != file2[i]) return false;
+                    for (int i = 0; i < read1; i++)
+                    {
+                        if (buffer1[i] != buffer2[i])
+                            return false;
+                    }
                 }
 
                 return true;
@@ -723,31 +640,6 @@ namespace easySave_BMT.ViewModel_.Backup
             };
         }
 
-        private bool ShouldForceEncryptAllExtensions(FileInfo[] files)
-        {
-            var cfg = _viewModel.model.GetConfig();
-            if (!cfg.EnableEncryption) return false;
-
-            var normalizedConfiguredExtensions = (cfg.EncryptionExtensions ?? new List<string>())
-                .Select(NormalizeExtension)
-                .Where(e => !string.IsNullOrWhiteSpace(e))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            if (normalizedConfiguredExtensions.Count == 0) return false;
-
-            foreach (var file in files)
-            {
-                string fileExt = NormalizeExtension(Path.GetExtension(file.FullName));
-                if (string.IsNullOrWhiteSpace(fileExt)) continue;
-
-                if (normalizedConfiguredExtensions.Any(e => string.Equals(e, fileExt, StringComparison.OrdinalIgnoreCase)))
-                    return false;
-            }
-
-            return true;
-        }
-
         private List<string> CopyFiles(
             Save _save,
             FileInfo[] _files,
@@ -767,12 +659,6 @@ namespace easySave_BMT.ViewModel_.Backup
             long bytesCopiedSuccess = 0;
             bool businessPauseActive = false;
             string pausedBusinessProcess = "";
-            bool forceEncryptAllExtensions = ShouldForceEncryptAllExtensions(_files);
-
-            if (forceEncryptAllExtensions)
-            {
-                _viewModel.guiView?.ShowMessage(ResourceManager.GetString("UiEncryptionFallbackAllFiles"));
-            }
 
             for (int i = 0; i < _files.Length; i++)
             {
@@ -867,7 +753,7 @@ namespace easySave_BMT.ViewModel_.Backup
 
                 bool ok = _viewModel.model.TryCopyFile(
                     _save, _files[i], curSize, _dst, leftSize, totalFile, i, pourcent,
-                    out string? error, out EncryptionAction encryptionAction, forceEncryptAllExtensions);
+                    out string? error, out EncryptionAction encryptionAction);
 
                 double fileMs = (DateTime.UtcNow - fileStartUtc).TotalMilliseconds;
                 if (fileMs < 1) fileMs = 1;

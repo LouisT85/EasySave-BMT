@@ -290,11 +290,19 @@ namespace easySave_BMT.Avalonia.ViewModels
                 return;
             }
 
-            if (!ext.StartsWith(".")) ext = "." + ext;
-            ext = ext.ToLowerInvariant();
+            if (string.Equals(ext, "*", StringComparison.Ordinal) ||
+                string.Equals(ext, ".*", StringComparison.Ordinal))
+            {
+                ext = "*";
+            }
+            else
+            {
+                if (!ext.StartsWith(".")) ext = "." + ext;
+                ext = ext.ToLowerInvariant();
+            }
 
             // Basic validation
-            if (ext.Length < 2 ||
+            if ((ext != "*" && ext.Length < 2) ||
                 ext.Any(ch => char.IsWhiteSpace(ch)) ||
                 ext.Contains(System.IO.Path.DirectorySeparatorChar) ||
                 ext.Contains(System.IO.Path.AltDirectorySeparatorChar))

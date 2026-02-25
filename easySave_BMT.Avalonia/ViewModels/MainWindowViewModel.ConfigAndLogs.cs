@@ -48,6 +48,7 @@ namespace easySave_BMT.Avalonia.ViewModels
 
         private static readonly string[] BuiltInExtensionSuggestions =
         {
+            "*",
             ".txt",
             ".docx",
             ".doc",
@@ -75,7 +76,16 @@ namespace easySave_BMT.Avalonia.ViewModels
             return ConfigEncryptionExtensionsDraft
                 .Select(e => (e ?? "").Trim())
                 .Where(e => !string.IsNullOrWhiteSpace(e))
-                .Select(e => e.StartsWith(".") ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
+                .Select(e =>
+                {
+                    if (string.Equals(e, "*", StringComparison.Ordinal) ||
+                        string.Equals(e, ".*", StringComparison.Ordinal))
+                    {
+                        return "*";
+                    }
+
+                    return e.StartsWith(".") ? e.ToLowerInvariant() : "." + e.ToLowerInvariant();
+                })
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
@@ -342,6 +352,7 @@ namespace easySave_BMT.Avalonia.ViewModels
         {
             string value = (raw ?? "").Trim().ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(value)) return "";
+            if (value == "*" || value == ".*") return "*";
             if (!value.StartsWith(".")) value = "." + value;
             return value;
         }
@@ -478,8 +489,16 @@ namespace easySave_BMT.Avalonia.ViewModels
                         var ext = (extRaw ?? "").Trim();
                         if (string.IsNullOrWhiteSpace(ext)) continue;
 
-                        if (!ext.StartsWith(".")) ext = "." + ext;
-                        ext = ext.ToLowerInvariant();
+                        if (string.Equals(ext, "*", StringComparison.Ordinal) ||
+                            string.Equals(ext, ".*", StringComparison.Ordinal))
+                        {
+                            ext = "*";
+                        }
+                        else
+                        {
+                            if (!ext.StartsWith(".")) ext = "." + ext;
+                            ext = ext.ToLowerInvariant();
+                        }
 
                         if (!ConfigEncryptionExtensionsDraft.Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase)))
                             ConfigEncryptionExtensionsDraft.Add(ext);
